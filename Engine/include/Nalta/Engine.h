@@ -1,7 +1,7 @@
 #pragma once
+#include <array>
 #include <atomic>
 #include <cstdint>
-#include <vector>
 
 namespace Nalta 
 {
@@ -23,12 +23,11 @@ namespace Nalta
 
 		struct FrameData
 		{
-			uint32_t frameIndex{ 0 };
 			std::atomic<bool> ready{ false }; // game update done
 			std::atomic<bool> rendered{ true };  // render done / slot free
 		};
 
-		std::vector<FrameData> myFrames{ MAX_FRAMES_IN_FLIGHT };
+		std::array<FrameData, MAX_FRAMES_IN_FLIGHT> myFrames;
 		std::atomic<int32_t> myCurrentFrame{ 0 };
 		std::atomic<bool> myStop{ false };
 		std::atomic<bool> myRestart{ false };

@@ -2,7 +2,6 @@
 
 #include "Nalta/Core/Logger.h"
 
-#include <iostream>
 #include <thread>
 
 namespace Nalta 
@@ -22,16 +21,16 @@ namespace Nalta
 	void Engine::Run()
 	{
 		NL_INFO("Starting run loop");
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
-		{
-			myFrames[i].frameIndex = i;
-		}
 		
 		NL_INFO("Creating Game & Render threads");
 		std::thread gameThread(&Engine::GameLoop, this);
 		std::thread renderThread(&Engine::RenderLoop, this);
 		
-		std::cin.get();
+		while (!myStop)
+		{
+			std::this_thread::sleep_for(std::chrono::microseconds(10));
+		}
+		
 		myStop = true;
 		
 		NL_INFO("Waiting for threads to finish");

@@ -43,7 +43,7 @@ namespace Nalta::Logger
                     myBuffer += static_cast<char>(aCh);
                     if (aCh == '\n')
                     {
-                        std::lock_guard<std::mutex> lock(locLogMutex);
+                        const std::lock_guard lock(locLogMutex);
                         LogInternal(myLevel, myBuffer);
                         myBuffer.clear();
                     }

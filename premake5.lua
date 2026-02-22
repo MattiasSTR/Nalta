@@ -1,3 +1,8 @@
+newoption {
+    trigger     = "clang",
+    description = "Use Clang toolset instead of MSVC"
+}
+
 workspace "Nalta"
     architecture "x64"
     startproject "Sandbox"
