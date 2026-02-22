@@ -1,0 +1,7 @@
+# Dirs
+.vs
+.idea
+build/
+
+# Project Files
+*.sln
