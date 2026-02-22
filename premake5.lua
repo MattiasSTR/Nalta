@@ -63,16 +63,14 @@ function setup_project(name, projKind, src, include_dirs)
         editandcontinue "on"
         warnings "extra"
         fatalwarnings { "All" }
-        buildoptions { "/RTC1" }
     
     filter "configurations:Development"
-        runtime "Debug"
+        runtime "Release"
         symbols "on"
         optimize "speed"
         defines { "_DEVELOPMENT" }
         warnings "extra"
         fatalwarnings { "All" }
-        buildoptions { "/RTC1" }
     
     filter "configurations:Shipping"
         runtime "Release"
