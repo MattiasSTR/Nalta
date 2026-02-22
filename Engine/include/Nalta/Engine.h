@@ -8,6 +8,9 @@ namespace Nalta
 	class Engine 
 	{
 	public:
+		Engine();
+		~Engine();
+		
 		void Run();
 		
 	private:

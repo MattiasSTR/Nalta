@@ -26,6 +26,7 @@ dirs.build      = dirs.root .. "/build" -- all generated files
 dirs.bin        = dirs.build .. "/bin"  -- final binaries
 dirs.obj        = dirs.build .. "/obj"  -- intermediate objects
 dirs.projects   = dirs.build .. "/projects" -- vcxproj locations
+dirs.thirdparty = dirs.root .. "/ThirdParty"   -- Third-party libraries
 
 -- Ensure directories exist
 os.mkdir(dirs.build)
@@ -50,10 +51,11 @@ function setup_project(name, projKind, src, include_dirs)
     filter "system:windows"
         conformancemode "On"
         callingconvention "fastcall"
-        exceptionhandling "Off"
         rtti "Off"
         floatingpoint "Fast"
         multiprocessorcompile "On"
+        characterset "Unicode"
+        buildoptions { "/utf-8" }
     
     filter "configurations:Debug"
         runtime "Debug"
@@ -91,7 +93,7 @@ end
 -- Engine Static Library
 setup_project("Engine", "StaticLib",
     { "Engine/source/**.cpp", "Engine/include/**.h" },
-    { "Engine/include" }
+    { "Engine/include", dirs.thirdparty }
 )
 
 -- Sandbox Executable

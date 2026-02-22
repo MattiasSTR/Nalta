@@ -1,10 +1,22 @@
 #include "Nalta/Engine.h"
 
+#include "Nalta/Core/Logger.h"
+
 #include <iostream>
 #include <thread>
 
 namespace Nalta 
 {
+	Engine::Engine()
+	{
+		Logger::Init();
+	}
+
+	Engine::~Engine()
+	{
+		Logger::Shutdown();
+	}
+
 	void Engine::Run()
 	{
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
@@ -52,9 +64,9 @@ namespace Nalta
 			frame.rendered = false;
 
 			// Game update
-			std::cout << "[Game] Updating frame " << frame.frameIndex << '\n';
+			NL_INFO("[Game] Updating frame {}", frame.frameIndex);
 			
-			std::this_thread::sleep_for(std::chrono::microseconds(160)); 
+			std::this_thread::sleep_for(std::chrono::milliseconds(160)); 
 
 			// Mark frame ready for render
 			frame.ready.store(true, std::memory_order_release);
@@ -90,7 +102,7 @@ namespace Nalta
 			}
 
 			// Rendering
-			std::cout << "[Render] Rendering frame " << frame.frameIndex << '\n';
+			NL_INFO("[Render] Rendering frame {}", frame.frameIndex);
 
 			// Mark slot free again
 			frame.ready.store(false, std::memory_order_release);
