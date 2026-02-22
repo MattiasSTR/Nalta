@@ -1,19 +1,19 @@
 #include "Nalta/Engine.h"
-#include "Nalta/Core/Types/Thread.h"
 
 #include <iostream>
+#include <thread>
 
 namespace Nalta 
 {
 	void Engine::Run()
 	{
-		for (UInt32 i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 		{
 			myFrames[i].frameIndex = i;
 		}
 		
-		Thread gameThread(&Engine::GameLoop, this);
-		Thread renderThread(&Engine::RenderLoop, this);
+		std::thread gameThread(&Engine::GameLoop, this);
+		std::thread renderThread(&Engine::RenderLoop, this);
 		
 		std::cin.get();
 		myStop = true;
@@ -26,11 +26,11 @@ namespace Nalta
 	{
 		while (!myStop)
 		{
-			const Int32 frameIndex{ myCurrentFrame % static_cast<Int32>(MAX_FRAMES_IN_FLIGHT) };
+			const int32_t frameIndex{ myCurrentFrame % static_cast<int32_t>(MAX_FRAMES_IN_FLIGHT) };
 			FrameData& frame{ myFrames[frameIndex] };
 
 			// Wait until this frame slot has been rendered (free)
-			Int32 spinCount{ 0 };
+			int32_t spinCount{ 0 };
 			while (!frame.rendered.load(std::memory_order_acquire))
 			{
 				if (myStop)
@@ -53,6 +53,8 @@ namespace Nalta
 
 			// Game update
 			std::cout << "[Game] Updating frame " << frame.frameIndex << '\n';
+			
+			std::this_thread::sleep_for(std::chrono::microseconds(160)); 
 
 			// Mark frame ready for render
 			frame.ready.store(true, std::memory_order_release);
@@ -63,7 +65,7 @@ namespace Nalta
 
 	void Engine::RenderLoop()
 	{
-		Int32 nextRenderFrame{ 0 };
+		int32_t nextRenderFrame{ 0 };
 		while (!myStop)
 		{
 			FrameData& frame{ myFrames[nextRenderFrame] };
