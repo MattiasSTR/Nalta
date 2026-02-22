@@ -2,7 +2,14 @@
 
 int main(int, char**)
 {
-	Nalta::Engine engine;
-	engine.Run();
+	bool restart{ true };
+	while (restart)
+	{
+		Nalta::Engine engine;
+		engine.Run();
+
+		restart = engine.WantsRestart();
+	}
+	
 	return 0;
 }

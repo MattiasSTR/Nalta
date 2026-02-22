@@ -13,6 +13,8 @@ namespace Nalta
 		
 		void Run();
 		
+		void RequestRestart() { myRestart = true; myStop = true; }
+		bool WantsRestart() const { return myRestart.load(); }
 	private:
 		void GameLoop();
 		void RenderLoop();
@@ -29,5 +31,6 @@ namespace Nalta
 		std::vector<FrameData> myFrames{ MAX_FRAMES_IN_FLIGHT };
 		std::atomic<int32_t> myCurrentFrame{ 0 };
 		std::atomic<bool> myStop{ false };
+		std::atomic<bool> myRestart{ false };
 	};
 }

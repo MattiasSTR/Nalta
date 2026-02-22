@@ -10,32 +10,41 @@ namespace Nalta
 	Engine::Engine()
 	{
 		Logger::Init();
+		NL_INFO("Engine constructed");
 	}
 
 	Engine::~Engine()
 	{
+		NL_INFO("Engine destroyed");
 		Logger::Shutdown();
 	}
 
 	void Engine::Run()
 	{
+		NL_INFO("Starting run loop");
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 		{
 			myFrames[i].frameIndex = i;
 		}
 		
+		NL_INFO("Creating Game & Render threads");
 		std::thread gameThread(&Engine::GameLoop, this);
 		std::thread renderThread(&Engine::RenderLoop, this);
 		
 		std::cin.get();
 		myStop = true;
 		
+		NL_INFO("Waiting for threads to finish");
 		gameThread.join();
 		renderThread.join();
+		
+		NL_INFO("Engine run loop finished");
 	}
 
 	void Engine::GameLoop()
 	{
+		NL_INFO("Game loop started");
+		
 		while (!myStop)
 		{
 			const int32_t frameIndex{ myCurrentFrame % static_cast<int32_t>(MAX_FRAMES_IN_FLIGHT) };
@@ -64,19 +73,23 @@ namespace Nalta
 			frame.rendered = false;
 
 			// Game update
-			NL_INFO("[Game] Updating frame {}", frame.frameIndex);
+			//NL_INFO("[Game] Updating frame {}", frame.frameIndex);
 			
-			std::this_thread::sleep_for(std::chrono::milliseconds(160)); 
+			//std::this_thread::sleep_for(std::chrono::milliseconds(160)); 
 
 			// Mark frame ready for render
 			frame.ready.store(true, std::memory_order_release);
 
 			++myCurrentFrame;
 		}
+		
+		NL_INFO("Game loop stopped");
 	}
 
 	void Engine::RenderLoop()
 	{
+		NL_INFO("Render loop started");
+		
 		int32_t nextRenderFrame{ 0 };
 		while (!myStop)
 		{
@@ -102,7 +115,7 @@ namespace Nalta
 			}
 
 			// Rendering
-			NL_INFO("[Render] Rendering frame {}", frame.frameIndex);
+			//NL_INFO("[Render] Rendering frame {}", frame.frameIndex);
 
 			// Mark slot free again
 			frame.ready.store(false, std::memory_order_release);
@@ -110,5 +123,7 @@ namespace Nalta
 
 			nextRenderFrame = (nextRenderFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 		}
+		
+		NL_INFO("Render loop stopped");
 	}
 }
