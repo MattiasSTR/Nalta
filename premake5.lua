@@ -39,6 +39,9 @@ os.mkdir(dirs.bin)
 os.mkdir(dirs.obj)
 os.mkdir(dirs.projects)
 
+ThirdPartyIncludes = {}
+ThirdPartyIncludes.spdlog = dirs.thirdparty .. "/spdlog/include"
+
 --==================================================
 -- Helper function for project creation
 --==================================================
@@ -98,7 +101,7 @@ end
 -- Engine Static Library
 setup_project("Engine", "StaticLib",
     { "Engine/source/**.cpp", "Engine/include/**.h" },
-    { "Engine/include", dirs.thirdparty }
+    { "Engine/include", ThirdPartyIncludes.spdlog }
 )
 
 -- Sandbox Executable
