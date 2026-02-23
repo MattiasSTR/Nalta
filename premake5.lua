@@ -66,7 +66,7 @@ function setup_project(name, projKind, src, include_dirs)
         runtime "Debug"
         symbols "on"
         optimize "off"
-        defines { "_DEBUG" }
+        defines { "N_DEBUG" }
         editandcontinue "on"
         warnings "extra"
         fatalwarnings { "All" }
@@ -75,7 +75,7 @@ function setup_project(name, projKind, src, include_dirs)
         runtime "Release"
         symbols "on"
         optimize "speed"
-        defines { "_DEVELOPMENT" }
+        defines { "N_DEVELOPMENT" }
         warnings "extra"
         fatalwarnings { "All" }
     
@@ -83,7 +83,7 @@ function setup_project(name, projKind, src, include_dirs)
         runtime "Release"
         symbols "off"
         optimize "full"
-        defines { "_SHIPPING", "NDEBUG" }
+        defines { "N_SHIPPING", "NDEBUG" }
         warnings "extra"
         linktimeoptimization "Fast"
     

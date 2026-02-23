@@ -8,24 +8,36 @@ namespace Nalta
 {
 	Engine::Engine()
 	{
-		Logger::Init();
+		myLogger = std::make_unique<Logger>();
+		myLogger->Init();
+		GLogger = myLogger.get();
+		
+		const LoggerScope engineScope("Engine");
 		NL_INFO("Engine constructed");
 	}
 
 	Engine::~Engine()
 	{
+		const LoggerScope engineScope("Engine");
 		NL_INFO("Engine destroyed");
-		Logger::Shutdown();
+		
+		GLogger = nullptr;
+		myLogger->Shutdown();
+		myLogger.reset();
 	}
 
 	void Engine::Run()
 	{
+		const LoggerScope engineScope("Engine::Run");
 		NL_INFO("Starting run loop");
 		
 		NL_INFO("Creating Game & Render threads");
 		std::thread gameThread(&Engine::GameLoop, this);
 		std::thread renderThread(&Engine::RenderLoop, this);
 		
+		// Event Polling
+		// File Watching
+		// Asset Streaming
 		while (!myStop)
 		{
 			std::this_thread::sleep_for(std::chrono::microseconds(10));
@@ -37,11 +49,12 @@ namespace Nalta
 		gameThread.join();
 		renderThread.join();
 		
-		NL_INFO("Engine run loop finished");
+		NL_INFO("Run loop finished");
 	}
 
 	void Engine::GameLoop()
 	{
+		const LoggerScope gameScope("GameLoop");
 		NL_INFO("Game loop started");
 		
 		while (!myStop)
@@ -51,7 +64,7 @@ namespace Nalta
 
 			// Wait until this frame slot has been rendered (free)
 			int32_t spinCount{ 0 };
-			while (!frame.rendered.load(std::memory_order_acquire))
+			while (!frame.slotFree.load(std::memory_order_acquire))
 			{
 				if (myStop)
 				{
@@ -69,15 +82,12 @@ namespace Nalta
 			}
 
 			// Mark slot busy for game update
-			frame.rendered = false;
+			frame.slotFree = false;
 
-			// Game update
-			//NL_INFO("[Game] Updating frame {}", frame.frameIndex);
-			
-			//std::this_thread::sleep_for(std::chrono::milliseconds(160)); 
+			// UPDATE GAME
 
 			// Mark frame ready for render
-			frame.ready.store(true, std::memory_order_release);
+			frame.slotReady.store(true, std::memory_order_release);
 
 			++myCurrentFrame;
 		}
@@ -87,6 +97,7 @@ namespace Nalta
 
 	void Engine::RenderLoop()
 	{
+		const LoggerScope renderScope("RenderLoop");
 		NL_INFO("Render loop started");
 		
 		int32_t nextRenderFrame{ 0 };
@@ -96,7 +107,7 @@ namespace Nalta
 
 			// Adaptive spin-wait until frame is ready
 			int spinCount = 0;
-			while (!frame.ready.load(std::memory_order_acquire))
+			while (!frame.slotReady.load(std::memory_order_acquire))
 			{
 				if (myStop)
 				{
@@ -113,12 +124,11 @@ namespace Nalta
 				}
 			}
 
-			// Rendering
-			//NL_INFO("[Render] Rendering frame {}", frame.frameIndex);
+			// RENDER GAME
 
 			// Mark slot free again
-			frame.ready.store(false, std::memory_order_release);
-			frame.rendered.store(true, std::memory_order_release);
+			frame.slotReady.store(false, std::memory_order_release);
+			frame.slotFree.store(true, std::memory_order_release);
 
 			nextRenderFrame = (nextRenderFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 		}
