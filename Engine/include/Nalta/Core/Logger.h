@@ -20,7 +20,7 @@ namespace Nalta
         Logger();
         ~Logger();
 
-        void Init() const;
+        void Init(const std::string& aName) const;
         void Shutdown() const;
 
         void SetLevel(Level aLevel) const;
@@ -50,34 +50,38 @@ namespace Nalta
         Impl* myImpl;
     };
     
-    extern Logger* GLogger; // global pointer used by macros
+    extern Logger* GCoreLogger;  // Core engine logger
+    extern Logger* GGameLogger;  // Game-specific logger
     
     class LoggerScope
     {
     public:
-        explicit LoggerScope(const std::string& aScope)
+        explicit LoggerScope(const Logger* aLogger, const std::string& aScope) : myLogger{ aLogger }
         {
-            if (GLogger) GLogger->PushScope(aScope);
+            if (myLogger) myLogger->PushScope(aScope);
         }
         ~LoggerScope()
         {
-            if (GLogger) GLogger->PopScope();
+            if (myLogger) myLogger->PopScope();
         }
+        
+    private:
+        const Logger* myLogger{ nullptr };
     };
 }
 
 #ifndef N_SHIPPING
-#define NL_TRACE(...)    ::Nalta::GLogger->LogFmt(::Nalta::Logger::Level::Trace, __VA_ARGS__)
-#define NL_INFO(...)     ::Nalta::GLogger->LogFmt(::Nalta::Logger::Level::Info,  __VA_ARGS__)
-#define NL_WARN(...)     ::Nalta::GLogger->LogFmt(::Nalta::Logger::Level::Warn,  __VA_ARGS__)
-#define NL_ERROR(...)    ::Nalta::GLogger->LogFmt(::Nalta::Logger::Level::Error, __VA_ARGS__)
-#define NL_CRITICAL(...) ::Nalta::GLogger->LogFmt(::Nalta::Logger::Level::Critical, __VA_ARGS__)
-#define NL_FATAL(msg, ...) ::Nalta::GLogger->Fatal(std::format(msg, ##__VA_ARGS__))
+#define NL_TRACE(logger, ...)    (logger)->LogFmt(::Nalta::Logger::Level::Trace, __VA_ARGS__)
+#define NL_INFO(logger, ...)     (logger)->LogFmt(::Nalta::Logger::Level::Info,  __VA_ARGS__)
+#define NL_WARN(logger, ...)     (logger)->LogFmt(::Nalta::Logger::Level::Warn,  __VA_ARGS__)
+#define NL_ERROR(logger, ...)    (logger)->LogFmt(::Nalta::Logger::Level::Error, __VA_ARGS__)
+#define NL_CRITICAL(logger, ...) (logger)->LogFmt(::Nalta::Logger::Level::Critical, __VA_ARGS__)
+#define NL_FATAL(logger, msg, ...) (logger)->Fatal(std::format(msg, ##__VA_ARGS__))
 #else
-#define NL_TRACE(...)    ((void)0)
-#define NL_INFO(...)     ((void)0)
-#define NL_WARN(...)     ((void)0)
-#define NL_ERROR(...)    ((void)0)
-#define NL_CRITICAL(...) ((void)0)
-#define NL_FATAL(msg, ...) ((void)0)
+#define NL_TRACE(logger, ...)    ((void)0)
+#define NL_INFO(logger, ...)     ((void)0)
+#define NL_WARN(logger, ...)     ((void)0)
+#define NL_ERROR(logger, ...)    ((void)0)
+#define NL_CRITICAL(logger, ...) ((void)0)
+#define NL_FATAL(logger, msg, ...) ((void)0)
 #endif

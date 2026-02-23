@@ -24,7 +24,8 @@ namespace Nalta
 		void GameLoop();
 		void RenderLoop();
 		
-		std::unique_ptr<Logger> myLogger;
+		std::unique_ptr<Logger> myCoreLogger;
+		std::unique_ptr<Logger> myGameLogger;
 		
 		static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{ 3 };
 

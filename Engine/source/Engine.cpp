@@ -8,30 +8,38 @@ namespace Nalta
 {
 	Engine::Engine()
 	{
-		myLogger = std::make_unique<Logger>();
-		myLogger->Init();
-		GLogger = myLogger.get();
+		myCoreLogger = std::make_unique<Logger>();
+		myCoreLogger->Init("NALTA");
+		GCoreLogger = myCoreLogger.get();
 		
-		const LoggerScope engineScope("Engine");
-		NL_INFO("Engine constructed");
+		const LoggerScope engineScope(GCoreLogger, "Engine");
+		NL_INFO(GCoreLogger, "Engine constructed");
+		
+		myGameLogger = std::make_unique<Logger>();
+		myGameLogger->Init("GAME");
+		GGameLogger = myGameLogger.get();
 	}
 
 	Engine::~Engine()
 	{
-		const LoggerScope engineScope("Engine");
-		NL_INFO("Engine destroyed");
+		const LoggerScope engineScope(GCoreLogger, "Engine");
+		NL_INFO(GCoreLogger, "Engine destroyed");
 		
-		GLogger = nullptr;
-		myLogger->Shutdown();
-		myLogger.reset();
+		GCoreLogger = nullptr;
+		myCoreLogger->Shutdown();
+		myCoreLogger.reset();
+		
+		GGameLogger = nullptr;
+		myGameLogger->Shutdown();
+		myGameLogger.reset();
 	}
 
 	void Engine::Run()
 	{
-		const LoggerScope engineScope("Engine::Run");
-		NL_INFO("Starting run loop");
+		const LoggerScope engineScope(GCoreLogger, "Engine::Run");
+		NL_INFO(GCoreLogger, "Starting run loop");
 		
-		NL_INFO("Creating Game & Render threads");
+		NL_INFO(GCoreLogger, "Creating Game & Render threads");
 		std::thread gameThread(&Engine::GameLoop, this);
 		std::thread renderThread(&Engine::RenderLoop, this);
 		
@@ -45,17 +53,17 @@ namespace Nalta
 		
 		myStop = true;
 		
-		NL_INFO("Waiting for threads to finish");
+		NL_INFO(GCoreLogger, "Waiting for threads to finish");
 		gameThread.join();
 		renderThread.join();
 		
-		NL_INFO("Run loop finished");
+		NL_INFO(GCoreLogger, "Run loop finished");
 	}
 
 	void Engine::GameLoop()
 	{
-		const LoggerScope gameScope("GameLoop");
-		NL_INFO("Game loop started");
+		const LoggerScope gameScope(GCoreLogger, "GameLoop");
+		NL_INFO(GCoreLogger, "Game loop started");
 		
 		while (!myStop)
 		{
@@ -92,13 +100,13 @@ namespace Nalta
 			++myCurrentFrame;
 		}
 		
-		NL_INFO("Game loop stopped");
+		NL_INFO(GCoreLogger, "Game loop stopped");
 	}
 
 	void Engine::RenderLoop()
 	{
-		const LoggerScope renderScope("RenderLoop");
-		NL_INFO("Render loop started");
+		const LoggerScope renderScope(GCoreLogger, "RenderLoop");
+		NL_INFO(GCoreLogger, "Render loop started");
 		
 		int32_t nextRenderFrame{ 0 };
 		while (!myStop)
@@ -133,6 +141,6 @@ namespace Nalta
 			nextRenderFrame = (nextRenderFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 		}
 		
-		NL_INFO("Render loop stopped");
+		NL_INFO(GCoreLogger, "Render loop stopped");
 	}
 }

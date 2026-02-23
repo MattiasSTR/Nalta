@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <memory>
+#include <ranges>
 #include <stack>
 #include <vector>
 
@@ -13,7 +14,8 @@
 
 namespace Nalta
 {
-    Logger* GLogger = nullptr;
+    Logger* GCoreLogger = nullptr;
+    Logger* GGameLogger = nullptr;
     
     struct Logger::Impl
     {
@@ -21,44 +23,8 @@ namespace Nalta
         Level currentLevel{ Level::Trace };
         std::mutex logMutex;
         
-        thread_local static std::stack<std::string> ourThreadScopeStack;
-
-        // stdout/stderr redirection
-        class StdRedirect : public std::streambuf
-        {
-        public:
-            explicit StdRedirect(const Level aLevel) : myLevel(aLevel) {}
-
-        protected:
-            int_type overflow(const int_type aCh) override
-            {
-                if (aCh != traits_type::eof())
-                {
-                    myBuffer += static_cast<char>(aCh);
-                    if (aCh == '\n')
-                    {
-                        const std::lock_guard lock(ourMutex);
-                        if (GLogger != nullptr) // use global pointer
-                        {
-                            GLogger->Log(myLevel, myBuffer);
-                        }
-                        myBuffer.clear();
-                    }
-                }
-                return aCh;
-            }
-
-        private:
-            std::string myBuffer;
-            Level myLevel;
-            static inline std::mutex ourMutex;
-        };
-
-        StdRedirect* coutRedirect{ nullptr };
-        StdRedirect* cerrRedirect{ nullptr };
+        inline thread_local static std::stack<std::string> ourThreadScopeStack;
     };
-    
-    thread_local std::stack<std::string, std::deque<std::string>> Logger::Impl::ourThreadScopeStack;
 
     Logger::Logger() : myImpl(new Impl) {}
     Logger::~Logger()
@@ -68,23 +34,19 @@ namespace Nalta
         myImpl = nullptr;
     }
 
-    void Logger::Init() const
+    void Logger::Init(const std::string& aName) const
     {
         auto& impl{ *myImpl };
         const auto consoleSink{ std::make_shared<spdlog::sinks::stdout_color_sink_mt>() };
         const auto fileSink{ std::make_shared<spdlog::sinks::basic_file_sink_mt>("Nalta.log", true) };
         std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
 
-        impl.logger = std::make_shared<spdlog::logger>("NALTA", sinks.begin(), sinks.end());
+        impl.logger = std::make_shared<spdlog::logger>(aName, sinks.begin(), sinks.end());
         //impl.logger->set_pattern("[%H:%M:%S:%e] [%^%l%$] %v");
-        impl.logger->set_pattern("[%H:%M:%S:%e] [%^%L%$] [Thread %t] %v");
+        //impl.logger->set_pattern("[%H:%M:%S:%e] [%^%L%$] [Thread %t] %v");
+        impl.logger->set_pattern("%^[%H:%M:%S:%e] [Thread %t] %n:%$ %v");
         impl.logger->set_level(spdlog::level::trace);
-
-        impl.coutRedirect = new Impl::StdRedirect(Level::Info);
-        impl.cerrRedirect = new Impl::StdRedirect(Level::Error);
-        
-        std::cout.rdbuf(impl.coutRedirect);
-        std::cerr.rdbuf(impl.cerrRedirect);
+        impl.logger->flush_on(spdlog::level::trace);
     }
 
     void Logger::Shutdown() const
@@ -143,9 +105,9 @@ namespace Nalta
                 temp.pop();
             }
             // reverse for outer->inner
-            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+            for (auto& scope : std::ranges::reverse_view(scopes))
             {
-                msg += "[" + *it + "] ";
+                msg += "[" + scope + "] ";
             }
         }
         msg += aMessage;
