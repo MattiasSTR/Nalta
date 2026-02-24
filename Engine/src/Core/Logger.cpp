@@ -1,4 +1,11 @@
+#include "npch.h"
 #include "Nalta/Core/Logger.h"
+
+namespace Nalta
+{
+    Logger* GCoreLogger = nullptr;
+    Logger* GGameLogger = nullptr;
+}
 
 #ifndef N_SHIPPING
 
@@ -14,9 +21,6 @@
 
 namespace Nalta
 {
-    Logger* GCoreLogger = nullptr;
-    Logger* GGameLogger = nullptr;
-    
     struct Logger::Impl
     {
         std::shared_ptr<spdlog::logger> logger;
@@ -158,7 +162,7 @@ namespace Nalta
 {
     Logger::Logger() : myImpl(nullptr) {}
     Logger::~Logger() {}
-    void Logger::Init() const {}
+    void Logger::Init(const std::string&) const {}
     void Logger::Shutdown() const {}
     void Logger::SetLevel(Level) const {}
     Logger::Level Logger::GetLevel() const { return Level::Off; }

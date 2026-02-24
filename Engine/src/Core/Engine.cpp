@@ -1,4 +1,5 @@
-#include "Nalta/Engine.h"
+#include "npch.h"
+#include "Nalta/Core/Engine.h"
 
 #include "Nalta/Core/Logger.h"
 
