@@ -4,6 +4,14 @@
 
 namespace Nalta
 {
+    // For patterns, see https://github.com/gabime/spdlog/wiki/Custom-formatting
+    struct LoggerConfig
+    {
+        std::string name; // Logger name
+        std::string fileName; // File sink, leave empty for no sink
+        std::string pattern = "%^[%H:%M:%S:%e] [Thread %t] %n:%$ %v";
+    };
+    
     class Logger
     {
     public:
@@ -20,7 +28,7 @@ namespace Nalta
         Logger();
         ~Logger();
 
-        void Init(const std::string& aName) const;
+        void Init(const LoggerConfig& aConfig) const;
         void Shutdown() const;
 
         void SetLevel(Level aLevel) const;

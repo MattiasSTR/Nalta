@@ -1,23 +1,28 @@
 #include "npch.h"
 #include "Nalta/Core/Engine.h"
 
-#include "Nalta/Core/Logger.h"
-
 #include <thread>
 
 namespace Nalta 
 {
 	Engine::Engine()
 	{
+		LoggerConfig loggerConfig;
+		loggerConfig.pattern = "%^[%H:%M:%S:%e] [Thread %t] %n:%$ %v";
+		loggerConfig.fileName = "Nalta.log";
+		loggerConfig.name = "NALTA";
+		
 		myCoreLogger = std::make_unique<Logger>();
-		myCoreLogger->Init("NALTA");
+		myCoreLogger->Init(loggerConfig);
 		GCoreLogger = myCoreLogger.get();
 		
 		const LoggerScope engineScope(GCoreLogger, "Engine");
 		NL_INFO(GCoreLogger, "Engine constructed");
 		
+		loggerConfig.name = "GAME";
+		loggerConfig.pattern = "%^%n:%$ %v";
 		myGameLogger = std::make_unique<Logger>();
-		myGameLogger->Init("GAME");
+		myGameLogger->Init(loggerConfig);
 		GGameLogger = myGameLogger.get();
 	}
 

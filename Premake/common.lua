@@ -38,7 +38,7 @@ function apply_common_settings()
         runtime "Debug"
         symbols "on"
         optimize "off"
-        defines { "N_DEBUG" }
+        defines { "N_ENABLE_ASSERTS" }
         editandcontinue "on"
         warnings "extra"
         fatalwarnings { "All" }
@@ -47,7 +47,7 @@ function apply_common_settings()
         runtime "Release"
         symbols "on"
         optimize "speed"
-        defines { "N_DEVELOPMENT" }
+        defines { "N_DEVELOPMENT", "N_ENABLE_ASSERTS" }
         warnings "extra"
         fatalwarnings { "All" }
 
@@ -55,7 +55,7 @@ function apply_common_settings()
         runtime "Release"
         symbols "off"
         optimize "full"
-        defines { "N_SHIPPING", "NDEBUG" }
+        defines { "N_SHIPPING" }
         warnings "extra"
         linktimeoptimization "Fast"
 

@@ -9,15 +9,13 @@ namespace Nalta
 
 #ifndef N_SHIPPING
 
-#include <iostream>
-#include <memory>
-#include <ranges>
 #include <stack>
-#include <vector>
 
+#pragma warning(push, 0)
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#pragma warning(pop)
 
 namespace Nalta
 {
@@ -38,17 +36,18 @@ namespace Nalta
         myImpl = nullptr;
     }
 
-    void Logger::Init(const std::string& aName) const
+    void Logger::Init(const LoggerConfig& aConfig) const
     {
-        auto& impl{ *myImpl };
-        const auto consoleSink{ std::make_shared<spdlog::sinks::stdout_color_sink_mt>() };
-        const auto fileSink{ std::make_shared<spdlog::sinks::basic_file_sink_mt>("Nalta.log", true) };
-        std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
+        auto& impl = *myImpl;
+        std::vector<spdlog::sink_ptr> sinks;
+        sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
+        if (!aConfig.fileName.empty())
+        {
+            sinks.push_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>(aConfig.fileName, true));
+        }
 
-        impl.logger = std::make_shared<spdlog::logger>(aName, sinks.begin(), sinks.end());
-        //impl.logger->set_pattern("[%H:%M:%S:%e] [%^%l%$] %v");
-        //impl.logger->set_pattern("[%H:%M:%S:%e] [%^%L%$] [Thread %t] %v");
-        impl.logger->set_pattern("%^[%H:%M:%S:%e] [Thread %t] %n:%$ %v");
+        impl.logger = std::make_shared<spdlog::logger>(aConfig.name, sinks.begin(), sinks.end());
+        impl.logger->set_pattern(aConfig.pattern);
         impl.logger->set_level(spdlog::level::trace);
         impl.logger->flush_on(spdlog::level::trace);
     }
