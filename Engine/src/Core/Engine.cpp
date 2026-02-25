@@ -1,43 +1,87 @@
 #include "npch.h"
 #include "Nalta/Core/Engine.h"
 
+#include "Nalta/Core/Window/WindowDesc.h"
+#include "Nalta/Platform/WindowSystemFactory.h"
+
+#include <iostream>
 #include <thread>
 
 namespace Nalta 
 {
 	Engine::Engine()
 	{
-		LoggerConfig loggerConfig;
-		loggerConfig.pattern = "%^[%H:%M:%S:%e] [Thread %t] %n:%$ %v";
-		loggerConfig.fileName = "Nalta.log";
-		loggerConfig.name = "NALTA";
-		
+		// Initialize Core Logger
+		LoggerConfig coreConfig;
+		coreConfig.pattern = "%^[%H:%M:%S:%e] [Thread %t] %n:%$ %v";
+		coreConfig.fileName = "Nalta.log";
+		coreConfig.name = "NALTA";
+
 		myCoreLogger = std::make_unique<Logger>();
-		myCoreLogger->Init(loggerConfig);
+		myCoreLogger->Init(coreConfig);
 		GCoreLogger = myCoreLogger.get();
-		
-		const LoggerScope engineScope(GCoreLogger, "Engine");
-		NL_INFO(GCoreLogger, "Engine constructed");
-		
-		loggerConfig.name = "GAME";
-		loggerConfig.pattern = "%^%n:%$ %v";
+
+		const LoggerScope engineScope(GCoreLogger, "Engine::Construct");
+		NL_INFO(GCoreLogger, "Core Logger Created");
+
+		// Initialize Game Logger
+		LoggerConfig gameConfig;
+		gameConfig.name = "GAME";
+		gameConfig.pattern = "%^%n:%$ %v";
+
 		myGameLogger = std::make_unique<Logger>();
-		myGameLogger->Init(loggerConfig);
+		myGameLogger->Init(gameConfig);
 		GGameLogger = myGameLogger.get();
+		
+		NL_INFO(GCoreLogger, "Game Logger Created");
 	}
 
-	Engine::~Engine()
+	Engine::~Engine() = default;
+	
+	void Engine::Initialize()
 	{
-		const LoggerScope engineScope(GCoreLogger, "Engine");
-		NL_INFO(GCoreLogger, "Engine destroyed");
+		const LoggerScope engineScope(GCoreLogger, "Engine::Initialize");
+		NL_INFO(GCoreLogger, "Initializing Engine Systems");
 		
-		GCoreLogger = nullptr;
-		myCoreLogger->Shutdown();
-		myCoreLogger.reset();
+		myWindowSystem = CreateWindowSystem();
+		myWindowSystem->Initialize();
+		NL_INFO(GCoreLogger, "WindowSystem initialized");
 		
-		GGameLogger = nullptr;
-		myGameLogger->Shutdown();
-		myGameLogger.reset();
+		WindowDesc mainDesc;
+		mainDesc.width = 1280;
+		mainDesc.height = 720;
+		mainDesc.caption = "Nalta";
+		
+		myWindows.push_back(myWindowSystem->CreateWindow(mainDesc));
+		NL_INFO(GCoreLogger, "Main window created");
+	}
+
+	void Engine::Shutdown()
+	{
+		const LoggerScope engineScope(GCoreLogger, "Engine::Shutdown");
+		
+		myWindows.clear();
+		
+		if (myWindowSystem)
+		{
+			myWindowSystem->Shutdown();
+			myWindowSystem.reset();
+			NL_INFO(GCoreLogger, "WindowSystem destroyed");
+		}
+		
+		if (myCoreLogger)
+		{
+			myCoreLogger->Shutdown();
+			GCoreLogger = nullptr;
+			myCoreLogger.reset();
+		}
+
+		if (myGameLogger)
+		{
+			myGameLogger->Shutdown();
+			GGameLogger = nullptr;
+			myGameLogger.reset();
+		}
 	}
 
 	void Engine::Run()
@@ -52,10 +96,13 @@ namespace Nalta
 		// Event Polling
 		// File Watching
 		// Asset Streaming
-		while (!myStop)
-		{
-			std::this_thread::sleep_for(std::chrono::microseconds(10));
-		}
+		
+		// while (!myStop)
+		// {
+		// 	std::this_thread::sleep_for(std::chrono::microseconds(10));
+		// }
+		
+		std::cin.get();
 		
 		myStop = true;
 		

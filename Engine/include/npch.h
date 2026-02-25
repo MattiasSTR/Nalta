@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Nalta/Core/PlatformDetector.h"
 
 #include <memory>
 #include <utility>

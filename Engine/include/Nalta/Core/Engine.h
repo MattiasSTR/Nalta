@@ -4,16 +4,22 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace Nalta 
 {
 	class Logger;
+	class IWindowSystem;
+	class IWindow;
 	
 	class Engine 
 	{
 	public:
 		Engine();
 		~Engine();
+		
+		void Initialize();
+		void Shutdown();
 		
 		void Run();
 		
@@ -26,6 +32,9 @@ namespace Nalta
 		
 		std::unique_ptr<Logger> myCoreLogger;
 		std::unique_ptr<Logger> myGameLogger;
+		
+		std::unique_ptr<IWindowSystem> myWindowSystem;
+		std::vector<std::shared_ptr<IWindow>> myWindows;
 		
 		static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{ 3 };
 

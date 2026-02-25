@@ -6,8 +6,9 @@ int main(int, char**)
 	while (restart)
 	{
 		Nalta::Engine engine;
+		engine.Initialize();
 		engine.Run();
-
+		engine.Shutdown();
 		restart = engine.WantsRestart();
 	}
 	
