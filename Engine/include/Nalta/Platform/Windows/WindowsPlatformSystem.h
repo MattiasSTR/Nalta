@@ -1,16 +1,15 @@
 ﻿#pragma once
-#include "Nalta/Core/Window/IWindowSystem.h"
+#include "Nalta/Platform/IPlatformSystem.h"
 
 #include <memory>
-#include <vector>
 
 namespace Nalta
 {
-    class WindowsWindowSystem : public IWindowSystem
+    class WindowsPlatformSystem : public IPlatformSystem
     {
     public:
-        WindowsWindowSystem();
-        ~WindowsWindowSystem() override;
+        WindowsPlatformSystem();
+        ~WindowsPlatformSystem() override;
         
         void Initialize() override;
         void Shutdown() override;
@@ -20,6 +19,6 @@ namespace Nalta
         std::shared_ptr<IWindow> CreateWindow(const WindowDesc& aDesc) override;
         
     private:
-        std::vector<std::shared_ptr<IWindow>> myWindows;
+        bool myInitialized{ false };
     };
 }

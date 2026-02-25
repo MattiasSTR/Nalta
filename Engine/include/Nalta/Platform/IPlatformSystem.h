@@ -5,10 +5,10 @@ namespace Nalta
     class IWindow;
     struct WindowDesc;
 
-    class IWindowSystem
+    class IPlatformSystem
     {
     public:
-        virtual ~IWindowSystem() = default;
+        virtual ~IPlatformSystem() = default;
 
         virtual void Initialize() = 0;
         virtual void Shutdown() = 0;

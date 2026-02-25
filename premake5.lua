@@ -25,6 +25,12 @@ dofile("premake/common.lua")
 -- Include projects
 group "Engine"
     include "Engine"
+group ""
+
+group "ThirdParty"
+    include "ThirdParty/glfw"
+group ""
 
 group "Applications"
     include "Sandbox"
+group ""

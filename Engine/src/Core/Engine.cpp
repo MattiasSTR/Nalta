@@ -1,8 +1,9 @@
 #include "npch.h"
 #include "Nalta/Core/Engine.h"
 
-#include "Nalta/Core/Window/WindowDesc.h"
-#include "Nalta/Platform/WindowSystemFactory.h"
+#include "Nalta/Platform/IWindow.h"
+#include "Nalta/Platform/PlatformSystemFactory.h"
+#include "Nalta/Platform/WindowDesc.h"
 
 #include <iostream>
 #include <thread>
@@ -43,8 +44,8 @@ namespace Nalta
 		const LoggerScope engineScope(GCoreLogger, "Engine::Initialize");
 		NL_INFO(GCoreLogger, "Initializing Engine Systems");
 		
-		myWindowSystem = CreateWindowSystem();
-		myWindowSystem->Initialize();
+		myPlatformSystem = CreateWindowSystem();
+		myPlatformSystem->Initialize();
 		NL_INFO(GCoreLogger, "WindowSystem initialized");
 		
 		WindowDesc mainDesc;
@@ -52,7 +53,7 @@ namespace Nalta
 		mainDesc.height = 720;
 		mainDesc.caption = "Nalta";
 		
-		myWindows.push_back(myWindowSystem->CreateWindow(mainDesc));
+		myMainWindow = myPlatformSystem->CreateWindow(mainDesc);
 		NL_INFO(GCoreLogger, "Main window created");
 	}
 
@@ -61,11 +62,13 @@ namespace Nalta
 		const LoggerScope engineScope(GCoreLogger, "Engine::Shutdown");
 		
 		myWindows.clear();
+		myMainWindow.reset();
+		NL_INFO(GCoreLogger, "Destroyed Windows");
 		
-		if (myWindowSystem)
+		if (myPlatformSystem)
 		{
-			myWindowSystem->Shutdown();
-			myWindowSystem.reset();
+			myPlatformSystem->Shutdown();
+			myPlatformSystem.reset();
 			NL_INFO(GCoreLogger, "WindowSystem destroyed");
 		}
 		
@@ -96,13 +99,21 @@ namespace Nalta
 		// Event Polling
 		// File Watching
 		// Asset Streaming
-		
-		// while (!myStop)
-		// {
-		// 	std::this_thread::sleep_for(std::chrono::microseconds(10));
-		// }
-		
-		std::cin.get();
+		while (!myStop)
+		{
+			myPlatformSystem->PollEvents();
+
+			std::erase_if(myWindows,[](const std::shared_ptr<IWindow>& aWindow)
+			{
+				return aWindow->IsClosed();
+			});
+			
+			if (myMainWindow == nullptr || myMainWindow->IsClosed())
+			{
+				myStop = true;
+				break;
+			}
+		}
 		
 		myStop = true;
 		

@@ -12,7 +12,7 @@ namespace Nalta
 
         [[nodiscard]] virtual uint32_t GetWidth() const = 0;
         [[nodiscard]] virtual uint32_t GetHeight() const = 0;
-        virtual void SetSize(uint32_t aWidth, uint32_t aHeight) = 0;
+        virtual void Resize(uint32_t aWidth, uint32_t aHeight) = 0;
 
         virtual void SetFullscreen(bool aFullscreen) = 0;
         [[nodiscard]] virtual bool IsFullscreen() const = 0;

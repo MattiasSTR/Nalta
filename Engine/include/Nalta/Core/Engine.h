@@ -9,7 +9,7 @@
 namespace Nalta 
 {
 	class Logger;
-	class IWindowSystem;
+	class IPlatformSystem;
 	class IWindow;
 	
 	class Engine 
@@ -33,7 +33,8 @@ namespace Nalta
 		std::unique_ptr<Logger> myCoreLogger;
 		std::unique_ptr<Logger> myGameLogger;
 		
-		std::unique_ptr<IWindowSystem> myWindowSystem;
+		std::unique_ptr<IPlatformSystem> myPlatformSystem;
+		std::shared_ptr<IWindow> myMainWindow;
 		std::vector<std::shared_ptr<IWindow>> myWindows;
 		
 		static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{ 3 };

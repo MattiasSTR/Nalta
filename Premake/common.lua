@@ -13,6 +13,7 @@ dirs.thirdparty = dirs.root .. "/ThirdParty"   -- Third-party libraries
 
 ThirdPartyIncludes = {}
 ThirdPartyIncludes.spdlog = dirs.thirdparty .. "/spdlog/include"
+ThirdPartyIncludes.glfw = dirs.thirdparty .. "/glfw/include"
 
 -- Ensure directories exist
 os.mkdir(dirs.build)
@@ -38,7 +39,7 @@ function apply_common_settings()
         runtime "Debug"
         symbols "on"
         optimize "off"
-        defines { "N_ENABLE_ASSERTS" }
+        defines { "N_ENABLE_ASSERTS", "GLFW_INCLUDE_NONE" }
         editandcontinue "on"
         warnings "extra"
         fatalwarnings { "All" }
@@ -47,7 +48,7 @@ function apply_common_settings()
         runtime "Release"
         symbols "on"
         optimize "speed"
-        defines { "N_DEVELOPMENT", "N_ENABLE_ASSERTS" }
+        defines { "N_DEVELOPMENT", "N_ENABLE_ASSERTS", "GLFW_INCLUDE_NONE" }
         warnings "extra"
         fatalwarnings { "All" }
 
@@ -55,7 +56,7 @@ function apply_common_settings()
         runtime "Release"
         symbols "off"
         optimize "full"
-        defines { "N_SHIPPING" }
+        defines { "N_SHIPPING", "GLFW_INCLUDE_NONE" }
         warnings "extra"
         linktimeoptimization "Fast"
 

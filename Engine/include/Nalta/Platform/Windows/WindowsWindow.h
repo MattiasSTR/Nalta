@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/Core/Window/IWindow.h"
+#include "Nalta/Platform/IWindow.h"
 #include <string>
 
 struct GLFWwindow;
@@ -18,7 +18,7 @@ namespace Nalta
 
         [[nodiscard]] uint32_t GetWidth() const override;
         [[nodiscard]] uint32_t GetHeight() const override;
-        void SetSize(uint32_t aWidth, uint32_t aHeight) override;
+        void Resize(uint32_t aWidth, uint32_t aHeight) override;
 
         void SetFullscreen(bool aFullscreen) override;
         [[nodiscard]] bool IsFullscreen() const override;
@@ -29,8 +29,8 @@ namespace Nalta
 
     private:
         GLFWwindow* myNativeWindow{ nullptr };
-        uint32_t myWidth;
-        uint32_t myHeight;
+        uint32_t myWidth{ 0 };
+        uint32_t myHeight{ 0 };
         bool myFullscreen{ false };
     };
 }
