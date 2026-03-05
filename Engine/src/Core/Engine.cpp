@@ -1,11 +1,11 @@
 #include "npch.h"
 #include "Nalta/Core/Engine.h"
 
+#include "Nalta/Core/Timer.h"
 #include "Nalta/Platform/IWindow.h"
 #include "Nalta/Platform/PlatformSystemFactory.h"
 #include "Nalta/Platform/WindowDesc.h"
 
-#include <iostream>
 #include <thread>
 
 namespace Nalta 
@@ -93,8 +93,8 @@ namespace Nalta
 		NL_INFO(GCoreLogger, "Starting run loop");
 		
 		NL_INFO(GCoreLogger, "Creating Game & Render threads");
-		std::thread gameThread(&Engine::GameLoop, this);
-		std::thread renderThread(&Engine::RenderLoop, this);
+		myUpdateThread = std::thread(&Engine::UpdateLoop, this);
+		myRenderThread = std::thread(&Engine::RenderLoop, this);
 		
 		// Event Polling
 		// File Watching
@@ -115,53 +115,37 @@ namespace Nalta
 			}
 		}
 		
-		myStop = true;
+		myRenderQueue.Stop();
 		
 		NL_INFO(GCoreLogger, "Waiting for threads to finish");
-		gameThread.join();
-		renderThread.join();
+		myUpdateThread.join();
+		myRenderThread.join();
 		
 		NL_INFO(GCoreLogger, "Run loop finished");
 	}
 
-	void Engine::GameLoop()
+	void Engine::UpdateLoop()
 	{
 		const LoggerScope gameScope(GCoreLogger, "GameLoop");
 		NL_INFO(GCoreLogger, "Game loop started");
 		
+		constexpr double fixedDelta{ 1.0 / 50.0 };
+		Timer timer{ fixedDelta };
+		
 		while (!myStop)
 		{
-			const int32_t frameIndex{ myCurrentFrame % static_cast<int32_t>(MAX_FRAMES_IN_FLIGHT) };
-			FrameData& frame{ myFrames[frameIndex] };
-
-			// Wait until this frame slot has been rendered (free)
-			int32_t spinCount{ 0 };
-			while (!frame.slotFree.load(std::memory_order_acquire))
+			timer.Update();
+			// Update
+			
+			while (timer.ShouldFixedUpdate())
 			{
-				if (myStop)
-				{
-					return;
-				}
-				
-				if (++spinCount < 1000) // short spin
-				{
-					std::this_thread::yield();
-				}
-				else
-				{
-					std::this_thread::sleep_for(std::chrono::microseconds(10)); // adaptive sleep
-				}
+				// Fixed Update
+				timer.ConsumeFixedUpdate();
 			}
-
-			// Mark slot busy for game update
-			frame.slotFree = false;
-
-			// UPDATE GAME
-
-			// Mark frame ready for render
-			frame.slotReady.store(true, std::memory_order_release);
-
-			++myCurrentFrame;
+			
+			RenderFrame frame;
+			// Build Render Frame
+			myRenderQueue.Push(std::move(frame));
 		}
 		
 		NL_INFO(GCoreLogger, "Game loop stopped");
@@ -172,37 +156,16 @@ namespace Nalta
 		const LoggerScope renderScope(GCoreLogger, "RenderLoop");
 		NL_INFO(GCoreLogger, "Render loop started");
 		
-		int32_t nextRenderFrame{ 0 };
+		RenderFrame frame;
+		
 		while (!myStop)
 		{
-			FrameData& frame{ myFrames[nextRenderFrame] };
-
-			// Adaptive spin-wait until frame is ready
-			int spinCount = 0;
-			while (!frame.slotReady.load(std::memory_order_acquire))
+			if (!myRenderQueue.Pop(frame))
 			{
-				if (myStop)
-				{
-					return;
-				}
-
-				if (++spinCount < 1000) // short spin
-				{
-					std::this_thread::yield();
-				}
-				else
-				{
-					std::this_thread::sleep_for(std::chrono::microseconds(10)); // adaptive sleep
-				}
+				break;
 			}
-
-			// RENDER GAME
-
-			// Mark slot free again
-			frame.slotReady.store(false, std::memory_order_release);
-			frame.slotFree.store(true, std::memory_order_release);
-
-			nextRenderFrame = (nextRenderFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+			
+			// Render frame
 		}
 		
 		NL_INFO(GCoreLogger, "Render loop stopped");

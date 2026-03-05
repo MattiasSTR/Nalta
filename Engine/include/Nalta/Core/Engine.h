@@ -1,13 +1,28 @@
 #pragma once
 
-#include <array>
+#include "FrameQueue.h"
+
 #include <atomic>
-#include <cstdint>
 #include <memory>
+#include <thread>
 #include <vector>
 
 namespace Nalta 
 {
+	// TEMP
+	struct RenderFrame
+	{
+		struct MeshDraw
+		{
+			// mesh id
+			// transform
+			// material id
+		};
+
+		std::vector<MeshDraw> meshes;
+	};
+	
+	
 	class Logger;
 	class IPlatformSystem;
 	class IWindow;
@@ -27,27 +42,23 @@ namespace Nalta
 		bool WantsRestart() const { return myRestart.load(); }
 		
 	private:
-		void GameLoop();
+		void UpdateLoop();
 		void RenderLoop();
-		
-		std::unique_ptr<Logger> myCoreLogger;
-		std::unique_ptr<Logger> myGameLogger;
 		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
 		std::shared_ptr<IWindow> myMainWindow;
 		std::vector<std::shared_ptr<IWindow>> myWindows;
 		
-		static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{ 3 };
-
-		struct FrameData
-		{
-			std::atomic<bool> slotReady{ false }; // game update done
-			std::atomic<bool> slotFree{ true };  // render done / slot free
-		};
-
-		std::array<FrameData, MAX_FRAMES_IN_FLIGHT> myFrames;
-		std::atomic<int32_t> myCurrentFrame{ 0 };
+		std::thread myUpdateThread;
+		std::thread myRenderThread;
+		
 		std::atomic<bool> myStop{ false };
 		std::atomic<bool> myRestart{ false };
+		
+		static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{ 2 };
+		FrameQueue<RenderFrame> myRenderQueue{ MAX_FRAMES_IN_FLIGHT };
+		
+		std::unique_ptr<Logger> myCoreLogger;
+		std::unique_ptr<Logger> myGameLogger;
 	};
 }
