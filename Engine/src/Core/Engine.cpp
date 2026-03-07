@@ -4,37 +4,30 @@
 #include "Nalta/Core/Timer.h"
 #include "Nalta/Platform/IWindow.h"
 #include "Nalta/Platform/PlatformSystemFactory.h"
-#include "Nalta/Platform/WindowDesc.h"
 
 #include <thread>
 
 namespace Nalta 
 {
-	Engine::Engine()
+	Engine::Engine(const EngineConfig& aConfig) : myConfig{ aConfig }
 	{
-		// Initialize Core Logger
-		LoggerConfig coreConfig;
-		coreConfig.pattern = "%^[%H:%M:%S:%e] [Thread %t] %n:%$ %v";
-		coreConfig.fileName = "Nalta.log";
-		coreConfig.name = "NALTA";
-
+		N_ASSERT(!aConfig.coreLogger.name.empty(), "Core Logger Must Have A Valid Name");
 		myCoreLogger = std::make_unique<Logger>();
-		myCoreLogger->Init(coreConfig);
+		myCoreLogger->Init(aConfig.coreLogger);
 		GCoreLogger = myCoreLogger.get();
-
+		
 		const LoggerScope engineScope(GCoreLogger, "Engine::Construct");
 		NL_INFO(GCoreLogger, "Core Logger Created");
 
-		// Initialize Game Logger
-		LoggerConfig gameConfig;
-		gameConfig.name = "GAME";
-		gameConfig.pattern = "%^%n:%$ %v";
-
-		myGameLogger = std::make_unique<Logger>();
-		myGameLogger->Init(gameConfig);
-		GGameLogger = myGameLogger.get();
+		if (!aConfig.gameLogger.name.empty())
+		{
+			myGameLogger = std::make_unique<Logger>();
+			myGameLogger->Init(aConfig.gameLogger);
+			GGameLogger = myGameLogger.get();
+			NL_INFO(GCoreLogger, "Game Logger Created");
+		}
 		
-		NL_INFO(GCoreLogger, "Game Logger Created");
+		NL_INFO(GCoreLogger, "Engine Created");
 	}
 
 	Engine::~Engine() = default;
@@ -44,17 +37,19 @@ namespace Nalta
 		const LoggerScope engineScope(GCoreLogger, "Engine::Initialize");
 		NL_INFO(GCoreLogger, "Initializing Engine Systems");
 		
-		myPlatformSystem = CreateWindowSystem();
-		myPlatformSystem->Initialize();
-		NL_INFO(GCoreLogger, "WindowSystem initialized");
-		
-		WindowDesc mainDesc;
-		mainDesc.width = 1280;
-		mainDesc.height = 720;
-		mainDesc.caption = "Nalta";
-		
-		myMainWindow = myPlatformSystem->CreateWindow(mainDesc);
-		NL_INFO(GCoreLogger, "Main window created");
+		if (myConfig.ShouldCreateWindow())
+		{
+			myPlatformSystem = CreateWindowSystem();
+			myPlatformSystem->Initialize();
+			NL_INFO(GCoreLogger, "WindowSystem initialized");
+			
+			myWindows.emplace_back(myPlatformSystem->CreateWindow(*myConfig.window));
+			NL_INFO(GCoreLogger, "Main window created");
+		}
+		else
+		{
+			NL_INFO(GCoreLogger, "Headless mode: skipping window system");
+		}
 	}
 
 	void Engine::Shutdown()
@@ -62,7 +57,6 @@ namespace Nalta
 		const LoggerScope engineScope(GCoreLogger, "Engine::Shutdown");
 		
 		myWindows.clear();
-		myMainWindow.reset();
 		NL_INFO(GCoreLogger, "Destroyed Windows");
 		
 		if (myPlatformSystem)
@@ -91,51 +85,75 @@ namespace Nalta
 	{
 		const LoggerScope engineScope(GCoreLogger, "Engine::Run");
 		NL_INFO(GCoreLogger, "Starting run loop");
-		
-		NL_INFO(GCoreLogger, "Creating Game & Render threads");
+
+		if (myConfig.mode == EngineMode::Client)
+		{
+			RunClientLoop();
+		}
+		else
+		{
+			RunHeadlessLoop();
+		}
+
+		NL_INFO(GCoreLogger, "Run loop finished");
+	}
+
+	void Engine::RunClientLoop()
+	{
+		NL_INFO(GCoreLogger, "Running client loop with rendering");
 		myUpdateThread = std::thread(&Engine::UpdateLoop, this);
 		myRenderThread = std::thread(&Engine::RenderLoop, this);
 		
-		// Event Polling
-		// File Watching
-		// Asset Streaming
 		while (!myStop)
 		{
-			myPlatformSystem->PollEvents();
+			if (myPlatformSystem != nullptr)
+			{
+				myPlatformSystem->PollEvents();
 
-			std::erase_if(myWindows,[](const std::shared_ptr<IWindow>& aWindow)
-			{
-				return aWindow->IsClosed();
-			});
-			
-			if (myMainWindow == nullptr || myMainWindow->IsClosed())
-			{
-				myStop = true;
-				break;
+				std::erase_if(myWindows, [](const std::shared_ptr<IWindow>& aWindow)
+				{
+					return aWindow->IsClosed();
+				});
+
+				if (myWindows.empty())
+				{
+					myStop = true;
+					break;
+				}
 			}
 		}
 		
 		myRenderQueue.Stop();
+
+		if (myUpdateThread.joinable())
+		{
+			myUpdateThread.join();
+		}
+		if (myRenderThread.joinable())
+		{
+			myRenderThread.join();
+		}
+	}
+
+	void Engine::RunHeadlessLoop()
+	{
+		NL_INFO(GCoreLogger, "Running headless loop (server)");
 		
-		NL_INFO(GCoreLogger, "Waiting for threads to finish");
-		myUpdateThread.join();
-		myRenderThread.join();
-		
-		NL_INFO(GCoreLogger, "Run loop finished");
+		UpdateLoop();
 	}
 
 	void Engine::UpdateLoop()
 	{
-		const LoggerScope gameScope(GCoreLogger, "GameLoop");
-		NL_INFO(GCoreLogger, "Game loop started");
+		const LoggerScope gameScope(GCoreLogger, "UpdateLoop");
+		NL_INFO(GCoreLogger, "Update loop started");
 		
 		constexpr double fixedDelta{ 1.0 / 50.0 };
 		Timer timer{ fixedDelta };
 		
+		const bool canRender{ myConfig.ShouldRunRenderThread() };
 		while (!myStop)
 		{
 			timer.Update();
-			// Update
 			
 			while (timer.ShouldFixedUpdate())
 			{
@@ -143,12 +161,15 @@ namespace Nalta
 				timer.ConsumeFixedUpdate();
 			}
 			
-			RenderFrame frame;
-			// Build Render Frame
-			myRenderQueue.Push(std::move(frame));
+			if (canRender)
+			{
+				RenderFrame frame;
+				// Build RenderFrame
+				myRenderQueue.Push(std::move(frame));
+			}
 		}
 		
-		NL_INFO(GCoreLogger, "Game loop stopped");
+		NL_INFO(GCoreLogger, "Update loop stopped");
 	}
 
 	void Engine::RenderLoop()

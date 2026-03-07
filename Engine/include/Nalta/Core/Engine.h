@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EngineConfig.h"
 #include "FrameQueue.h"
 
 #include <atomic>
@@ -30,23 +31,26 @@ namespace Nalta
 	class Engine 
 	{
 	public:
-		Engine();
+		explicit Engine(const EngineConfig& aConfig);
 		~Engine();
 		
 		void Initialize();
 		void Shutdown();
-		
+
 		void Run();
 		
 		void RequestRestart() { myRestart = true; myStop = true; }
 		bool WantsRestart() const { return myRestart.load(); }
 		
 	private:
+		void RunClientLoop();
+		void RunHeadlessLoop();
 		void UpdateLoop();
 		void RenderLoop();
 		
+		EngineConfig myConfig;
+		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
-		std::shared_ptr<IWindow> myMainWindow;
 		std::vector<std::shared_ptr<IWindow>> myWindows;
 		
 		std::thread myUpdateThread;
