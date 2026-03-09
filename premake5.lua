@@ -28,7 +28,7 @@ group "Engine"
 group ""
 
 group "ThirdParty"
-    include "ThirdParty/glfw"
+    dofile("Premake/glfw.lua")
 group ""
 
 group "Applications"
