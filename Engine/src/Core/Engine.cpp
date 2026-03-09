@@ -2,6 +2,7 @@
 #include "Nalta/Core/Engine.h"
 
 #include "Nalta/Core/Timer.h"
+#include "Nalta/Graphics/GraphicsSystem.h"
 #include "Nalta/Platform/IWindow.h"
 #include "Nalta/Platform/PlatformSystemFactory.h"
 
@@ -42,9 +43,18 @@ namespace Nalta
 			myPlatformSystem = CreateWindowSystem();
 			myPlatformSystem->Initialize();
 			NL_INFO(GCoreLogger, "WindowSystem initialized");
-			
-			myWindows.emplace_back(myPlatformSystem->CreateWindow(*myConfig.window));
+
+			const auto window{ myPlatformSystem->CreateWindow(*myConfig.window) };
+			myWindows.push_back(window);
 			NL_INFO(GCoreLogger, "Main window created");
+			
+			myGraphicsSystem = std::make_unique<GraphicsSystem>();
+			myGraphicsSystem->Initialize();
+			NL_INFO(GCoreLogger, "GraphicsSystem initialized");
+
+			const auto surface{ myGraphicsSystem->CreateRenderSurface(window) };
+			myWindowSurfaces[window] = surface;
+			NL_INFO(GCoreLogger, "RenderSurface created for main window");
 		}
 		else
 		{
@@ -57,13 +67,21 @@ namespace Nalta
 		const LoggerScope engineScope(GCoreLogger, "Engine::Shutdown");
 		
 		myWindows.clear();
-		NL_INFO(GCoreLogger, "Destroyed Windows");
+		myWindowSurfaces.clear();
+		NL_INFO(GCoreLogger, "Destroyed Windows & Surfaces");
 		
 		if (myPlatformSystem)
 		{
 			myPlatformSystem->Shutdown();
 			myPlatformSystem.reset();
 			NL_INFO(GCoreLogger, "WindowSystem destroyed");
+		}
+		
+		if (myGraphicsSystem)
+		{
+			myGraphicsSystem->Shutdown();
+			myGraphicsSystem.reset();
+			NL_INFO(GCoreLogger, "GraphicsSystem destroyed");
 		}
 		
 		if (myCoreLogger)
@@ -186,7 +204,10 @@ namespace Nalta
 				break;
 			}
 			
-			// Render frame
+			for (auto& surface : myWindowSurfaces | std::views::values)
+			{
+				myGraphicsSystem->Present(surface);
+			}
 		}
 		
 		NL_INFO(GCoreLogger, "Render loop stopped");

@@ -6,6 +6,7 @@
 #include <atomic>
 #include <memory>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 namespace Nalta 
@@ -23,9 +24,14 @@ namespace Nalta
 		std::vector<MeshDraw> meshes;
 	};
 	
+	namespace Graphics
+	{
+		class RenderSurface;
+	}
 	
 	class Logger;
 	class IPlatformSystem;
+	class GraphicsSystem;
 	class IWindow;
 	
 	class Engine 
@@ -52,6 +58,8 @@ namespace Nalta
 		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
 		std::vector<std::shared_ptr<IWindow>> myWindows;
+		std::unique_ptr<GraphicsSystem> myGraphicsSystem;
+		std::unordered_map<std::shared_ptr<IWindow>, std::shared_ptr<Graphics::RenderSurface>> myWindowSurfaces;
 		
 		std::thread myUpdateThread;
 		std::thread myRenderThread;

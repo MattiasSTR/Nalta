@@ -15,5 +15,3 @@ This is my personal sandbox for learning and experimenting with game engine conc
 - Learn and integrate **DirectX 12** and **Vulkan**.
 - Create tools such as **shader compilation pipelines** that output SPIR-V, allowing HLSL shaders to work with both DX12 and Vulkan.
 - Keep the project as a **sandbox for testing ideas**, learning, and improving my skills over time.
-
----
