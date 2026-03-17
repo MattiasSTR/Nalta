@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "WindowHandle.h"
 
 namespace Nalta
 {
@@ -12,9 +13,11 @@ namespace Nalta
 
         virtual void Initialize() = 0;
         virtual void Shutdown() = 0;
+        virtual bool PollEvents() = 0; // Returns false if wants to close main window
 
-        virtual void PollEvents() = 0;
-
-        virtual std::shared_ptr<IWindow> CreateWindow(const WindowDesc&) = 0;
+        [[nodiscard]] virtual WindowHandle CreatePlatformWindow(const WindowDesc& aDesc) = 0;
+        virtual void DestroyWindow(WindowHandle aWindow) = 0;
+        
+        [[nodiscard]] virtual WindowHandle GetMainWindow() const = 0;
     };
 }

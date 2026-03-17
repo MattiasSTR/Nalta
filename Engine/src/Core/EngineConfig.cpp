@@ -20,23 +20,23 @@ namespace Nalta
             }
             else if (arg.starts_with("--width="))
             {
-                if (outConfig.window)
+                if (outConfig.mainWindowDesc)
                 {
-                    outConfig.window->width = std::stoi(arg.substr(8));
+                    outConfig.mainWindowDesc->width = std::stoi(arg.substr(8));
                 }
             }
             else if (arg.starts_with("--height="))
             {
-                if (outConfig.window)
+                if (outConfig.mainWindowDesc)
                 {
-                    outConfig.window->height = std::stoi(arg.substr(9));
+                    outConfig.mainWindowDesc->height = std::stoi(arg.substr(9));
                 }
             }
             else if (arg.starts_with("--title="))
             {
-                if (outConfig.window)
+                if (outConfig.mainWindowDesc)
                 {
-                    outConfig.window->caption = arg.substr(8);
+                    outConfig.mainWindowDesc->caption = arg.substr(8);
                 }
             }
         }
@@ -47,7 +47,7 @@ namespace Nalta
         EngineConfig config;
         config.mode             = EngineMode::Client;
         config.enableRendering  = true;
-        config.window           = WindowDesc{.width = 1280, .height = 720, .caption = aTitle};
+        config.mainWindowDesc           = WindowDesc{.width = 1280, .height = 720, .caption = aTitle, .isMainWindow = true };
         config.fixedDelta       = 1.0 / 50.0;
 
         config.coreLogger.pattern   = "%^[%H:%M:%S:%e] [Thread %t] %n:%$ %v";
@@ -66,7 +66,7 @@ namespace Nalta
         config.mode             = EngineMode::Headless;
         config.enableRendering  = false;
         config.fixedDelta       = 1.0 / 50.0;
-        config.window.reset();
+        config.mainWindowDesc.reset();
         
         config.coreLogger.pattern   = "%^[%H:%M:%S:%e] [Thread %t] %n:%$ %v";
         config.coreLogger.fileName  = "";

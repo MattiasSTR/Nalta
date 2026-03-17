@@ -44,16 +44,16 @@ namespace Nalta
 			myPlatformSystem->Initialize();
 			NL_INFO(GCoreLogger, "WindowSystem initialized");
 
-			const auto window{ myPlatformSystem->CreateWindow(*myConfig.window) };
-			myWindows.push_back(window);
+			myMainWindow = myPlatformSystem->CreatePlatformWindow(*myConfig.mainWindowDesc);
+			myMainWindow->Show();
 			NL_INFO(GCoreLogger, "Main window created");
 			
-			myGraphicsSystem = std::make_unique<GraphicsSystem>();
-			myGraphicsSystem->Initialize();
+			//myGraphicsSystem = std::make_unique<GraphicsSystem>();
+			//myGraphicsSystem->Initialize();
 			NL_INFO(GCoreLogger, "GraphicsSystem initialized");
 
-			const auto surface{ myGraphicsSystem->CreateRenderSurface(window) };
-			myWindowSurfaces[window] = surface;
+			//const auto surface{ myGraphicsSystem->CreateRenderSurface(window) };
+			//myWindowSurfaces[window] = surface;
 			NL_INFO(GCoreLogger, "RenderSurface created for main window");
 		}
 		else
@@ -66,8 +66,6 @@ namespace Nalta
 	{
 		const LoggerScope engineScope(GCoreLogger, "Engine::Shutdown");
 		
-		myWindows.clear();
-		myWindowSurfaces.clear();
 		NL_INFO(GCoreLogger, "Destroyed Windows & Surfaces");
 		
 		if (myPlatformSystem)
@@ -77,12 +75,12 @@ namespace Nalta
 			NL_INFO(GCoreLogger, "WindowSystem destroyed");
 		}
 		
-		if (myGraphicsSystem)
-		{
-			myGraphicsSystem->Shutdown();
-			myGraphicsSystem.reset();
-			NL_INFO(GCoreLogger, "GraphicsSystem destroyed");
-		}
+		// if (myGraphicsSystem)
+		// {
+		// 	myGraphicsSystem->Shutdown();
+		// 	myGraphicsSystem.reset();
+		// 	NL_INFO(GCoreLogger, "GraphicsSystem destroyed");
+		// }
 		
 		if (myCoreLogger)
 		{
@@ -124,20 +122,9 @@ namespace Nalta
 		
 		while (!myStop)
 		{
-			if (myPlatformSystem != nullptr)
+			if (!myPlatformSystem->PollEvents())
 			{
-				myPlatformSystem->PollEvents();
-
-				std::erase_if(myWindows, [](const std::shared_ptr<IWindow>& aWindow)
-				{
-					return aWindow->IsClosed();
-				});
-
-				if (myWindows.empty())
-				{
-					myStop = true;
-					break;
-				}
+				myStop = true;
 			}
 		}
 		
@@ -204,10 +191,10 @@ namespace Nalta
 				break;
 			}
 			
-			for (auto& surface : myWindowSurfaces | std::views::values)
-			{
-				myGraphicsSystem->Present(surface);
-			}
+			// for (auto& surface : myWindowSurfaces | std::views::values)
+			// {
+			// 	myGraphicsSystem->Present(surface);
+			// }
 		}
 		
 		NL_INFO(GCoreLogger, "Render loop stopped");

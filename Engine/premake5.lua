@@ -26,9 +26,9 @@ project "Engine"
         ThirdPartyIncludes.glfw 
     }
 
-    links { 
-        "GLFW"
-    }
+    -- links { 
+    --     "GLFW"
+    -- }
 
     
 

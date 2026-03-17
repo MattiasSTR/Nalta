@@ -2,6 +2,7 @@
 
 #include "EngineConfig.h"
 #include "FrameQueue.h"
+#include "Nalta/Platform/WindowHandle.h"
 
 #include <atomic>
 #include <memory>
@@ -57,9 +58,9 @@ namespace Nalta
 		EngineConfig myConfig;
 		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
-		std::vector<std::shared_ptr<IWindow>> myWindows;
-		std::unique_ptr<GraphicsSystem> myGraphicsSystem;
-		std::unordered_map<std::shared_ptr<IWindow>, std::shared_ptr<Graphics::RenderSurface>> myWindowSurfaces;
+		WindowHandle myMainWindow;
+		//std::unique_ptr<GraphicsSystem> myGraphicsSystem;
+		//std::unordered_map<std::shared_ptr<IWindow>, std::shared_ptr<Graphics::RenderSurface>> myWindowSurfaces;
 		
 		std::thread myUpdateThread;
 		std::thread myRenderThread;

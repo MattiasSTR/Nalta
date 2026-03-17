@@ -27,9 +27,9 @@ group "Engine"
     include "Engine"
 group ""
 
-group "ThirdParty"
-    dofile("Premake/glfw.lua")
-group ""
+-- group "ThirdParty"
+--     dofile("Premake/glfw.lua")
+-- group ""
 
 group "Applications"
     include "Sandbox"

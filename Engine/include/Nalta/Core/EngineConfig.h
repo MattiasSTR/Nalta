@@ -21,7 +21,7 @@ namespace Nalta
         bool enableRendering{ true };     // used only if !headless
         
         // Window settings (optional; used if headless==false)
-        std::optional<WindowDesc> window;
+        std::optional<WindowDesc> mainWindowDesc;
         
         // Logging settings
         LoggerConfig coreLogger;         // Core engine logger
@@ -35,7 +35,7 @@ namespace Nalta
         
         [[nodiscard]] bool ShouldCreateWindow() const
         {
-            return IsClient() && enableRendering && window.has_value();
+            return IsClient() && enableRendering && mainWindowDesc.has_value();
         }
         
         [[nodiscard]] bool ShouldRunRenderThread() const
