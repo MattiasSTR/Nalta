@@ -1,25 +1,19 @@
 ﻿#pragma once
-#include <memory>
+#include "Nalta/Platform/WindowHandle.h"
+
 #include <cstdint>
 
-namespace Nalta
+namespace Nalta::Graphics
 {
-    class IWindow;
-
-    namespace Graphics
+    class RenderSurface
     {
-        class RenderSurface
-        {
-        public:
-            virtual ~RenderSurface() = default;
-            
-            virtual void Initialize(std::shared_ptr<IWindow> aWindow) = 0;
+    public:
+        virtual ~RenderSurface() = default;
 
-            virtual void Shutdown() = 0;
+        virtual void Resize(uint32_t aWidth, uint32_t aHeight) = 0;
 
-            virtual void Present() = 0;
-            [[nodiscard]] virtual uint32_t GetWidth() const = 0;
-            [[nodiscard]] virtual uint32_t GetHeight() const = 0;
-        };
-    }
+        [[nodiscard]] virtual uint32_t     GetWidth()  const = 0;
+        [[nodiscard]] virtual uint32_t     GetHeight() const = 0;
+        [[nodiscard]] virtual WindowHandle GetWindow() const = 0;
+    };
 }

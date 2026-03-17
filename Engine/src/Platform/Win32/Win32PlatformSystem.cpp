@@ -15,6 +15,7 @@ namespace Nalta
     
     struct Win32PlatformSystem::Impl
     {
+        OnWindowDestroyedCallback onWindowDestroyed;
         std::vector<Win32Window*> pendingDestroy;
         
         static LRESULT CALLBACK WndProc(HWND aHwnd, const UINT aMsg, const WPARAM aWparam, const LPARAM aLparam)
@@ -106,9 +107,18 @@ namespace Nalta
             DispatchMessageW(&msg);
         }
         
-        std::erase_if(myWindows, [](const std::unique_ptr<Win32Window>& w)
+        std::erase_if(myWindows, [&](const std::unique_ptr<Win32Window>& aWindow)
         {
-            return w->IsMarkedForDestroy();
+            if (aWindow->IsMarkedForDestroy())
+            {
+                if (myImpl->onWindowDestroyed)
+                {
+                    myImpl->onWindowDestroyed(WindowHandle{ aWindow.get() });
+                    NL_TRACE(GCoreLogger, "Win32PlatformSystem: window destroyed callback fired");
+                }
+                return true;
+            }
+            return false;
         });
 
         return true;
@@ -140,5 +150,10 @@ namespace Nalta
         }) };
 
         return it != myWindows.end() ? WindowHandle{ it->get() } : WindowHandle{};
+    }
+
+    void Win32PlatformSystem::SetOnWindowDestroyedCallback(OnWindowDestroyedCallback aCallback)
+    {
+        myImpl->onWindowDestroyed = std::move(aCallback);
     }
 }

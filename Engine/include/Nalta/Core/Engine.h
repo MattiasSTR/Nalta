@@ -2,6 +2,7 @@
 
 #include "EngineConfig.h"
 #include "FrameQueue.h"
+#include "Nalta/Graphics/RenderSurfaceHandle.h"
 #include "Nalta/Platform/WindowHandle.h"
 
 #include <atomic>
@@ -59,15 +60,15 @@ namespace Nalta
 		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
 		WindowHandle myMainWindow;
-		//std::unique_ptr<GraphicsSystem> myGraphicsSystem;
-		//std::unordered_map<std::shared_ptr<IWindow>, std::shared_ptr<Graphics::RenderSurface>> myWindowSurfaces;
+		std::unique_ptr<GraphicsSystem> myGraphicsSystem;
 		
 		std::thread myUpdateThread;
 		std::thread myRenderThread;
 		
 		std::atomic<bool> myStop{ false };
 		std::atomic<bool> myRestart{ false };
-		
+		Graphics::RenderSurfaceHandle myMainSurface;
+
 		static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{ 2 };
 		FrameQueue<RenderFrame> myRenderQueue{ MAX_FRAMES_IN_FLIGHT };
 		

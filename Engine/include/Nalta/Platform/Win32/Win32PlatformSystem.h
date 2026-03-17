@@ -24,6 +24,8 @@ namespace Nalta
         
         [[nodiscard]] WindowHandle GetMainWindow() const override;
         
+        void SetOnWindowDestroyedCallback(OnWindowDestroyedCallback aCallback) override;
+        
     private:
         struct Impl;
         std::unique_ptr<Impl> myImpl;

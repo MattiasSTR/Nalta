@@ -1,24 +1,44 @@
 ﻿#pragma once
-#include "Device.h"
-#include "RenderSurface.h"
+#include "RenderSurfaceDesc.h"
+#include "RenderSurfaceHandle.h"
+#include "Nalta/Platform/WindowHandle.h"
 
 #include <memory>
+#include <vector>
 
 namespace Nalta
 {
+    namespace Graphics
+    {
+        class Device;
+        class RenderSurface;
+    }
+    
     class GraphicsSystem
     {
     public:
-        GraphicsSystem() = default;
-        ~GraphicsSystem() = default;
+        GraphicsSystem();
+        ~GraphicsSystem();
         
         void Initialize();
         void Shutdown();
-        
-        std::shared_ptr<Graphics::RenderSurface> CreateRenderSurface(const std::shared_ptr<IWindow>& aWindow) const;
-        void Present(const std::shared_ptr<Graphics::RenderSurface>& aSurface) const;
-        
+
+        [[nodiscard]] Graphics::RenderSurfaceHandle CreateSurface(const Graphics::RenderSurfaceDesc& aDesc);
+        void DestroySurface(Graphics::RenderSurfaceHandle aHandle);
+        void DestroySurface(WindowHandle aWindow);
+
+        void Present(Graphics::RenderSurfaceHandle aHandle) const;
+
+        [[nodiscard]] Graphics::Device* GetDevice() const { return myDevice.get(); }
+
     private:
-        std::unique_ptr<Graphics::Device> myDevice;
+        struct SurfaceEntry
+        {
+            WindowHandle window;
+            std::unique_ptr<Graphics::RenderSurface> surface;
+        };
+
+        std::unique_ptr<Graphics::Device>   myDevice;
+        std::vector<SurfaceEntry>           mySurfaces;
     };
 }

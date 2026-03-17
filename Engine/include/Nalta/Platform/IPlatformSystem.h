@@ -3,8 +3,9 @@
 
 namespace Nalta
 {
-    class IWindow;
     struct WindowDesc;
+    
+    using OnWindowDestroyedCallback = std::function<void(WindowHandle)>;
 
     class IPlatformSystem
     {
@@ -19,5 +20,7 @@ namespace Nalta
         virtual void DestroyWindow(WindowHandle aWindow) = 0;
         
         [[nodiscard]] virtual WindowHandle GetMainWindow() const = 0;
+        
+        virtual void SetOnWindowDestroyedCallback(OnWindowDestroyedCallback aCallback) = 0;
     };
 }

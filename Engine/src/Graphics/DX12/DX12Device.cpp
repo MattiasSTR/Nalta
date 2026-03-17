@@ -19,6 +19,12 @@ namespace Nalta::Graphics
         return nullptr;
     }
 
+    std::unique_ptr<RenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc&)
+    {
+        NL_INFO(GCoreLogger, "[DX12Device] CreateRenderSurface called");
+        return nullptr;
+    }
+
     std::shared_ptr<GraphicsContext> DX12Device::CreateGraphicsContext()
     {
         NL_INFO(GCoreLogger, "[DX12Device] CreateGraphicsContext called");
@@ -37,9 +43,8 @@ namespace Nalta::Graphics
         return nullptr;
     }
 
-    void DX12Device::Present(const std::shared_ptr<RenderSurface> aSurface)
+    void DX12Device::Present(RenderSurface* aSurface)
     {
         N_ASSERT(aSurface, "[DX12Device] Present called for nullptr surface");
-        aSurface->Present();
     }
 }
