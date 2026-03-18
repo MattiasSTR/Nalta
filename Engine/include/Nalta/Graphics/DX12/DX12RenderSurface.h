@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/Graphics/RenderSurface.h"
+#include "Nalta/Graphics/IRenderSurface.h"
 #include "Nalta/Graphics/RenderSurfaceDesc.h"
 
 #include <memory>
@@ -8,7 +8,7 @@ namespace Nalta::Graphics
 {
     class DX12Device;
 
-    class DX12RenderSurface final : public RenderSurface
+    class DX12RenderSurface final : public IRenderSurface
     {
     public:
         DX12RenderSurface(const RenderSurfaceDesc& aDesc, DX12Device* aDevice);
@@ -20,12 +20,14 @@ namespace Nalta::Graphics
         [[nodiscard]] uint32_t GetHeight() const override;
         [[nodiscard]] WindowHandle GetWindow() const override;
 
-        void Present(uint32_t aSyncInterval = 1) const;
+        void Clear(const float aClearColor[4]) override;
+        void Present(uint32_t aSyncInterval) override;
 
     private:
         void CreateSwapChain() const;
         void CreateRenderTargetViews() const;
         void ReleaseBackbuffers() const;
+        uint32_t GetCurrentBackBufferIndex() const;
 
         struct Impl;
         std::unique_ptr<Impl> myImpl;

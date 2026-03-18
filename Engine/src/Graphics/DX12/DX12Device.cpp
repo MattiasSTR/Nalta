@@ -56,6 +56,17 @@ namespace Nalta::Graphics
         ComPtr<IDXGIAdapter4> adapter;
         ComPtr<ID3D12Device10> device;
         ComPtr<ID3D12CommandQueue> commandQueue;
+        
+        std::vector<ComPtr<ID3D12CommandAllocator>> commandAllocators;
+        ComPtr<ID3D12GraphicsCommandList7> commandList;
+        
+        ComPtr<ID3D12Fence> fence;
+        HANDLE fenceEvent{ nullptr };
+        uint64_t fenceValue{ 0 };
+        
+        std::vector<uint64_t> frameFenceValues;
+        uint32_t frameIndex{ 0 };
+        uint32_t framesInFlight{ 2 };
 
 #ifndef N_SHIPPING
         ComPtr<ID3D12Debug6> debugController;
@@ -65,9 +76,10 @@ namespace Nalta::Graphics
     DX12Device::DX12Device() = default;
     DX12Device::~DX12Device() = default;
 
-    void DX12Device::Initialize()
+    void DX12Device::Initialize(const DeviceDesc& aDesc)
     {
         myImpl = std::make_unique<Impl>();
+        myImpl->framesInFlight = aDesc.framesInFlight;
 
         InitDebugLayer();
 
@@ -92,14 +104,63 @@ namespace Nalta::Graphics
 
         InitInfoQueue();
         CreateCommandQueue();
+        CreateCommandAllocators();
+        CreateCommandList();
+        CreateFence();
 
         NL_INFO(GCoreLogger, "DX12Device: initialized");
     }
 
     void DX12Device::Shutdown()
     {
+        SignalAndWait();
+
+        if (myImpl->fenceEvent != nullptr)
+        {
+            CloseHandle(myImpl->fenceEvent);
+            myImpl->fenceEvent = nullptr;
+        }
+        
         myImpl.reset();
         NL_INFO(GCoreLogger, "DX12Device: shutdown");
+    }
+
+    void DX12Device::BeginFrame() const
+    {
+        const uint64_t completedValue{ myImpl->fence->GetCompletedValue() };
+        if (myImpl->frameFenceValues[myImpl->frameIndex] > completedValue)
+        {
+            if (FAILED(myImpl->fence->SetEventOnCompletion(myImpl->frameFenceValues[myImpl->frameIndex], myImpl->fenceEvent)))
+            {
+                NL_FATAL(GCoreLogger, "DX12Device: failed to set fence event on BeginFrame");
+            }
+            WaitForSingleObject(myImpl->fenceEvent, INFINITE);
+        }
+
+        if (FAILED(myImpl->commandAllocators[myImpl->frameIndex]->Reset()))
+        {
+            NL_FATAL(GCoreLogger, "DX12Device: failed to reset command allocator");
+        }
+
+        if (FAILED(myImpl->commandList->Reset(myImpl->commandAllocators[myImpl->frameIndex].Get(), nullptr)))
+        {
+            NL_FATAL(GCoreLogger, "DX12Device: failed to reset command list");
+        }
+    }
+
+    void DX12Device::EndFrame() const
+    {
+        if (FAILED(myImpl->commandList->Close()))
+        {
+            NL_FATAL(GCoreLogger, "DX12Device: failed to close command list");
+        }
+
+        ID3D12CommandList* lists[]{ myImpl->commandList.Get() };
+        myImpl->commandQueue->ExecuteCommandLists(1, lists);
+
+        Signal();
+        myImpl->frameFenceValues[myImpl->frameIndex] = myImpl->fenceValue;
+        myImpl->frameIndex = (myImpl->frameIndex + 1) % myImpl->framesInFlight;
     }
 
     std::unique_ptr<Buffer> DX12Device::CreateBuffer(const BufferDesc& /*aDesc*/)
@@ -108,7 +169,7 @@ namespace Nalta::Graphics
         return nullptr;
     }
 
-    std::unique_ptr<RenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
+    std::unique_ptr<IRenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
     {
         return std::make_unique<DX12RenderSurface>(aDesc, this);
     }
@@ -131,10 +192,32 @@ namespace Nalta::Graphics
         return nullptr;
     }
 
-    void DX12Device::Present(RenderSurface* aSurface)
+    void DX12Device::Signal() const
     {
-        N_ASSERT(aSurface, "DX12Device: Present called with null surface");
-        static_cast<DX12RenderSurface*>(aSurface)->Present();
+        ++myImpl->fenceValue;
+        if (FAILED(myImpl->commandQueue->Signal(myImpl->fence.Get(), myImpl->fenceValue)))
+        {
+            NL_FATAL(GCoreLogger, "DX12Device: failed to signal fence");
+        }
+    }
+
+    void DX12Device::WaitForGPU() const
+    {
+        if (myImpl->fence->GetCompletedValue() < myImpl->fenceValue)
+        {
+            if (FAILED(myImpl->fence->SetEventOnCompletion(myImpl->fenceValue, myImpl->fenceEvent)))
+            {
+                NL_FATAL(GCoreLogger, "DX12Device: failed to set fence event");
+            }
+
+            WaitForSingleObject(myImpl->fenceEvent, INFINITE);
+        }
+    }
+
+    void DX12Device::SignalAndWait() const
+    {
+        Signal();
+        WaitForGPU();
     }
 
     IDXGIFactory7* DX12Device::GetFactory() const
@@ -150,6 +233,21 @@ namespace Nalta::Graphics
     ID3D12CommandQueue* DX12Device::GetCommandQueue() const
     {
         return myImpl->commandQueue.Get();
+    }
+
+    ID3D12GraphicsCommandList7* DX12Device::GetCommandList() const
+    {
+        return myImpl->commandList.Get();
+    }
+
+    uint64_t DX12Device::GetFenceValue() const
+    {
+        return myImpl->fenceValue;
+    }
+
+    uint64_t DX12Device::GetCompletedValue() const
+    {
+        return myImpl->fence->GetCompletedValue();
     }
 
     void DX12Device::InitDebugLayer() const
@@ -226,5 +324,55 @@ namespace Nalta::Graphics
         }
 
         NL_TRACE(GCoreLogger, "DX12Device: command queue created");
+    }
+
+    void DX12Device::CreateCommandAllocators() const
+    {
+        myImpl->commandAllocators.resize(myImpl->framesInFlight);
+        myImpl->frameFenceValues.resize(myImpl->framesInFlight, 0);
+
+        for (uint32_t i{ 0 }; i < myImpl->framesInFlight; ++i)
+        {
+            if (FAILED(myImpl->device->CreateCommandAllocator(
+                D3D12_COMMAND_LIST_TYPE_DIRECT,
+                IID_PPV_ARGS(&myImpl->commandAllocators[i]))))
+            {
+                NL_FATAL(GCoreLogger, "DX12Device: failed to create command allocator {}", i);
+            }
+        }
+
+        NL_TRACE(GCoreLogger, "DX12Device: {} command allocators created", myImpl->framesInFlight);
+    }
+
+    void DX12Device::CreateCommandList() const
+    {
+        if (FAILED(myImpl->device->CreateCommandList1(
+            0,
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            D3D12_COMMAND_LIST_FLAG_NONE,
+            IID_PPV_ARGS(&myImpl->commandList))))
+        {
+            NL_FATAL(GCoreLogger, "DX12Device: failed to create command list");
+        }
+
+        NL_TRACE(GCoreLogger, "DX12Device: command list created");
+    }
+
+    void DX12Device::CreateFence() const
+    {
+        if (FAILED(myImpl->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&myImpl->fence))))
+        {
+            NL_FATAL(GCoreLogger, "DX12Device: failed to create fence");
+        }
+
+        myImpl->fenceValue = 0;
+        myImpl->fenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+
+        if (myImpl->fenceEvent == nullptr)
+        {
+            NL_FATAL(GCoreLogger, "DX12Device: failed to create fence event");
+        }
+
+        NL_TRACE(GCoreLogger, "DX12Device: fence created");
     }
 }

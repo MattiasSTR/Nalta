@@ -9,7 +9,7 @@
 
 namespace Nalta::Graphics
 {
-    std::unique_ptr<Device> CreateDevice()
+    std::unique_ptr<IDevice> CreateDevice()
     {
 #ifdef N_GRAPHICS_API_DX12
         NL_INFO(GCoreLogger, "[GraphicsFactory] Creating DX12Device");

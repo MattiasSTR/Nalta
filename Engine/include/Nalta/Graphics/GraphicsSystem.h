@@ -10,8 +10,8 @@ namespace Nalta
 {
     namespace Graphics
     {
-        class Device;
-        class RenderSurface;
+        class IDevice;
+        class IRenderSurface;
     }
     
     class GraphicsSystem
@@ -22,23 +22,24 @@ namespace Nalta
         
         void Initialize();
         void Shutdown();
+        
+        void BeginFrame(const float aClearColor[4]) const;
+        void EndFrame() const;
 
         [[nodiscard]] Graphics::RenderSurfaceHandle CreateSurface(const Graphics::RenderSurfaceDesc& aDesc);
         void DestroySurface(Graphics::RenderSurfaceHandle aHandle);
         void DestroySurface(WindowHandle aWindow);
 
-        void Present(Graphics::RenderSurfaceHandle aHandle) const;
-
-        [[nodiscard]] Graphics::Device* GetDevice() const { return myDevice.get(); }
+        [[nodiscard]] Graphics::IDevice* GetDevice() const { return myDevice.get(); }
 
     private:
         struct SurfaceEntry
         {
             WindowHandle window;
-            std::unique_ptr<Graphics::RenderSurface> surface;
+            std::unique_ptr<Graphics::IRenderSurface> surface;
         };
 
-        std::unique_ptr<Graphics::Device>   myDevice;
+        std::unique_ptr<Graphics::IDevice>   myDevice;
         std::vector<SurfaceEntry>           mySurfaces;
     };
 }

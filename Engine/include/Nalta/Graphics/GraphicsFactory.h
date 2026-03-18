@@ -1,7 +1,7 @@
 ﻿#pragma once
-#include "Device.h"
+#include "IDevice.h"
 
 namespace Nalta::Graphics
 {
-    std::unique_ptr<Device> CreateDevice();
+    std::unique_ptr<IDevice> CreateDevice();
 }

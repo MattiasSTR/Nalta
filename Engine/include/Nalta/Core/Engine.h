@@ -28,7 +28,7 @@ namespace Nalta
 	
 	namespace Graphics
 	{
-		class RenderSurface;
+		class IRenderSurface;
 	}
 	
 	class Logger;

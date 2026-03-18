@@ -16,13 +16,22 @@ namespace Nalta
         N_ASSERT(myDevice == nullptr, "GraphicsSystem: already initialized");
 
         myDevice = CreateDevice();
-        myDevice->Initialize();
+        
+        DeviceDesc deviceDesc;
+        deviceDesc.framesInFlight = 2;
+
+        myDevice->Initialize(deviceDesc);
 
         NL_INFO(GCoreLogger, "GraphicsSystem: initialized");
     }
 
     void GraphicsSystem::Shutdown()
     {
+        if (myDevice)
+        {
+            myDevice->SignalAndWait(); // Drain GPU before releasing any surfaces
+        }
+        
         mySurfaces.clear();
 
         if (myDevice)
@@ -32,6 +41,26 @@ namespace Nalta
         }
         
         NL_INFO(GCoreLogger, "GraphicsSystem: shutdown");
+    }
+
+    void GraphicsSystem::BeginFrame(const float aClearColor[4]) const
+    {
+        myDevice->BeginFrame();
+
+        for (const auto& entry : mySurfaces)
+        {
+            entry.surface->Clear(aClearColor);
+        }
+    }
+
+    void GraphicsSystem::EndFrame() const
+    {
+        myDevice->EndFrame();
+
+        for (const auto& entry : mySurfaces)
+        {
+            entry.surface->Present();
+        }
     }
 
     RenderSurfaceHandle GraphicsSystem::CreateSurface(const RenderSurfaceDesc& aDesc)
@@ -48,27 +77,37 @@ namespace Nalta
 
     void GraphicsSystem::DestroySurface(const RenderSurfaceHandle aHandle)
     {
-        std::erase_if(mySurfaces, [&](const SurfaceEntry& aEntry)
+        const auto it{ std::ranges::find_if(mySurfaces, [&](const SurfaceEntry& aEntry)
         {
             return aEntry.surface.get() == aHandle.Get();
-        });
+        }) };
+
+        if (it == mySurfaces.end())
+        {
+            return;
+        }
+
+        myDevice->SignalAndWait();
+        mySurfaces.erase(it);
 
         NL_INFO(GCoreLogger, "GraphicsSystem: surface destroyed");
     }
     
     void GraphicsSystem::DestroySurface(const WindowHandle aWindow)
     {
-        std::erase_if(mySurfaces, [&](const SurfaceEntry& aEntry)
+        const auto it{ std::ranges::find_if(mySurfaces, [&](const SurfaceEntry& aEntry)
         {
             return aEntry.window == aWindow;
-        });
+        }) };
+
+        if (it == mySurfaces.end())
+        {
+            return;
+        }
+
+        myDevice->SignalAndWait();
+        mySurfaces.erase(it);
 
         NL_INFO(GCoreLogger, "GraphicsSystem: surface destroyed for window");
-    }
-
-    void GraphicsSystem::Present(const RenderSurfaceHandle aHandle) const
-    {
-        N_ASSERT(aHandle.IsValid(), "GraphicsSystem: invalid surface handle");
-        myDevice->Present(aHandle.Get());
     }
 }

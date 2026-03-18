@@ -131,7 +131,12 @@ namespace Nalta::Graphics
             myImpl->backbuffers[i].Reset();
         }
     }
-    
+
+    uint32_t DX12RenderSurface::GetCurrentBackBufferIndex() const
+    {
+        return myImpl->swapChain->GetCurrentBackBufferIndex();
+    }
+
     void DX12RenderSurface::Resize(uint32_t aWidth, uint32_t aHeight)
     {
         if (myWidth == aWidth && myHeight == aHeight) return;
@@ -154,14 +159,38 @@ namespace Nalta::Graphics
         NL_TRACE(GCoreLogger, "DX12RenderSurface: resized to {}x{}", aWidth, aHeight);
     }
     
-    void DX12RenderSurface::Present(const uint32_t aSyncInterval) const
+    void DX12RenderSurface::Present(const uint32_t aSyncInterval)
     {
         if (FAILED(myImpl->swapChain->Present(aSyncInterval, 0)))
         {
             NL_FATAL(GCoreLogger, "DX12RenderSurface: present failed");
         }
     }
+    
+    void DX12RenderSurface::Clear(const float aClearColor[4])
+    {
+        auto* cmdList{ myDevice->GetCommandList() };
+        const uint32_t backBufferIndex{ GetCurrentBackBufferIndex() };
+        
+        // Transition: Present to RenderTarget
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.pResource   = myImpl->backbuffers[backBufferIndex].Get();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        cmdList->ResourceBarrier(1, &barrier);
 
+        // Clear
+        cmdList->ClearRenderTargetView(myImpl->rtvHandles[backBufferIndex], aClearColor, 0, nullptr);
+
+        // Transition: RenderTarget to Present
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PRESENT;
+        cmdList->ResourceBarrier(1, &barrier);
+    }
+    
     uint32_t     DX12RenderSurface::GetWidth()  const { return myWidth; }
     uint32_t     DX12RenderSurface::GetHeight() const { return myHeight; }
     WindowHandle DX12RenderSurface::GetWindow() const { return myWindow; }

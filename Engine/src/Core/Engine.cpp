@@ -85,6 +85,7 @@ namespace Nalta
 		
 		if (myPlatformSystem)
 		{
+			myPlatformSystem->SetOnWindowDestroyedCallback(nullptr);
 			myPlatformSystem->Shutdown();
 			myPlatformSystem.reset();
 			NL_INFO(GCoreLogger, "PlatformSystem destroyed");
@@ -190,6 +191,8 @@ namespace Nalta
 		const LoggerScope renderScope(GCoreLogger, "RenderLoop");
 		NL_INFO(GCoreLogger, "Render loop started");
 		
+		constexpr float clearColor[]{ 0.1f, 0.1f, 0.1f, 1.0f };
+		
 		RenderFrame frame;
 		
 		while (!myStop)
@@ -198,6 +201,9 @@ namespace Nalta
 			{
 				break;
 			}
+			
+			myGraphicsSystem->BeginFrame(clearColor);
+			myGraphicsSystem->EndFrame();
 		}
 		
 		NL_INFO(GCoreLogger, "Render loop stopped");
