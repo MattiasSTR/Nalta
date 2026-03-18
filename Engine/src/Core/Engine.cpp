@@ -41,7 +41,7 @@ namespace Nalta
 		
 		if (myConfig.ShouldCreateWindow())
 		{
-			myPlatformSystem = CreateWindowSystem();
+			myPlatformSystem = CreatePlatformSystem();
 			myPlatformSystem->Initialize();
 			
 			myGraphicsSystem = std::make_unique<GraphicsSystem>();
@@ -87,7 +87,7 @@ namespace Nalta
 		{
 			myPlatformSystem->Shutdown();
 			myPlatformSystem.reset();
-			NL_INFO(GCoreLogger, "WindowSystem destroyed");
+			NL_INFO(GCoreLogger, "PlatformSystem destroyed");
 		}
 		
 		if (myCoreLogger)

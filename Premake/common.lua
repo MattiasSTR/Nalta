@@ -39,7 +39,7 @@ function apply_common_settings()
         runtime "Debug"
         symbols "on"
         optimize "off"
-        defines { "N_ENABLE_ASSERTS", "GLFW_INCLUDE_NONE" }
+        defines { "N_DEBUG", "N_ENABLE_ASSERTS", "GLFW_INCLUDE_NONE" }
         editandcontinue "on"
         warnings "extra"
         fatalwarnings { "All" }

@@ -8,9 +8,9 @@ namespace Nalta::Graphics
     class DX12Device : public Device
     {
     public:
-        DX12Device() = default;
-        ~DX12Device() override = default;
-        
+        DX12Device();
+        ~DX12Device() override;
+
         void Initialize() override;
         void Shutdown() override;
         
@@ -23,5 +23,14 @@ namespace Nalta::Graphics
         std::shared_ptr<UploadContext> CreateUploadContext() override;
         
         void Present(RenderSurface* aSurface) override;
+        
+    private:
+        void InitDebugLayer() const;
+        void InitInfoQueue() const;
+        void SelectAdapter() const;
+        void CreateCommandQueue() const;
+
+        struct Impl;
+        std::unique_ptr<Impl> myImpl;
     };
 }

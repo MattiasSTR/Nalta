@@ -5,5 +5,5 @@
 
 namespace Nalta
 {
-    std::unique_ptr<IPlatformSystem> CreateWindowSystem();
+    std::unique_ptr<IPlatformSystem> CreatePlatformSystem();
 }

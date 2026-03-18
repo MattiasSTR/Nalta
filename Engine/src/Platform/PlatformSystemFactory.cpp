@@ -11,7 +11,7 @@
 
 namespace Nalta
 {
-    std::unique_ptr<IPlatformSystem> CreateWindowSystem()
+    std::unique_ptr<IPlatformSystem> CreatePlatformSystem()
     {
 #ifdef N_PLATFORM_WINDOWS
         return std::make_unique<Win32PlatformSystem>();
