@@ -1,6 +1,8 @@
 ﻿#include "npch.h"
 #include "Nalta/Graphics/DX12/DX12Device.h"
 
+#include "Nalta/Graphics/DX12/DX12RenderSurface.h"
+
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -106,10 +108,9 @@ namespace Nalta::Graphics
         return nullptr;
     }
 
-    std::unique_ptr<RenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc&)
+    std::unique_ptr<RenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
     {
-        NL_INFO(GCoreLogger, "[DX12Device] CreateRenderSurface called");
-        return nullptr;
+        return std::make_unique<DX12RenderSurface>(aDesc, this);
     }
 
     std::shared_ptr<GraphicsContext> DX12Device::CreateGraphicsContext()
@@ -132,7 +133,23 @@ namespace Nalta::Graphics
 
     void DX12Device::Present(RenderSurface* aSurface)
     {
-        N_ASSERT(aSurface, "[DX12Device] Present called for nullptr surface");
+        N_ASSERT(aSurface, "DX12Device: Present called with null surface");
+        static_cast<DX12RenderSurface*>(aSurface)->Present();
+    }
+
+    IDXGIFactory7* DX12Device::GetFactory() const
+    {
+        return myImpl->factory.Get();
+    }
+
+    ID3D12Device10* DX12Device::GetDevice() const
+    {
+        return myImpl->device.Get();
+    }
+
+    ID3D12CommandQueue* DX12Device::GetCommandQueue() const
+    {
+        return myImpl->commandQueue.Get();
     }
 
     void DX12Device::InitDebugLayer() const

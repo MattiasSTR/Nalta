@@ -1,11 +1,17 @@
 ﻿#pragma once
 #include "Nalta/Graphics/Device.h"
 
+#include <memory>
+
+struct IDXGIFactory7;
+struct ID3D12Device10;
+struct ID3D12CommandQueue;
+
 namespace Nalta::Graphics
 {
     class RenderSurface;
     
-    class DX12Device : public Device
+    class DX12Device final : public Device
     {
     public:
         DX12Device();
@@ -23,6 +29,10 @@ namespace Nalta::Graphics
         std::shared_ptr<UploadContext> CreateUploadContext() override;
         
         void Present(RenderSurface* aSurface) override;
+        
+        [[nodiscard]] IDXGIFactory7* GetFactory()      const;
+        [[nodiscard]] ID3D12Device10* GetDevice()       const;
+        [[nodiscard]] ID3D12CommandQueue* GetCommandQueue() const;
         
     private:
         void InitDebugLayer() const;
