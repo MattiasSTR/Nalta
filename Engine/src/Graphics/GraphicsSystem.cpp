@@ -3,6 +3,7 @@
 
 #include "Nalta/Graphics/GraphicsFactory.h"
 #include "Nalta/Graphics/RenderSurfaceDesc.h"
+#include "Nalta/Platform/IWindow.h"
 
 namespace Nalta
 {
@@ -43,13 +44,20 @@ namespace Nalta
         NL_INFO(GCoreLogger, "GraphicsSystem: shutdown");
     }
 
-    void GraphicsSystem::BeginFrame(const float aClearColor[4]) const
+    void GraphicsSystem::BeginFrame() const
     {
         myDevice->BeginFrame();
 
         for (const auto& entry : mySurfaces)
         {
-            entry.surface->Clear(aClearColor);
+            const uint32_t width { entry.window->GetWidth() };
+            const uint32_t height{ entry.window->GetHeight() };
+
+            if (width != entry.surface->GetWidth() || height != entry.surface->GetHeight())
+            {
+                myDevice->SignalAndWait();
+                entry.surface->Resize(width, height);
+            }
         }
     }
 

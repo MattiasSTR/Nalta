@@ -139,7 +139,10 @@ namespace Nalta::Graphics
 
     void DX12RenderSurface::Resize(uint32_t aWidth, uint32_t aHeight)
     {
-        if (myWidth == aWidth && myHeight == aHeight) return;
+        if (myWidth == aWidth && myHeight == aHeight)
+        {
+            return;
+        }
 
         myWidth  = aWidth;
         myHeight = aHeight;
@@ -166,7 +169,32 @@ namespace Nalta::Graphics
             NL_FATAL(GCoreLogger, "DX12RenderSurface: present failed");
         }
     }
-    
+
+    void DX12RenderSurface::SetAsRenderTarget()
+    {
+        auto* cmdList{ myDevice->GetCommandList() };
+        const uint32_t backBufferIndex{ GetCurrentBackBufferIndex() };
+
+        cmdList->OMSetRenderTargets(1, &myImpl->rtvHandles[backBufferIndex], FALSE, nullptr);
+
+        D3D12_VIEWPORT viewport{};
+        viewport.TopLeftX = 0.0f;
+        viewport.TopLeftY = 0.0f;
+        viewport.Width    = static_cast<float>(myWidth);
+        viewport.Height   = static_cast<float>(myHeight);
+        viewport.MinDepth = 0.0f;
+        viewport.MaxDepth = 1.0f;
+
+        D3D12_RECT scissor{};
+        scissor.left   = 0;
+        scissor.top    = 0;
+        scissor.right  = static_cast<LONG>(myWidth);
+        scissor.bottom = static_cast<LONG>(myHeight);
+
+        cmdList->RSSetViewports(1, &viewport);
+        cmdList->RSSetScissorRects(1, &scissor);
+    }
+
     void DX12RenderSurface::Clear(const float aClearColor[4])
     {
         auto* cmdList{ myDevice->GetCommandList() };

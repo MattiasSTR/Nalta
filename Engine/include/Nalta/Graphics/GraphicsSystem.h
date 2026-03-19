@@ -23,7 +23,7 @@ namespace Nalta
         void Initialize();
         void Shutdown();
         
-        void BeginFrame(const float aClearColor[4]) const;
+        void BeginFrame() const;
         void EndFrame() const;
 
         [[nodiscard]] Graphics::RenderSurfaceHandle CreateSurface(const Graphics::RenderSurfaceDesc& aDesc);
