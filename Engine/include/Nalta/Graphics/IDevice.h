@@ -2,7 +2,9 @@
 #include "Buffer.h"
 #include "Context.h"
 #include "DeviceDesc.h"
+#include "IPipeline.h"
 #include "IRenderSurface.h"
+#include "PipelineDesc.h"
 #include "RenderSurfaceDesc.h"
 
 #include <memory>
@@ -27,6 +29,8 @@ namespace Nalta
             virtual std::unique_ptr<Buffer> CreateBuffer(const BufferDesc& aDesc) = 0;
             
             [[nodiscard]] virtual std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) = 0;
+            [[nodiscard]] virtual std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) = 0;
+
             
             // Create contexts
             virtual std::shared_ptr<GraphicsContext> CreateGraphicsContext() = 0;

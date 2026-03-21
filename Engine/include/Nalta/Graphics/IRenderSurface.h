@@ -14,6 +14,7 @@ namespace Nalta::Graphics
         virtual void Clear(const float aClearColor[4]) = 0;
         virtual void Present(uint32_t aSyncInterval = 1) = 0;
         virtual void SetAsRenderTarget() = 0;
+        virtual void EndRenderTarget() = 0;
 
         [[nodiscard]] virtual uint32_t GetWidth()  const = 0;
         [[nodiscard]] virtual uint32_t GetHeight() const = 0;

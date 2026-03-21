@@ -18,4 +18,5 @@ project "Sandbox"
         "Engine"
     }
 
+    copy_binaries()
     apply_common_settings()

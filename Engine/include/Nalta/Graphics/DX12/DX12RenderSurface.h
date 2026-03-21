@@ -23,6 +23,7 @@ namespace Nalta::Graphics
         void Clear(const float aClearColor[4]) override;
         void Present(uint32_t aSyncInterval) override;
         void SetAsRenderTarget() override;
+        void EndRenderTarget() override;
 
     private:
         void CreateSwapChain() const;

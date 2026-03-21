@@ -24,13 +24,14 @@ namespace Nalta::Graphics
         void BeginFrame() const override;
         void EndFrame()   const override;
         
-        std::unique_ptr<Buffer> CreateBuffer(const BufferDesc& aDesc) override;
+        [[nodiscard]] std::unique_ptr<Buffer> CreateBuffer(const BufferDesc& aDesc) override;
         
-        std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) override;
+        [[nodiscard]] std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) override;
+        [[nodiscard]] std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) override;
         
-        std::shared_ptr<ComputeContext> CreateComputeContext() override;
-        std::shared_ptr<GraphicsContext> CreateGraphicsContext() override;
-        std::shared_ptr<UploadContext> CreateUploadContext() override;
+        [[nodiscard]] std::shared_ptr<ComputeContext> CreateComputeContext() override;
+        [[nodiscard]] std::shared_ptr<GraphicsContext> CreateGraphicsContext() override;
+        [[nodiscard]] std::shared_ptr<UploadContext> CreateUploadContext() override;
         
         void Signal()        const override;
         void WaitForGPU()    const override;

@@ -14,7 +14,7 @@ namespace Nalta
 {
 	Engine::Engine(const EngineConfig& aConfig) : myConfig{ aConfig }
 	{
-		N_ASSERT(!aConfig.coreLogger.name.empty(), "Core Logger Must Have A Valid Name");
+		N_CORE_ASSERT(!aConfig.coreLogger.name.empty(), "Core Logger Must Have A Valid Name");
 		myCoreLogger = std::make_unique<Logger>();
 		myCoreLogger->Init(aConfig.coreLogger);
 		GCoreLogger = myCoreLogger.get();
@@ -204,8 +204,8 @@ namespace Nalta
 			}
 			
 			myGraphicsSystem->BeginFrame();
-			myMainSurface->Clear(clearColor);
 			myMainSurface->SetAsRenderTarget();
+			myMainSurface->Clear(clearColor);
 			myGraphicsSystem->EndFrame();
 		}
 		

@@ -17,3 +17,4 @@
 
 #include "Nalta/Core/Logger.h"
 #include "Nalta/Core/Assert.h"
+#include "Nalta/Core/Paths.h"

@@ -38,7 +38,7 @@ namespace Nalta::Graphics
         myWidth (aDesc.window->GetWidth()),
         myHeight(aDesc.window->GetHeight())
     {
-        N_ASSERT(aDesc.bufferCount >= 2 && aDesc.bufferCount <= MAX_BACKBUFFERS, "DX12RenderSurface: bufferCount must be between 2 and 3");
+        N_CORE_ASSERT(aDesc.bufferCount >= 2 && aDesc.bufferCount <= MAX_BACKBUFFERS, "DX12RenderSurface: bufferCount must be between 2 and 3");
 
         myImpl->bufferCount = aDesc.bufferCount;
         myImpl->factory = aDevice->GetFactory();
@@ -174,6 +174,15 @@ namespace Nalta::Graphics
     {
         auto* cmdList{ myDevice->GetCommandList() };
         const uint32_t backBufferIndex{ GetCurrentBackBufferIndex() };
+        
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.pResource   = myImpl->backbuffers[backBufferIndex].Get();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        cmdList->ResourceBarrier(1, &barrier);
 
         cmdList->OMSetRenderTargets(1, &myImpl->rtvHandles[backBufferIndex], FALSE, nullptr);
 
@@ -195,28 +204,26 @@ namespace Nalta::Graphics
         cmdList->RSSetScissorRects(1, &scissor);
     }
 
-    void DX12RenderSurface::Clear(const float aClearColor[4])
+    void DX12RenderSurface::EndRenderTarget()
     {
         auto* cmdList{ myDevice->GetCommandList() };
         const uint32_t backBufferIndex{ GetCurrentBackBufferIndex() };
         
-        // Transition: Present to RenderTarget
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.Transition.pResource   = myImpl->backbuffers[backBufferIndex].Get();
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        cmdList->ResourceBarrier(1, &barrier);
-
-        // Clear
-        cmdList->ClearRenderTargetView(myImpl->rtvHandles[backBufferIndex], aClearColor, 0, nullptr);
-
-        // Transition: RenderTarget to Present
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PRESENT;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         cmdList->ResourceBarrier(1, &barrier);
+    }
+
+    void DX12RenderSurface::Clear(const float aClearColor[4])
+    {
+        auto* cmdList{ myDevice->GetCommandList() };
+        const uint32_t backBufferIndex{ GetCurrentBackBufferIndex() };
+        cmdList->ClearRenderTargetView(myImpl->rtvHandles[backBufferIndex], aClearColor, 0, nullptr);
     }
     
     uint32_t     DX12RenderSurface::GetWidth()  const { return myWidth; }

@@ -10,6 +10,9 @@ dirs.bin        = dirs.build .. "/bin"  -- final binaries
 dirs.obj        = dirs.build .. "/obj"  -- intermediate objects
 dirs.projects   = dirs.build .. "/projects" -- vcxproj locations
 dirs.thirdparty = dirs.root .. "/ThirdParty"   -- Third-party libraries
+dirs.binaries   = dirs.root .. "/Binaries"
+
+local root_dir_escaped = dirs.root:gsub("\\", "/"):gsub("/$", "")
 
 ThirdPartyIncludes = {}
 ThirdPartyIncludes.spdlog = dirs.thirdparty .. "/spdlog/include"
@@ -21,10 +24,24 @@ os.mkdir(dirs.bin)
 os.mkdir(dirs.obj)
 os.mkdir(dirs.projects)
 
+function copy_binaries()
+    local dlls = os.matchfiles(dirs.binaries .. "/*.dll")
+    for _, dll in ipairs(dlls) do
+        local src = path.getabsolute(dll)
+        postbuildcommands {
+            "{COPYFILE} \"" .. src .. "\" \"%{cfg.targetdir}/" .. path.getname(dll) .. "\""
+        }
+    end
+end
+
 --==================================================
 -- Helper function for project creation
 --==================================================
 function apply_common_settings()
+
+    defines {
+        "N_ROOT_DIR=\"" .. root_dir_escaped .. "\""
+    }
 
     filter "system:windows"
         conformancemode "On"

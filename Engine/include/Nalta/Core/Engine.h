@@ -2,6 +2,7 @@
 
 #include "EngineConfig.h"
 #include "FrameQueue.h"
+#include "Nalta/Graphics/PipelineHandle.h"
 #include "Nalta/Graphics/RenderSurfaceHandle.h"
 #include "Nalta/Platform/WindowHandle.h"
 

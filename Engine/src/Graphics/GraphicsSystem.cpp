@@ -14,7 +14,7 @@ namespace Nalta
 
     void GraphicsSystem::Initialize()
     {
-        N_ASSERT(myDevice == nullptr, "GraphicsSystem: already initialized");
+        N_CORE_ASSERT(myDevice == nullptr, "GraphicsSystem: already initialized");
 
         myDevice = CreateDevice();
         
@@ -22,17 +22,22 @@ namespace Nalta
         deviceDesc.framesInFlight = 2;
 
         myDevice->Initialize(deviceDesc);
+        
+        myShaderCompiler.Initialize();
 
         NL_INFO(GCoreLogger, "GraphicsSystem: initialized");
     }
 
     void GraphicsSystem::Shutdown()
     {
+        myShaderCompiler.Shutdown();
+        
         if (myDevice)
         {
             myDevice->SignalAndWait(); // Drain GPU before releasing any surfaces
         }
         
+        myPipelines.clear();
         mySurfaces.clear();
 
         if (myDevice)
@@ -63,17 +68,22 @@ namespace Nalta
 
     void GraphicsSystem::EndFrame() const
     {
-        myDevice->EndFrame();
+        for (const auto& entry : mySurfaces)
+        {
+            entry.surface->EndRenderTarget(); // Transition to PRESENT before closing
+        }
+
+        myDevice->EndFrame(); // Close, submit, signal
 
         for (const auto& entry : mySurfaces)
         {
-            entry.surface->Present();
+            entry.surface->Present(); // Present after GPU work is submitted
         }
     }
 
     RenderSurfaceHandle GraphicsSystem::CreateSurface(const RenderSurfaceDesc& aDesc)
     {
-        N_ASSERT(aDesc.window.IsValid(), "GraphicsSystem: invalid window handle");
+        N_CORE_ASSERT(aDesc.window.IsValid(), "GraphicsSystem: invalid window handle");
 
         auto surface{ myDevice->CreateRenderSurface(aDesc) };
         const RenderSurfaceHandle handle{ surface.get() };
@@ -117,5 +127,31 @@ namespace Nalta
         mySurfaces.erase(it);
 
         NL_INFO(GCoreLogger, "GraphicsSystem: surface destroyed for window");
+    }
+
+    PipelineHandle GraphicsSystem::CreatePipeline(const PipelineDesc& aDesc)
+    {
+        auto pipeline{ myDevice->CreatePipeline(aDesc) };
+        if (pipeline == nullptr)
+        {
+            NL_ERROR(GCoreLogger, "GraphicsSystem: failed to create pipeline");
+            return PipelineHandle{};
+        }
+
+        const PipelineHandle handle{ pipeline.get() };
+        myPipelines.push_back(std::move(pipeline));
+
+        NL_INFO(GCoreLogger, "GraphicsSystem: pipeline created");
+        return handle;
+    }
+
+    void GraphicsSystem::DestroyPipeline(const PipelineHandle aHandle)
+    {
+        std::erase_if(myPipelines, [&](const std::unique_ptr<IPipeline>& p)
+        {
+            return p.get() == aHandle.Get();
+        });
+
+        NL_INFO(GCoreLogger, "GraphicsSystem: pipeline destroyed");
     }
 }
