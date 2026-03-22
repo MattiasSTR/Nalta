@@ -9,6 +9,7 @@
 #include <Nalta/Graphics/ShaderDesc.h>
 #include <Nalta/Graphics/PipelineDesc.h>
 #include <Nalta/Graphics/RenderFrame.h>
+#include <Nalta/Core/Math.h>
 
 void SandboxGame::Initialize(const Nalta::InitContext& aContext)
 {
@@ -28,6 +29,12 @@ void SandboxGame::Initialize(const Nalta::InitContext& aContext)
 
     myTrianglePipeline = aContext.graphicsSystem->CreatePipeline(pipelineDesc);
     N_ASSERT(myTrianglePipeline.IsValid(), "SandboxGame: failed to create triangle pipeline");
+    
+    float3 position{ 1.0f, 0.0f, 0.0f };
+    float3 normal{ 0.0f, 1.0f, 0.0f };
+    [[maybe_unused]] float  d{ dot(position, normal) };
+    [[maybe_unused]] float3 n{ normalize(position) };
+    [[maybe_unused]] float4x4 view{ float4x4::identity() };
 }
 
 void SandboxGame::Shutdown()

@@ -16,14 +16,12 @@ project "Engine"
     }
 
     defines{
-		"_CRT_SECURE_NO_WARNINGS",
-		"GLFW_INCLUDE_NONE"
+		"_CRT_SECURE_NO_WARNINGS"
 	}
 
     includedirs { 
         "include", 
-        ThirdPartyIncludes.spdlog, 
-        ThirdPartyIncludes.glfw 
+        ThirdPartyIncludes.spdlog
     }
 
     -- links { 

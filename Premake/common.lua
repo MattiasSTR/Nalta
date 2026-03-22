@@ -16,7 +16,7 @@ local root_dir_escaped = dirs.root:gsub("\\", "/"):gsub("/$", "")
 
 ThirdPartyIncludes = {}
 ThirdPartyIncludes.spdlog = dirs.thirdparty .. "/spdlog/include"
-ThirdPartyIncludes.glfw = dirs.thirdparty .. "/glfw/include"
+ThirdPartyIncludes.hlslpp = dirs.thirdparty .. "/hlslpp/include"
 
 -- Ensure directories exist
 os.mkdir(dirs.build)
@@ -43,6 +43,10 @@ function apply_common_settings()
         "N_ROOT_DIR=\"" .. root_dir_escaped .. "\""
     }
 
+    includedirs {
+        ThirdPartyIncludes.hlslpp
+    }
+
     filter "system:windows"
         conformancemode "On"
         callingconvention "fastcall"
@@ -56,7 +60,7 @@ function apply_common_settings()
         runtime "Debug"
         symbols "on"
         optimize "off"
-        defines { "N_DEBUG", "N_ENABLE_ASSERTS", "GLFW_INCLUDE_NONE" }
+        defines { "N_DEBUG", "N_ENABLE_ASSERTS" }
         editandcontinue "on"
         warnings "extra"
         fatalwarnings { "All" }
@@ -65,7 +69,7 @@ function apply_common_settings()
         runtime "Release"
         symbols "on"
         optimize "speed"
-        defines { "N_DEVELOPMENT", "N_ENABLE_ASSERTS", "GLFW_INCLUDE_NONE" }
+        defines { "N_DEVELOPMENT", "N_ENABLE_ASSERTS" }
         warnings "extra"
         fatalwarnings { "All" }
 
@@ -73,7 +77,7 @@ function apply_common_settings()
         runtime "Release"
         symbols "off"
         optimize "full"
-        defines { "N_SHIPPING", "GLFW_INCLUDE_NONE" }
+        defines { "N_SHIPPING" }
         warnings "extra"
         linktimeoptimization "Fast"
 
