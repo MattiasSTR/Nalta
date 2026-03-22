@@ -101,6 +101,11 @@ namespace Nalta
 			InitContext initContext;
 			initContext.graphicsSystem = myGraphicsSystem.get();
 			myGame->Initialize(initContext);
+			
+			if (myGraphicsSystem != nullptr)
+			{
+				myGraphicsSystem->FlushUploads();
+			}
 
 			NL_INFO(GCoreLogger, "Engine: game initialized");
 		}

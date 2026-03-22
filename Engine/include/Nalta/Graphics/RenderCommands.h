@@ -1,5 +1,6 @@
 ﻿#pragma once
-#include "Nalta/Graphics/PipelineHandle.h"
+#include "PipelineHandle.h"
+#include "VertexBufferHandle.h"
 
 #include <cstdint>
 #include <variant>
@@ -9,6 +10,11 @@ namespace Nalta::Graphics
     struct SetPipelineCmd
     {
         PipelineHandle pipeline;
+    };
+
+    struct SetVertexBufferCmd
+    {
+        VertexBufferHandle buffer;
     };
 
     struct DrawCmd
@@ -30,6 +36,7 @@ namespace Nalta::Graphics
 
     using RenderCommand = std::variant<
         SetPipelineCmd,
+        SetVertexBufferCmd,
         DrawCmd,
         DrawIndexedCmd
     >;

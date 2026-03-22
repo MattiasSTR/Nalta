@@ -1,6 +1,7 @@
 #pragma once
 #include <Nalta/Core/IGame.h>
 #include <Nalta/Graphics/PipelineHandle.h>
+#include <Nalta/Graphics/VertexBufferHandle.h>
 
 class SandboxGame final : public Nalta::IGame
 {
@@ -12,4 +13,5 @@ public:
 
 private:
     Nalta::Graphics::PipelineHandle myTrianglePipeline;
+    Nalta::Graphics::VertexBufferHandle myTriangleVB;
 };

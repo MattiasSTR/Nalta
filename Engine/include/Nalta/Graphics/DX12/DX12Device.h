@@ -11,6 +11,8 @@ struct ID3D12GraphicsCommandList7;
 namespace Nalta::Graphics
 {
     class IRenderSurface;
+    class DX12CopyQueue;
+    class DX12UploadBatch;
     
     class DX12Device final : public IDevice
     {
@@ -22,19 +24,22 @@ namespace Nalta::Graphics
         void Shutdown() override;
         
         void BeginFrame() const override;
-        void EndFrame()   const override;
+        void EndFrame() const override;
         
-        [[nodiscard]] std::unique_ptr<Buffer> CreateBuffer(const BufferDesc& aDesc) override;
+        void FlushUploads() override;
+        
+        [[nodiscard]] std::unique_ptr<IVertexBuffer> CreateVertexBuffer(const VertexBufferDesc& aDesc, std::span<const std::byte> aData) override;
         
         [[nodiscard]] std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) override;
         [[nodiscard]] std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) override;
         
         [[nodiscard]] std::unique_ptr<IRenderContext> CreateRenderContext() override;
 
-        void Signal()        const override;
-        void WaitForGPU()    const override;
+        void Signal() const override;
+        void WaitForGPU() const override;
         void SignalAndWait() const override;
         
+        [[nodiscard]] DX12CopyQueue& GetCopyQueue() const;
         [[nodiscard]] IDXGIFactory7* GetFactory() const;
         [[nodiscard]] ID3D12Device10* GetDevice() const;
         [[nodiscard]] ID3D12CommandQueue* GetCommandQueue() const;

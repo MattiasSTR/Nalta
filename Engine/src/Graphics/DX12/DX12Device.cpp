@@ -3,9 +3,12 @@
 #include "Nalta/Graphics/DX12/DX12Pipeline.h"
 #include "Nalta/Graphics/PipelineDesc.h"
 #include "Nalta/Graphics/Shader.h"
+#include "Nalta/Graphics/DX12/DX12CopyQueue.h"
 #include "Nalta/Graphics/DX12/DX12RenderContext.h"
 #include "Nalta/Graphics/DX12/DX12RenderSurface.h"
+#include "Nalta/Graphics/DX12/DX12UploadBatch.h"
 #include "Nalta/Graphics/DX12/DX12Util.h"
+#include "Nalta/Graphics/DX12/DX12VertexBuffer.h"
 
 #include <d3d12shader.h>
 #include <d3d12.h>
@@ -66,6 +69,12 @@ namespace Nalta::Graphics
             uint32_t                bindCount{ 1 };
             uint32_t                space{ 0 };
             D3D12_SHADER_VISIBILITY visibility{ D3D12_SHADER_VISIBILITY_ALL };
+        };
+        
+        struct ReflectedInputLayout
+        {
+            ComPtr<ID3D12ShaderReflection> reflection;
+            std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
         };
         
         D3D_FEATURE_LEVEL QueryMaxFeatureLevel(IDXGIAdapter4* aAdapter)
@@ -251,6 +260,88 @@ namespace Nalta::Graphics
 
             return rootSignature;
         }
+        
+        ReflectedInputLayout ReflectInputLayout(IDxcUtils* aDxcUtils, const Shader& aShader)
+        {
+            ReflectedInputLayout result;
+
+            if (!aShader.HasStage(ShaderStage::Vertex))
+            {
+                return result;
+            }
+            
+            const auto& bytecode{ aShader.GetBytecode(ShaderStage::Vertex) };
+            if (!bytecode.HasReflection())
+            {
+                return result;
+            }
+            
+            const DxcBuffer reflBuffer
+            {
+                .Ptr      = bytecode.GetReflectionData(),
+                .Size     = bytecode.GetReflectionSize(),
+                .Encoding = DXC_CP_ACP
+            };
+            
+            if (FAILED(aDxcUtils->CreateReflection(&reflBuffer, IID_PPV_ARGS(&result.reflection))))
+            {
+                NL_WARN(GCoreLogger, "DX12Device: failed to reflect vertex shader input layout");
+                return result;
+            }
+            
+            D3D12_SHADER_DESC shaderDesc{};
+            result.reflection->GetDesc(&shaderDesc);
+            
+            for (UINT i{ 0 }; i < shaderDesc.InputParameters; ++i)
+            {
+                D3D12_SIGNATURE_PARAMETER_DESC paramDesc{};
+                result.reflection->GetInputParameterDesc(i, &paramDesc);
+            
+                // Skip system value semantics like SV_VertexID, SV_InstanceID
+                if (paramDesc.SystemValueType != D3D_NAME_UNDEFINED) continue;
+            
+                DXGI_FORMAT format{ DXGI_FORMAT_UNKNOWN };
+            
+                if (paramDesc.Mask == 0x1)
+                {
+                    if      (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) format = DXGI_FORMAT_R32_FLOAT;
+                    else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)  format = DXGI_FORMAT_R32_SINT;
+                    else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)  format = DXGI_FORMAT_R32_UINT;
+                }
+                else if (paramDesc.Mask <= 0x3)
+                {
+                    if      (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) format = DXGI_FORMAT_R32G32_FLOAT;
+                    else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)  format = DXGI_FORMAT_R32G32_SINT;
+                    else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)  format = DXGI_FORMAT_R32G32_UINT;
+                }
+                else if (paramDesc.Mask <= 0x7)
+                {
+                    if      (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) format = DXGI_FORMAT_R32G32B32_FLOAT;
+                    else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)  format = DXGI_FORMAT_R32G32B32_SINT;
+                    else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)  format = DXGI_FORMAT_R32G32B32_UINT;
+                }
+                else if (paramDesc.Mask <= 0xF)
+                {
+                    if      (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+                    else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32)  format = DXGI_FORMAT_R32G32B32A32_SINT;
+                    else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32)  format = DXGI_FORMAT_R32G32B32A32_UINT;
+                }
+                
+                result.elements.push_back(
+                {
+                    .SemanticName         = paramDesc.SemanticName,
+                    .SemanticIndex        = paramDesc.SemanticIndex,
+                    .Format               = format,
+                    .InputSlot            = 0,
+                    .AlignedByteOffset    = D3D12_APPEND_ALIGNED_ELEMENT,
+                    .InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+                    .InstanceDataStepRate = 0
+                });
+            }
+            
+            NL_TRACE(GCoreLogger, "DX12Device: reflected {} input elements", result.elements.size());
+            return result;
+        }
     }
     
     struct DX12Device::Impl
@@ -260,6 +351,9 @@ namespace Nalta::Graphics
         ComPtr<ID3D12Device10> device;
         ComPtr<ID3D12CommandQueue> commandQueue;
         ComPtr<IDxcUtils> dxcUtils;
+        
+        DX12CopyQueue copyQueue;
+        DX12UploadBatch uploadBatch;
         
         std::vector<ComPtr<ID3D12CommandAllocator>> commandAllocators;
         ComPtr<ID3D12GraphicsCommandList7> commandList;
@@ -315,6 +409,10 @@ namespace Nalta::Graphics
         CreateCommandList();
         CreateFence();
         
+        myImpl->copyQueue.Initialize(myImpl->device.Get());
+        myImpl->uploadBatch.Initialize(myImpl->device.Get(), &myImpl->copyQueue);
+        NL_TRACE(GCoreLogger, "DX12Device: copy queue and upload batch initialized");
+        
         if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&myImpl->dxcUtils))))
         {
             NL_FATAL(GCoreLogger, "DX12Device: failed to create DXC utils for reflection");
@@ -337,6 +435,9 @@ namespace Nalta::Graphics
         ComPtr<ID3D12DebugDevice> debugDevice;
         myImpl->device->QueryInterface(IID_PPV_ARGS(&debugDevice));
 #endif
+        
+        myImpl->copyQueue.Shutdown();
+        myImpl->uploadBatch.Shutdown();
 
         // Release everything before reporting
         myImpl->commandList.Reset();
@@ -398,10 +499,18 @@ namespace Nalta::Graphics
         myImpl->frameIndex = (myImpl->frameIndex + 1) % myImpl->framesInFlight;
     }
 
-    std::unique_ptr<Buffer> DX12Device::CreateBuffer(const BufferDesc& /*aDesc*/)
+    void DX12Device::FlushUploads()
     {
-        NL_INFO(GCoreLogger, "[DX12Device] CreateBuffer called");
-        return nullptr;
+        myImpl->uploadBatch.Flush();
+    }
+
+    std::unique_ptr<IVertexBuffer> DX12Device::CreateVertexBuffer(const VertexBufferDesc& aDesc, const std::span<const std::byte> aData)
+    {
+        auto buffer{ std::make_unique<DX12VertexBuffer>(aDesc.stride, aDesc.count) };
+        myImpl->uploadBatch.QueueUpload(aData, buffer.get());
+
+        NL_TRACE(GCoreLogger, "DX12Device: vertex buffer queued ({} vertices)", aDesc.count);
+        return buffer;
     }
 
     std::unique_ptr<IRenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
@@ -452,7 +561,13 @@ namespace Nalta::Graphics
         psoDesc.DepthStencilState.DepthEnable    = aDesc.depth.depthEnabled ? TRUE : FALSE;
         psoDesc.DepthStencilState.DepthWriteMask = aDesc.depth.depthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
         
-        psoDesc.InputLayout           = { nullptr, 0 };
+        const auto reflectedLayout{ ReflectInputLayout(myImpl->dxcUtils.Get(), *aDesc.shader) };
+        psoDesc.InputLayout =
+        {
+            .pInputElementDescs = reflectedLayout.elements.empty() ? nullptr : reflectedLayout.elements.data(),
+            .NumElements        = static_cast<UINT>(reflectedLayout.elements.size())
+        };
+        
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets      = 1;
         psoDesc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -505,6 +620,11 @@ namespace Nalta::Graphics
     {
         Signal();
         WaitForGPU();
+    }
+
+    DX12CopyQueue& DX12Device::GetCopyQueue() const
+    {
+        return myImpl->copyQueue;
     }
 
     IDXGIFactory7* DX12Device::GetFactory() const
@@ -565,7 +685,6 @@ namespace Nalta::Graphics
             infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
             infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
             infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
-            NL_TRACE(GCoreLogger, "DX12Device: info queue configured");
             
             // Filter out the expected live device warning on shutdown
             D3D12_MESSAGE_ID filteredMessages[]

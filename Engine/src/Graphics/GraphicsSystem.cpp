@@ -3,6 +3,7 @@
 
 #include "Nalta/Graphics/GraphicsFactory.h"
 #include "Nalta/Graphics/RenderSurfaceDesc.h"
+#include "Nalta/Graphics/ShaderCompiler.h"
 #include "Nalta/Platform/IWindow.h"
 
 namespace Nalta
@@ -24,20 +25,22 @@ namespace Nalta
         myDevice->Initialize(deviceDesc);
         myRenderContext = myDevice->CreateRenderContext();
         
-        myShaderCompiler.Initialize();
+        myShaderCompiler = std::make_unique<ShaderCompiler>();
+        myShaderCompiler->Initialize();
 
         NL_INFO(GCoreLogger, "GraphicsSystem: initialized");
     }
 
     void GraphicsSystem::Shutdown()
     {
-        myShaderCompiler.Shutdown();
+        myShaderCompiler->Shutdown();
         
         if (myDevice)
         {
             myDevice->SignalAndWait(); // Drain GPU before releasing any surfaces
         }
         
+        myVertexBuffers.clear();
         myPipelines.clear();
         mySurfaces.clear();
 
@@ -80,6 +83,12 @@ namespace Nalta
         {
             entry.surface->Present(); // Present after GPU work is submitted
         }
+    }
+
+    void GraphicsSystem::FlushUploads() const
+    {
+        myDevice->FlushUploads();
+        NL_TRACE(GCoreLogger, "GraphicsSystem: uploads flushed");
     }
 
     RenderSurfaceHandle GraphicsSystem::CreateSurface(const RenderSurfaceDesc& aDesc)
@@ -154,5 +163,29 @@ namespace Nalta
         });
 
         NL_INFO(GCoreLogger, "GraphicsSystem: pipeline destroyed");
+    }
+
+    VertexBufferHandle GraphicsSystem::CreateVertexBuffer(const VertexBufferDesc& aDesc, const std::span<const std::byte> aData)
+    {
+        N_CORE_ASSERT(aDesc.stride > 0, "GraphicsSystem: vertex buffer stride must be > 0");
+        N_CORE_ASSERT(aDesc.count  > 0, "GraphicsSystem: vertex buffer count must be > 0");
+        N_CORE_ASSERT(!aData.empty(),   "GraphicsSystem: vertex buffer data must not be empty");
+
+        auto buffer{ myDevice->CreateVertexBuffer(aDesc, aData) };
+        
+        const VertexBufferHandle handle{ buffer.get() };
+        myVertexBuffers.push_back(std::move(buffer));
+        
+        NL_INFO(GCoreLogger, "GraphicsSystem: vertex buffer created ({} vertices, {} stride)",aDesc.count, aDesc.stride);
+        return handle;
+    }
+
+    void GraphicsSystem::DestroyVertexBuffer(const VertexBufferHandle aHandle)
+    {
+        std::erase_if(myVertexBuffers, [&](const std::unique_ptr<IVertexBuffer>& b)
+        {
+            return b.get() == aHandle.Get();
+        });
+        NL_INFO(GCoreLogger, "GraphicsSystem: vertex buffer destroyed");
     }
 }

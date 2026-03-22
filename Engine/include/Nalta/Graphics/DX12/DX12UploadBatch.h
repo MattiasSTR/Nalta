@@ -1,0 +1,42 @@
+﻿#pragma once
+#include <cstdint>
+#include <memory>
+#include <span>
+#include <vector>
+
+struct ID3D12Device10;
+
+namespace Nalta::Graphics
+{
+    class DX12CopyQueue;
+    class IDX12GPUResource;
+
+    class DX12UploadBatch
+    {
+    public:
+        DX12UploadBatch();
+        ~DX12UploadBatch();
+
+        void Initialize(ID3D12Device10* aDevice, DX12CopyQueue* aCopyQueue);
+        void Shutdown();
+
+        void QueueUpload(std::span<const std::byte> aData, IDX12GPUResource* aTarget);
+        void Flush();
+
+        [[nodiscard]] bool HasPendingUploads() const;
+
+    private:
+        struct PendingUpload
+        {
+            std::vector<std::byte> data;
+            IDX12GPUResource* target{ nullptr };
+        };
+
+        struct Impl;
+        std::unique_ptr<Impl> myImpl;
+
+        std::vector<PendingUpload> myPendingUploads;
+        ID3D12Device10* myDevice{ nullptr };
+        DX12CopyQueue* myCopyQueue{ nullptr };
+    };
+}

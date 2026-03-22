@@ -1,5 +1,6 @@
 #include "SandboxGame.h"
 
+#include <array>
 #include <Nalta/Core/Assert.h>
 #include <Nalta/Core/Paths.h>
 #include <Nalta/Core/InitContext.h>
@@ -10,6 +11,7 @@
 #include <Nalta/Graphics/PipelineDesc.h>
 #include <Nalta/Graphics/RenderFrame.h>
 #include <Nalta/Core/Math.h>
+#include <Nalta/Graphics/ShaderCompiler.h>
 
 void SandboxGame::Initialize(const Nalta::InitContext& aContext)
 {
@@ -21,7 +23,7 @@ void SandboxGame::Initialize(const Nalta::InitContext& aContext)
             { Nalta::Graphics::ShaderStage::Pixel,  "PSMain" }
     };
 
-    auto shader{ aContext.graphicsSystem->GetShaderCompiler().Compile(shaderDesc) };
+    auto shader{ aContext.graphicsSystem->GetShaderCompiler()->Compile(shaderDesc) };
     N_ASSERT(shader, "SandboxGame: failed to compile triangle shader");
 
     Nalta::Graphics::PipelineDesc pipelineDesc;
@@ -30,11 +32,28 @@ void SandboxGame::Initialize(const Nalta::InitContext& aContext)
     myTrianglePipeline = aContext.graphicsSystem->CreatePipeline(pipelineDesc);
     N_ASSERT(myTrianglePipeline.IsValid(), "SandboxGame: failed to create triangle pipeline");
     
-    float3 position{ 1.0f, 0.0f, 0.0f };
-    float3 normal{ 0.0f, 1.0f, 0.0f };
-    [[maybe_unused]] float  d{ dot(position, normal) };
-    [[maybe_unused]] float3 n{ normalize(position) };
-    [[maybe_unused]] float4x4 view{ float4x4::identity() };
+    struct Vertex
+    {
+        interop::float3 position;
+        interop::float3 color;
+    };
+
+    static_assert(sizeof(Vertex) == 24, "Vertex must be 24 bytes");
+
+    const std::array<Vertex, 3> vertices
+    {
+        Vertex{ float3( 0.0f,  0.5f, 0.0f), float3(1.0f, 0.0f, 0.0f) },
+        Vertex{ float3( 0.5f, -0.5f, 0.0f), float3(0.0f, 1.0f, 0.0f) },
+        Vertex{ float3(-0.5f, -0.5f, 0.0f), float3(0.0f, 0.0f, 1.0f) }
+    };
+
+    Nalta::Graphics::VertexBufferDesc vbDesc;
+    vbDesc.stride = sizeof(Vertex);
+    vbDesc.count  = static_cast<uint32_t>(vertices.size());
+
+    myTriangleVB = aContext.graphicsSystem->CreateVertexBuffer(vbDesc, std::as_bytes(std::span(vertices)));
+
+    N_ASSERT(myTriangleVB.IsValid(), "SandboxGame: failed to create vertex buffer");
 }
 
 void SandboxGame::Shutdown()
@@ -50,5 +69,6 @@ void SandboxGame::Update(const Nalta::UpdateContext&)
 void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
 {
     aContext.frame.SetPipeline(myTrianglePipeline);
+    aContext.frame.SetVertexBuffer(myTriangleVB);
     aContext.frame.Draw(3);
 }

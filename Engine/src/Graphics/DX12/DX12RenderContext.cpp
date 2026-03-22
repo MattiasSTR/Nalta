@@ -3,6 +3,7 @@
 #include "Nalta/Graphics/DX12/DX12Device.h"
 #include "Nalta/Graphics/DX12/DX12Pipeline.h"
 #include "Nalta/Graphics/RenderCommands.h"
+#include "Nalta/Graphics/DX12/DX12VertexBuffer.h"
 
 #include <d3d12.h>
 
@@ -37,6 +38,21 @@ namespace Nalta::Graphics
                     cmdList->SetGraphicsRootSignature(pipeline->GetRootSignature());
                     cmdList->SetPipelineState(pipeline->GetPipelineState());
                     cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                }
+                else if constexpr (std::is_same_v<T, SetVertexBufferCmd>)
+                {
+                    N_ASSERT(aCmd.buffer.IsValid(), "DX12RenderContext: invalid vertex buffer handle");
+                    const auto* vb{ static_cast<DX12VertexBuffer*>(aCmd.buffer.Get()) };
+                    N_ASSERT(vb->IsReady(), "DX12RenderContext: vertex buffer not yet uploaded");
+
+                    const D3D12_VERTEX_BUFFER_VIEW view
+                    {
+                        .BufferLocation = vb->GetGPUAddress(),
+                        .SizeInBytes    = vb->GetSizeInBytes(),
+                        .StrideInBytes  = vb->GetStride()
+                    };
+
+                    cmdList->IASetVertexBuffers(0, 1, &view);
                 }
                 else if constexpr (std::is_same_v<T, DrawCmd>)
                 {
