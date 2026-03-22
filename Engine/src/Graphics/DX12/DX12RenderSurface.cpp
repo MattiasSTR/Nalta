@@ -1,6 +1,7 @@
 ﻿#include "npch.h"
 #include "Nalta/Graphics/DX12/DX12RenderSurface.h"
 #include "Nalta/Graphics/DX12/DX12Device.h"
+#include "Nalta/Graphics/DX12/DX12Util.h"
 #include "Nalta/Platform/IWindow.h"
 
 #include <d3d12.h>
@@ -111,6 +112,8 @@ namespace Nalta::Graphics
         
         D3D12_CPU_DESCRIPTOR_HANDLE handle{ myImpl->rtvHeap->GetCPUDescriptorHandleForHeapStart() };
         
+        DX12_SET_NAME(myImpl->rtvHeap.Get(), "RTV Descriptor Heap");
+        
         for (uint32_t i{ 0 }; i < myImpl->bufferCount; ++i)
         {
             if (FAILED(myImpl->swapChain->GetBuffer(i, IID_PPV_ARGS(&myImpl->backbuffers[i]))))
@@ -121,6 +124,9 @@ namespace Nalta::Graphics
             myImpl->device->CreateRenderTargetView(myImpl->backbuffers[i].Get(), nullptr, handle);
             myImpl->rtvHandles[i] = handle;
             handle.ptr += myImpl->rtvDescriptorSize;
+            
+            const std::wstring name{ L"Backbuffer " + std::to_wstring(i) };
+            DX12_SET_NAME_W(myImpl->backbuffers[i].Get(), name.c_str());
         }
     }
     

@@ -5,3 +5,5 @@ build/
 
 # Project Files
 *.sln
+
+*.user

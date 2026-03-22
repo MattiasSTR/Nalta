@@ -1,6 +1,8 @@
 ﻿#include "npch.h"
 #include "Nalta/Graphics/DX12/DX12Pipeline.h"
 
+#include "Nalta/Graphics/DX12/DX12Util.h"
+
 #include <d3d12.h>
 #include <wrl/client.h>
 
@@ -19,6 +21,9 @@ namespace Nalta::Graphics
     {
         myImpl->pipelineState = aPipelineState;
         myImpl->rootSignature = aRootSignature;
+        
+        DX12_SET_NAME(myImpl->pipelineState.Get(), "Pipeline State");
+        DX12_SET_NAME(myImpl->rootSignature.Get(), "Root Signature");
     }
 
     DX12Pipeline::~DX12Pipeline() = default;

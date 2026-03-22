@@ -5,6 +5,7 @@
 #include "Nalta/Graphics/Shader.h"
 #include "Nalta/Graphics/DX12/DX12RenderContext.h"
 #include "Nalta/Graphics/DX12/DX12RenderSurface.h"
+#include "Nalta/Graphics/DX12/DX12Util.h"
 
 #include <d3d12shader.h>
 #include <d3d12.h>
@@ -273,6 +274,7 @@ namespace Nalta::Graphics
 
 #ifndef N_SHIPPING
         ComPtr<ID3D12Debug6> debugController;
+        DWORD callbackCookie{ 0 };
 #endif
     };
     
@@ -304,6 +306,8 @@ namespace Nalta::Graphics
         {
             NL_FATAL(GCoreLogger, "DX12Device: failed to create D3D12 device");
         }
+        
+        DX12_SET_NAME(myImpl->device.Get(), "Main D3D12 Device");
 
         InitInfoQueue();
         CreateCommandQueue();
@@ -328,6 +332,29 @@ namespace Nalta::Graphics
             CloseHandle(myImpl->fenceEvent);
             myImpl->fenceEvent = nullptr;
         }
+        
+#ifndef N_SHIPPING
+        ComPtr<ID3D12DebugDevice> debugDevice;
+        myImpl->device->QueryInterface(IID_PPV_ARGS(&debugDevice));
+#endif
+
+        // Release everything before reporting
+        myImpl->commandList.Reset();
+        myImpl->commandAllocators.clear();
+        myImpl->commandQueue.Reset();
+        myImpl->fence.Reset();
+        myImpl->dxcUtils.Reset();
+        myImpl->adapter.Reset();
+        myImpl->factory.Reset();
+        myImpl->device.Reset();
+
+#ifndef N_SHIPPING
+        if (debugDevice != nullptr)
+        {
+            debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
+            debugDevice.Reset();
+        }
+#endif
         
         myImpl.reset();
         NL_INFO(GCoreLogger, "DX12Device: shutdown");
@@ -384,11 +411,11 @@ namespace Nalta::Graphics
 
     std::unique_ptr<IPipeline> DX12Device::CreatePipeline(const PipelineDesc& aDesc)
     {
-        N_ASSERT(aDesc.shader, "DX12Device: CreatePipeline called with null shader");
+        N_CORE_ASSERT(aDesc.shader, "DX12Device: CreatePipeline called with null shader");
 
         ComPtr<ID3D12RootSignature> rootSignature{ ReflectRootSignature(myImpl->dxcUtils.Get(), myImpl->device.Get(), *aDesc.shader) };
         
-        if (!rootSignature)
+        if (rootSignature == nullptr)
         {
             NL_ERROR(GCoreLogger, "DX12Device: failed to reflect root signature");
             return nullptr;
@@ -439,6 +466,9 @@ namespace Nalta::Graphics
             NL_ERROR(GCoreLogger, "DX12Device: failed to create pipeline state");
             return nullptr;
         }
+        
+        DX12_SET_NAME(rootSignature.Get(), "Reflected Root Signature");
+        DX12_SET_NAME(pipelineState.Get(), "Graphics Pipeline State");
 
         NL_TRACE(GCoreLogger, "DX12Device: pipeline created");
         return std::make_unique<DX12Pipeline>(pipelineState.Get(), rootSignature.Get());
@@ -536,7 +566,58 @@ namespace Nalta::Graphics
             infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
             infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
             NL_TRACE(GCoreLogger, "DX12Device: info queue configured");
+            
+            // Filter out the expected live device warning on shutdown
+            D3D12_MESSAGE_ID filteredMessages[]
+            {
+                D3D12_MESSAGE_ID_LIVE_DEVICE
+            };
+
+            D3D12_INFO_QUEUE_FILTER filter{};
+            filter.DenyList.NumIDs  = static_cast<UINT>(std::size(filteredMessages));
+            filter.DenyList.pIDList = filteredMessages;
+            infoQueue->AddStorageFilterEntries(&filter);
         }
+        
+        // Message callback via ID3D12InfoQueue1 — routes to logger
+        ComPtr<ID3D12InfoQueue1> infoQueue1;
+        if (SUCCEEDED(myImpl->device->QueryInterface(IID_PPV_ARGS(&infoQueue1))))
+        {
+            infoQueue1->RegisterMessageCallback(
+                [](D3D12_MESSAGE_CATEGORY, D3D12_MESSAGE_SEVERITY aSeverity,
+                   D3D12_MESSAGE_ID, LPCSTR aDescription, void*)
+                {
+                    switch (aSeverity)
+                    {
+                        case D3D12_MESSAGE_SEVERITY_CORRUPTION:
+                        case D3D12_MESSAGE_SEVERITY_ERROR:
+                        {
+                            NL_ERROR(GCoreLogger, "[D3D12] {}", aDescription);
+                            break;
+                        }
+                        case D3D12_MESSAGE_SEVERITY_WARNING:
+                        {
+                            NL_WARN(GCoreLogger, "[D3D12] {}", aDescription);
+                            break;
+                        }
+                        case D3D12_MESSAGE_SEVERITY_INFO:
+                        {
+                            NL_INFO(GCoreLogger, "[D3D12] {}", aDescription);
+                            break;
+                        }
+                        default:
+                        {
+                            NL_TRACE(GCoreLogger, "[D3D12] {}", aDescription);
+                            break;
+                        }
+                    }
+                },
+                D3D12_MESSAGE_CALLBACK_FLAG_NONE,
+                nullptr,
+                &myImpl->callbackCookie);
+        }
+
+        NL_TRACE(GCoreLogger, "DX12Device: info queue configured");
 #endif
     }
 
@@ -581,6 +662,7 @@ namespace Nalta::Graphics
         }
 
         NL_TRACE(GCoreLogger, "DX12Device: command queue created");
+        DX12_SET_NAME(myImpl->commandQueue.Get(), "Main Command Queue");
     }
 
     void DX12Device::CreateCommandAllocators() const
@@ -596,6 +678,9 @@ namespace Nalta::Graphics
             {
                 NL_FATAL(GCoreLogger, "DX12Device: failed to create command allocator {}", i);
             }
+            
+            const std::wstring name{ L"Command Allocator " + std::to_wstring(i) };
+            DX12_SET_NAME_W(myImpl->commandAllocators[i].Get(), name.c_str());
         }
 
         NL_TRACE(GCoreLogger, "DX12Device: {} command allocators created", myImpl->framesInFlight);
@@ -613,6 +698,7 @@ namespace Nalta::Graphics
         }
 
         NL_TRACE(GCoreLogger, "DX12Device: command list created");
+        DX12_SET_NAME(myImpl->commandList.Get(), "Main Command List");
     }
 
     void DX12Device::CreateFence() const
@@ -631,5 +717,6 @@ namespace Nalta::Graphics
         }
 
         NL_TRACE(GCoreLogger, "DX12Device: fence created");
+        DX12_SET_NAME(myImpl->fence.Get(), "Main Fence");
     }
 }

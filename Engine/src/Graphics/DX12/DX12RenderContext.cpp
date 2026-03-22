@@ -32,7 +32,7 @@ namespace Nalta::Graphics
 
                 if constexpr (std::is_same_v<T, SetPipelineCmd>)
                 {
-                    N_ASSERT(aCmd.pipeline.IsValid(), "DX12RenderContext: invalid pipeline handle");
+                    N_CORE_ASSERT(aCmd.pipeline.IsValid(), "DX12RenderContext: invalid pipeline handle");
                     const auto* pipeline{ static_cast<DX12Pipeline*>(aCmd.pipeline.Get()) };
                     cmdList->SetGraphicsRootSignature(pipeline->GetRootSignature());
                     cmdList->SetPipelineState(pipeline->GetPipelineState());
