@@ -22,6 +22,7 @@ namespace Nalta
         deviceDesc.framesInFlight = 2;
 
         myDevice->Initialize(deviceDesc);
+        myRenderContext = myDevice->CreateRenderContext();
         
         myShaderCompiler.Initialize();
 

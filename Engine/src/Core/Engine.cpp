@@ -3,6 +3,7 @@
 
 #include "Nalta/Core/Timer.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
+#include "Nalta/Graphics/IRenderContext.h"
 #include "Nalta/Graphics/IRenderSurface.h"
 #include "Nalta/Graphics/RenderSurfaceDesc.h"
 #include "Nalta/Platform/IWindow.h"
@@ -226,6 +227,7 @@ namespace Nalta
 			myGraphicsSystem->BeginFrame();
 			myMainSurface->SetAsRenderTarget();
 			myMainSurface->Clear(clearColor);
+			myGraphicsSystem->GetRenderContext()->Execute(frame);
 			myGraphicsSystem->EndFrame();
 		}
 		

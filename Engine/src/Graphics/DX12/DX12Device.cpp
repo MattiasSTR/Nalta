@@ -3,6 +3,7 @@
 #include "Nalta/Graphics/DX12/DX12Pipeline.h"
 #include "Nalta/Graphics/PipelineDesc.h"
 #include "Nalta/Graphics/Shader.h"
+#include "Nalta/Graphics/DX12/DX12RenderContext.h"
 #include "Nalta/Graphics/DX12/DX12RenderSurface.h"
 
 #include <d3d12shader.h>
@@ -443,22 +444,9 @@ namespace Nalta::Graphics
         return std::make_unique<DX12Pipeline>(pipelineState.Get(), rootSignature.Get());
     }
 
-    std::shared_ptr<GraphicsContext> DX12Device::CreateGraphicsContext()
+    std::unique_ptr<IRenderContext> DX12Device::CreateRenderContext()
     {
-        NL_INFO(GCoreLogger, "[DX12Device] CreateGraphicsContext called");
-        return nullptr;
-    }
-
-    std::shared_ptr<ComputeContext> DX12Device::CreateComputeContext()
-    {
-        NL_INFO(GCoreLogger, "[DX12Device] CreateComputeContext called");
-        return nullptr;
-    }
-
-    std::shared_ptr<UploadContext> DX12Device::CreateUploadContext()
-    {
-        NL_INFO(GCoreLogger, "[DX12Device] CreateUploadContext called");
-        return nullptr;
+        return std::make_unique<DX12RenderContext>(this);
     }
 
     void DX12Device::Signal() const

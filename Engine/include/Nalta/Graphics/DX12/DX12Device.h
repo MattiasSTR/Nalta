@@ -29,10 +29,8 @@ namespace Nalta::Graphics
         [[nodiscard]] std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) override;
         [[nodiscard]] std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) override;
         
-        [[nodiscard]] std::shared_ptr<ComputeContext> CreateComputeContext() override;
-        [[nodiscard]] std::shared_ptr<GraphicsContext> CreateGraphicsContext() override;
-        [[nodiscard]] std::shared_ptr<UploadContext> CreateUploadContext() override;
-        
+        [[nodiscard]] std::unique_ptr<IRenderContext> CreateRenderContext() override;
+
         void Signal()        const override;
         void WaitForGPU()    const override;
         void SignalAndWait() const override;

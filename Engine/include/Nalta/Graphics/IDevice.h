@@ -1,8 +1,8 @@
 ﻿#pragma once
 #include "Buffer.h"
-#include "Context.h"
 #include "DeviceDesc.h"
 #include "IPipeline.h"
+#include "IRenderContext.h"
 #include "IRenderSurface.h"
 #include "PipelineDesc.h"
 #include "RenderSurfaceDesc.h"
@@ -30,12 +30,8 @@ namespace Nalta
             
             [[nodiscard]] virtual std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) = 0;
             [[nodiscard]] virtual std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) = 0;
-
             
-            // Create contexts
-            virtual std::shared_ptr<GraphicsContext> CreateGraphicsContext() = 0;
-            virtual std::shared_ptr<ComputeContext> CreateComputeContext() = 0;
-            virtual std::shared_ptr<UploadContext> CreateUploadContext() = 0;
+            [[nodiscard]] virtual std::unique_ptr<IRenderContext> CreateRenderContext() = 0;
             
             virtual void BeginFrame() const = 0;
             virtual void EndFrame()   const = 0;

@@ -2,31 +2,16 @@
 
 #include "EngineConfig.h"
 #include "FrameQueue.h"
-#include "Nalta/Graphics/PipelineHandle.h"
+#include "Nalta/Graphics/RenderFrame.h"
 #include "Nalta/Graphics/RenderSurfaceHandle.h"
 #include "Nalta/Platform/WindowHandle.h"
 
 #include <atomic>
 #include <memory>
 #include <thread>
-#include <unordered_map>
-#include <vector>
 
 namespace Nalta 
 {
-	// TEMP
-	struct RenderFrame
-	{
-		struct MeshDraw
-		{
-			// mesh id
-			// transform
-			// material id
-		};
-
-		std::vector<MeshDraw> meshes;
-	};
-	
 	namespace Graphics
 	{
 		class IRenderSurface;

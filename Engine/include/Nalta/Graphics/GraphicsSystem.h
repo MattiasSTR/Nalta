@@ -14,6 +14,7 @@ namespace Nalta
     namespace Graphics
     {
         class IDevice;
+        class IRenderContext;
         class IRenderSurface;
     }
     
@@ -37,10 +38,12 @@ namespace Nalta
         void DestroyPipeline(Graphics::PipelineHandle aHandle);
 
         [[nodiscard]] Graphics::IDevice* GetDevice() const { return myDevice.get(); }
+        [[nodiscard]] Graphics::IRenderContext* GetRenderContext() const { return myRenderContext.get(); }
         [[nodiscard]] Graphics::ShaderCompiler& GetShaderCompiler() { return myShaderCompiler; }
 
     private:
         std::unique_ptr<Graphics::IDevice> myDevice;
+        std::unique_ptr<Graphics::IRenderContext> myRenderContext;
         Graphics::ShaderCompiler myShaderCompiler;
         
         std::vector<std::unique_ptr<Graphics::IPipeline>> myPipelines;
