@@ -26,6 +26,11 @@ namespace Nalta
         
         void SetOnWindowDestroyedCallback(OnWindowDestroyedCallback aCallback) override;
         
+        void SetCurrentThreadName(const std::string& aName) const override;
+
+        [[nodiscard]] uint32_t GetCPUCoreCount() const override;
+        [[nodiscard]] uint64_t GetSystemMemoryBytes() const override;
+        
     private:
         struct Impl;
         std::unique_ptr<Impl> myImpl;

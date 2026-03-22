@@ -22,5 +22,10 @@ namespace Nalta
         [[nodiscard]] virtual WindowHandle GetMainWindow() const = 0;
         
         virtual void SetOnWindowDestroyedCallback(OnWindowDestroyedCallback aCallback) = 0;
+        
+        virtual void SetCurrentThreadName(const std::string& aName) const = 0;
+
+        [[nodiscard]] virtual uint32_t GetCPUCoreCount() const = 0;
+        [[nodiscard]] virtual uint64_t GetSystemMemoryBytes() const = 0;
     };
 }

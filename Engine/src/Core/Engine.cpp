@@ -45,6 +45,11 @@ namespace Nalta
 			myPlatformSystem = CreatePlatformSystem();
 			myPlatformSystem->Initialize();
 			
+			const uint32_t coreCount{ myPlatformSystem->GetCPUCoreCount() };
+			const uint64_t memoryBytes{ myPlatformSystem->GetSystemMemoryBytes() };
+			NL_INFO(GCoreLogger, "CPU logical cores: {}", coreCount);
+			NL_INFO(GCoreLogger, "System memory: {} MB", memoryBytes / (1024u * 1024u));
+			
 			myGraphicsSystem = std::make_unique<GraphicsSystem>();
 			myGraphicsSystem->Initialize();
 			
@@ -126,6 +131,11 @@ namespace Nalta
 
 	void Engine::RunClientLoop()
 	{
+		if (myPlatformSystem != nullptr)
+		{
+			myPlatformSystem->SetCurrentThreadName("Main");
+		}
+		
 		NL_INFO(GCoreLogger, "Running client loop with rendering");
 		myUpdateThread = std::thread(&Engine::UpdateLoop, this);
 		myRenderThread = std::thread(&Engine::RenderLoop, this);
@@ -159,6 +169,11 @@ namespace Nalta
 
 	void Engine::UpdateLoop()
 	{
+		if (myPlatformSystem != nullptr)
+		{
+			myPlatformSystem->SetCurrentThreadName("Update");
+		}
+		
 		const LoggerScope gameScope(GCoreLogger, "UpdateLoop");
 		NL_INFO(GCoreLogger, "Update loop started");
 		
@@ -189,6 +204,11 @@ namespace Nalta
 
 	void Engine::RenderLoop()
 	{
+		if (myPlatformSystem != nullptr)
+		{
+			myPlatformSystem->SetCurrentThreadName("Render");
+		}
+		
 		const LoggerScope renderScope(GCoreLogger, "RenderLoop");
 		NL_INFO(GCoreLogger, "Render loop started");
 		

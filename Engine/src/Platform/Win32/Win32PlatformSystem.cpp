@@ -156,4 +156,27 @@ namespace Nalta
     {
         myImpl->onWindowDestroyed = std::move(aCallback);
     }
+
+    void Win32PlatformSystem::SetCurrentThreadName(const std::string& aName) const
+    {
+        const int size{ MultiByteToWideChar(CP_UTF8, 0, aName.c_str(), -1, nullptr, 0) };
+        std::wstring wide(size, L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, aName.c_str(), -1, wide.data(), size);
+        SetThreadDescription(GetCurrentThread(), wide.c_str());
+    }
+
+    uint32_t Win32PlatformSystem::GetCPUCoreCount() const
+    {
+        SYSTEM_INFO si{};
+        GetSystemInfo(&si);
+        return static_cast<uint32_t>(si.dwNumberOfProcessors);
+    }
+
+    uint64_t Win32PlatformSystem::GetSystemMemoryBytes() const
+    {
+        MEMORYSTATUSEX ms{};
+        ms.dwLength = sizeof(ms);
+        GlobalMemoryStatusEx(&ms);
+        return static_cast<uint64_t>(ms.ullTotalPhys);
+    }
 }
