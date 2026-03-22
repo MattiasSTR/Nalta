@@ -7,6 +7,7 @@ project "Sandbox"
     objdir(dirs.obj .. "/%{outputdir}/%{prj.name}")
     
     files {
+	"**.h",
         "**.cpp"
     }
 

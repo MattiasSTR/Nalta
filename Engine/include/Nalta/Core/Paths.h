@@ -7,5 +7,6 @@ namespace Nalta
     {
     public:
         [[nodiscard]] static std::filesystem::path RootDir();
+        [[nodiscard]] static std::filesystem::path EngineAssetDir();
     };
 }

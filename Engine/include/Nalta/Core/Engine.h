@@ -5,6 +5,7 @@
 #include "Nalta/Graphics/RenderFrame.h"
 #include "Nalta/Graphics/RenderSurfaceHandle.h"
 #include "Nalta/Platform/WindowHandle.h"
+#include "Nalta/Core/IGame.h"
 
 #include <atomic>
 #include <memory>
@@ -28,6 +29,8 @@ namespace Nalta
 		explicit Engine(const EngineConfig& aConfig);
 		~Engine();
 		
+		static void Launch(const EngineConfig& aConfig);
+		
 		void Initialize();
 		void Shutdown();
 
@@ -47,6 +50,8 @@ namespace Nalta
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
 		WindowHandle myMainWindow;
 		std::unique_ptr<GraphicsSystem> myGraphicsSystem;
+		
+		std::unique_ptr<IGame> myGame;
 		
 		std::thread myUpdateThread;
 		std::thread myRenderThread;

@@ -7,4 +7,9 @@ namespace Nalta
     {
         return { N_ROOT_DIR };
     }
+
+    std::filesystem::path Paths::EngineAssetDir()
+    {
+        return RootDir() / "Engine" / "Assets";
+    }
 }

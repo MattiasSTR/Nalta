@@ -1,7 +1,10 @@
 #include "npch.h"
 #include "Nalta/Core/Engine.h"
 
+#include "Nalta/Core/InitContext.h"
+#include "Nalta/Core/RenderFrameContext.h"
 #include "Nalta/Core/Timer.h"
+#include "Nalta/Core/UpdateContext.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
 #include "Nalta/Graphics/IRenderContext.h"
 #include "Nalta/Graphics/IRenderSurface.h"
@@ -35,7 +38,20 @@ namespace Nalta
 	}
 
 	Engine::~Engine() = default;
-	
+
+	void Engine::Launch(const EngineConfig& aConfig)
+	{
+		bool restart{ true };
+		while (restart)
+		{
+			Engine engine{ aConfig };
+			engine.Initialize();
+			engine.Run();
+			engine.Shutdown();
+			restart = engine.WantsRestart();
+		}
+	}
+
 	void Engine::Initialize()
 	{
 		const LoggerScope engineScope(GCoreLogger, "Engine::Initialize");
@@ -77,11 +93,29 @@ namespace Nalta
 		{
 			NL_INFO(GCoreLogger, "Headless mode: skipping window system");
 		}
+		
+		if (myConfig.gameFactory)
+		{
+			myGame = myConfig.gameFactory();
+
+			InitContext initContext;
+			initContext.graphicsSystem = myGraphicsSystem.get();
+			myGame->Initialize(initContext);
+
+			NL_INFO(GCoreLogger, "Engine: game initialized");
+		}
 	}
 
 	void Engine::Shutdown()
 	{
 		const LoggerScope engineScope(GCoreLogger, "Engine::Shutdown");
+		
+		if (myGame)
+		{
+			myGame->Shutdown();
+			myGame.reset();
+			NL_INFO(GCoreLogger, "Game shutdown");
+		}
 		
 		if (myGraphicsSystem)
 		{
@@ -192,10 +226,21 @@ namespace Nalta
 				timer.ConsumeFixedUpdate();
 			}
 			
+			if (myGame)
+			{
+				UpdateContext updateContext;
+				updateContext.deltaTime = static_cast<float>(timer.GetDeltaTime());
+				myGame->Update(updateContext);
+			}
+			
 			if (canRender)
 			{
 				RenderFrame frame;
-				// Build RenderFrame
+				if (myGame)
+				{
+					RenderFrameContext frameContext{ frame };
+					myGame->BuildRenderFrame(frameContext);
+				}
 				myRenderQueue.Push(std::move(frame));
 			}
 		}

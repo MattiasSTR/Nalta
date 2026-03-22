@@ -1,7 +1,9 @@
 ﻿#pragma once
+#include "Nalta/Core/IGame.h"
 #include "Nalta/Core/Logger.h"
 #include "Nalta/Platform/WindowDesc.h"
 
+#include <functional>
 #include <optional>
 
 namespace Nalta
@@ -22,6 +24,8 @@ namespace Nalta
         
         // Window settings (optional; used if headless==false)
         std::optional<WindowDesc> mainWindowDesc;
+        
+        std::function<std::unique_ptr<IGame>()> gameFactory;
         
         // Logging settings
         LoggerConfig coreLogger;         // Core engine logger
