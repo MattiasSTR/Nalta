@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/Graphics/IPipeline.h"
+#include "Nalta/Graphics/Pipeline/IPipeline.h"
 
 #include <memory>
 

@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/Graphics/IGPUResource.h"
+#include "Nalta/Graphics/Buffers/IGPUResource.h"
 
 struct ID3D12Resource;
 

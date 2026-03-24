@@ -1,9 +1,9 @@
 #pragma once
 #include <Nalta/Core/IGame.h>
-#include <Nalta/Graphics/ConstantBufferHandle.h>
-#include <Nalta/Graphics/IndexBufferHandle.h>
-#include <Nalta/Graphics/PipelineHandle.h>
-#include <Nalta/Graphics/VertexBufferHandle.h>
+#include <Nalta/Graphics/Buffers/ConstantBufferHandle.h>
+#include <Nalta/Graphics/Buffers/IndexBufferHandle.h>
+#include <Nalta/Graphics/Pipeline/PipelineHandle.h>
+#include <Nalta/Graphics/Buffers/VertexBufferHandle.h>
 
 class SandboxGame final : public Nalta::IGame
 {

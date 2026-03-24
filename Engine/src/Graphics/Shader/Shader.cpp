@@ -1,5 +1,5 @@
 ﻿#include "npch.h"
-#include "Nalta/Graphics/Shader.h"
+#include "Nalta/Graphics/Shader/Shader.h"
 
 namespace Nalta::Graphics
 {

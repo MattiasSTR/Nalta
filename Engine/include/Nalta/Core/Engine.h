@@ -2,10 +2,10 @@
 
 #include "EngineConfig.h"
 #include "FrameQueue.h"
-#include "Nalta/Graphics/RenderFrame.h"
-#include "Nalta/Graphics/RenderSurfaceHandle.h"
-#include "Nalta/Platform/WindowHandle.h"
 #include "Nalta/Core/IGame.h"
+#include "Nalta/Graphics/Commands/RenderFrame.h"
+#include "Nalta/Graphics/Surface/RenderSurfaceHandle.h"
+#include "Nalta/Platform/WindowHandle.h"
 
 #include <atomic>
 #include <memory>

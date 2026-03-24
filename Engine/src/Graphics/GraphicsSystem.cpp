@@ -2,11 +2,11 @@
 #include "Nalta/Graphics/GraphicsSystem.h"
 
 #include "Nalta/Graphics/GraphicsFactory.h"
-#include "Nalta/Graphics/IIndexBuffer.h"
-#include "Nalta/Graphics/IVertexBuffer.h"
-#include "Nalta/Graphics/IConstantBuffer.h"
-#include "Nalta/Graphics/RenderSurfaceDesc.h"
-#include "Nalta/Graphics/ShaderCompiler.h"
+#include "Nalta/Graphics/Buffers/IIndexBuffer.h"
+#include "Nalta/Graphics/Buffers/IVertexBuffer.h"
+#include "Nalta/Graphics/Buffers/IConstantBuffer.h"
+#include "Nalta/Graphics/Surface/IRenderSurface.h"
+#include "Nalta/Graphics/Shader/ShaderCompiler.h"
 #include "Nalta/Platform/IWindow.h"
 
 namespace Nalta
@@ -43,6 +43,7 @@ namespace Nalta
             myDevice->SignalAndWait(); // Drain GPU before releasing any surfaces
         }
         
+        myConstantBuffers.clear();
         myVertexBuffers.clear();
         myIndexBuffers.clear();
         myPipelines.clear();

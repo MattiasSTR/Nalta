@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/Graphics/IConstantBuffer.h"
+#include "Nalta/Graphics/Buffers/IConstantBuffer.h"
 #include <memory>
 
 struct ID3D12Device10;

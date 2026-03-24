@@ -6,9 +6,9 @@
 #include "Nalta/Core/Timer.h"
 #include "Nalta/Core/UpdateContext.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
-#include "Nalta/Graphics/IRenderContext.h"
-#include "Nalta/Graphics/IRenderSurface.h"
-#include "Nalta/Graphics/RenderSurfaceDesc.h"
+#include "Nalta/Graphics/Commands/IRenderContext.h"
+#include "Nalta/Graphics/Surface/IRenderSurface.h"
+#include "Nalta/Graphics/Surface/RenderSurfaceDesc.h"
 #include "Nalta/Platform/IWindow.h"
 #include "Nalta/Platform/PlatformSystemFactory.h"
 

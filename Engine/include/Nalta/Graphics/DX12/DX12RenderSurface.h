@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include "Nalta/Graphics/IRenderSurface.h"
-#include "Nalta/Graphics/RenderSurfaceDesc.h"
+#include "Nalta/Graphics/Surface/IRenderSurface.h"
+#include "Nalta/Graphics/Surface/RenderSurfaceDesc.h"
 
 #include <memory>
 

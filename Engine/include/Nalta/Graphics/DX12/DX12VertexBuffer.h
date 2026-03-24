@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/Graphics/IVertexBuffer.h"
+#include "Nalta/Graphics/Buffers/IVertexBuffer.h"
 #include "Nalta/Graphics/DX12/IDX12GPUResource.h"
 #include <memory>
 

@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/Graphics/RenderCommands.h"
+#include "Nalta/Graphics/Commands/RenderCommands.h"
 #include <vector>
 
 namespace Nalta

@@ -1,5 +1,6 @@
 ﻿#pragma once
-#include "Shader.h"
+#include "Nalta/Graphics/Shader/Shader.h"
+
 #include <memory>
 
 namespace Nalta::Graphics

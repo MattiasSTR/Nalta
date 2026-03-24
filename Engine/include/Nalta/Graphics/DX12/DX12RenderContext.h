@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/Graphics/IRenderContext.h"
+#include "Nalta/Graphics/Commands/IRenderContext.h"
 
 namespace Nalta::Graphics
 {

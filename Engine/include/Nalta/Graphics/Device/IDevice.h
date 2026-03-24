@@ -1,13 +1,13 @@
 ﻿#pragma once
-#include "ConstantBufferDesc.h"
-#include "VertexBufferDesc.h"
 #include "DeviceDesc.h"
-#include "IndexBufferDesc.h"
-#include "IPipeline.h"
-#include "IRenderContext.h"
-#include "IRenderSurface.h"
-#include "PipelineDesc.h"
-#include "RenderSurfaceDesc.h"
+#include "Nalta/Graphics/Buffers/ConstantBufferDesc.h"
+#include "Nalta/Graphics/Buffers/IndexBufferDesc.h"
+#include "Nalta/Graphics/Buffers/VertexBufferDesc.h"
+#include "Nalta/Graphics/Commands/IRenderContext.h"
+#include "Nalta/Graphics/Pipeline/IPipeline.h"
+#include "Nalta/Graphics/Pipeline/PipelineDesc.h"
+#include "Nalta/Graphics/Surface/IRenderSurface.h"
+#include "Nalta/Graphics/Surface/RenderSurfaceDesc.h"
 
 #include <memory>
 #include <span>

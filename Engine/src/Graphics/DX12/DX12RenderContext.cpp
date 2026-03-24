@@ -1,10 +1,11 @@
 ﻿#include "npch.h"
 #include "Nalta/Graphics/DX12/DX12RenderContext.h"
-#include "Nalta/Graphics/DX12/DX12Device.h"
-#include "Nalta/Graphics/DX12/DX12Pipeline.h"
-#include "Nalta/Graphics/RenderCommands.h"
+
+#include "Nalta/Graphics/Commands/RenderCommands.h"
 #include "Nalta/Graphics/DX12/DX12ConstantBuffer.h"
+#include "Nalta/Graphics/DX12/DX12Device.h"
 #include "Nalta/Graphics/DX12/DX12IndexBuffer.h"
+#include "Nalta/Graphics/DX12/DX12Pipeline.h"
 #include "Nalta/Graphics/DX12/DX12VertexBuffer.h"
 
 #include <d3d12.h>

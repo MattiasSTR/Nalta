@@ -1,8 +1,8 @@
 ﻿#pragma once
-#include "IndexBufferHandle.h"
-#include "PipelineHandle.h"
-#include "VertexBufferHandle.h"
-#include "ConstantBufferHandle.h"
+#include "Nalta/Graphics/Buffers/IndexBufferHandle.h"
+#include "Nalta/Graphics/Pipeline/PipelineHandle.h"
+#include "Nalta/Graphics/Buffers/VertexBufferHandle.h"
+#include "Nalta/Graphics/Buffers/ConstantBufferHandle.h"
 
 #include <cstdint>
 #include <variant>

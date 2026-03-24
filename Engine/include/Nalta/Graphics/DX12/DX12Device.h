@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/Graphics/IDevice.h"
+#include "Nalta/Graphics/Device/IDevice.h"
 
 #include <memory>
 

@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "IDevice.h"
+#include "Device/IDevice.h"
 
 namespace Nalta::Graphics
 {

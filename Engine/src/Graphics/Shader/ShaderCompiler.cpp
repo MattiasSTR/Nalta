@@ -1,5 +1,5 @@
 ﻿#include "npch.h"
-#include "Nalta/Graphics/ShaderCompiler.h"
+#include "Nalta/Graphics/Shader/ShaderCompiler.h"
 
 #include <objbase.h>
 #include <objidl.h>
