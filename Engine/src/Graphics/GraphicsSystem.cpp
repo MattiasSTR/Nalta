@@ -2,6 +2,8 @@
 #include "Nalta/Graphics/GraphicsSystem.h"
 
 #include "Nalta/Graphics/GraphicsFactory.h"
+#include "Nalta/Graphics/IIndexBuffer.h"
+#include "Nalta/Graphics/IVertexBuffer.h"
 #include "Nalta/Graphics/RenderSurfaceDesc.h"
 #include "Nalta/Graphics/ShaderCompiler.h"
 #include "Nalta/Platform/IWindow.h"
@@ -41,6 +43,7 @@ namespace Nalta
         }
         
         myVertexBuffers.clear();
+        myIndexBuffers.clear();
         myPipelines.clear();
         mySurfaces.clear();
 
@@ -187,5 +190,27 @@ namespace Nalta
             return b.get() == aHandle.Get();
         });
         NL_INFO(GCoreLogger, "GraphicsSystem: vertex buffer destroyed");
+    }
+
+    IndexBufferHandle GraphicsSystem::CreateIndexBuffer(const IndexBufferDesc& aDesc, const std::span<const std::byte> aData)
+    {
+        N_CORE_ASSERT(aDesc.count > 0, "GraphicsSystem: index buffer count must be > 0");
+        N_CORE_ASSERT(!aData.empty(), "GraphicsSystem: index buffer data must not be empty");
+
+        auto buffer{ myDevice->CreateIndexBuffer(aDesc, aData) };
+        const IndexBufferHandle handle{ buffer.get() };
+        myIndexBuffers.push_back(std::move(buffer));
+
+        NL_INFO(GCoreLogger, "GraphicsSystem: index buffer created ({} indices)", aDesc.count);
+        return handle;
+    }
+
+    void GraphicsSystem::DestroyIndexBuffer(const IndexBufferHandle aHandle)
+    {
+        std::erase_if(myIndexBuffers, [&](const std::unique_ptr<IIndexBuffer>& b)
+        {
+            return b.get() == aHandle.Get();
+        });
+        NL_INFO(GCoreLogger, "GraphicsSystem: index buffer destroyed");
     }
 }

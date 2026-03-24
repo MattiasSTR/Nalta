@@ -1,7 +1,7 @@
 ﻿#pragma once
-#include "IVertexBuffer.h"
 #include "VertexBufferDesc.h"
 #include "DeviceDesc.h"
+#include "IndexBufferDesc.h"
 #include "IPipeline.h"
 #include "IRenderContext.h"
 #include "IRenderSurface.h"
@@ -29,6 +29,7 @@ namespace Nalta
             
             // Create GPU resources
             [[nodiscard]] virtual std::unique_ptr<IVertexBuffer> CreateVertexBuffer(const VertexBufferDesc& aDesc, std::span<const std::byte> aData) = 0;
+            [[nodiscard]] virtual std::unique_ptr<IIndexBuffer> CreateIndexBuffer(const IndexBufferDesc& aDesc, std::span<const std::byte> aData) = 0;
             [[nodiscard]] virtual std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) = 0;
             [[nodiscard]] virtual std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) = 0;
             

@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "IndexBufferHandle.h"
 #include "PipelineHandle.h"
 #include "VertexBufferHandle.h"
 
@@ -16,6 +17,12 @@ namespace Nalta::Graphics
     {
         VertexBufferHandle buffer;
     };
+    
+    struct SetIndexBufferCmd
+    {
+        IndexBufferHandle buffer;
+    };
+
 
     struct DrawCmd
     {
@@ -37,6 +44,7 @@ namespace Nalta::Graphics
     using RenderCommand = std::variant<
         SetPipelineCmd,
         SetVertexBufferCmd,
+        SetIndexBufferCmd,
         DrawCmd,
         DrawIndexedCmd
     >;

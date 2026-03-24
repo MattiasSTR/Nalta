@@ -4,6 +4,7 @@
 #include "Nalta/Graphics/PipelineDesc.h"
 #include "Nalta/Graphics/Shader.h"
 #include "Nalta/Graphics/DX12/DX12CopyQueue.h"
+#include "Nalta/Graphics/DX12/DX12IndexBuffer.h"
 #include "Nalta/Graphics/DX12/DX12RenderContext.h"
 #include "Nalta/Graphics/DX12/DX12RenderSurface.h"
 #include "Nalta/Graphics/DX12/DX12UploadBatch.h"
@@ -513,6 +514,14 @@ namespace Nalta::Graphics
         return buffer;
     }
 
+    std::unique_ptr<IIndexBuffer> DX12Device::CreateIndexBuffer(const IndexBufferDesc& aDesc, std::span<const std::byte> aData)
+    {
+        auto buffer{ std::make_unique<DX12IndexBuffer>(aDesc.count, aDesc.format) };
+        myImpl->uploadBatch.QueueUpload(aData, buffer.get());
+        NL_TRACE(GCoreLogger, "DX12Device: index buffer queued ({} indices)", aDesc.count);
+        return buffer;
+    }
+
     std::unique_ptr<IRenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
     {
         return std::make_unique<DX12RenderSurface>(aDesc, this);
@@ -763,9 +772,14 @@ namespace Nalta::Graphics
         DXGI_ADAPTER_DESC1 desc{};
         myImpl->adapter->GetDesc1(&desc);
 
+        auto toMB = [](SIZE_T bytes)
+        {
+            return static_cast<size_t>(bytes / (1024 * 1024));
+        };
+        
         char adapterName[128]{};
         WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, adapterName, sizeof(adapterName), nullptr, nullptr);
-        NL_INFO(GCoreLogger, "DX12Device: selected adapter '{}'", adapterName);
+        NL_INFO(GCoreLogger, "DX12Device: selected adapter '{}' VRAM: {} MB", adapterName, toMB(desc.DedicatedVideoMemory));
     }
     
     void DX12Device::CreateCommandQueue() const

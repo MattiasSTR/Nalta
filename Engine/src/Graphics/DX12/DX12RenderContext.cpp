@@ -3,6 +3,7 @@
 #include "Nalta/Graphics/DX12/DX12Device.h"
 #include "Nalta/Graphics/DX12/DX12Pipeline.h"
 #include "Nalta/Graphics/RenderCommands.h"
+#include "Nalta/Graphics/DX12/DX12IndexBuffer.h"
 #include "Nalta/Graphics/DX12/DX12VertexBuffer.h"
 
 #include <d3d12.h>
@@ -53,6 +54,23 @@ namespace Nalta::Graphics
                     };
 
                     cmdList->IASetVertexBuffers(0, 1, &view);
+                }
+                else if constexpr (std::is_same_v<T, SetIndexBufferCmd>)
+                {
+                    N_ASSERT(aCmd.buffer.IsValid(), "DX12RenderContext: invalid index buffer handle");
+                    auto* ib{ static_cast<DX12IndexBuffer*>(aCmd.buffer.Get()) };
+                    N_ASSERT(ib->IsReady(), "DX12RenderContext: index buffer not yet uploaded");
+
+                    const D3D12_INDEX_BUFFER_VIEW view
+                    {
+                        .BufferLocation = ib->GetGPUAddress(),
+                        .SizeInBytes    = ib->GetSizeInBytes(),
+                        .Format         = ib->GetFormat() == IndexFormat::Uint16
+                            ? DXGI_FORMAT_R16_UINT
+                            : DXGI_FORMAT_R32_UINT
+                    };
+
+                    cmdList->IASetIndexBuffer(&view);
                 }
                 else if constexpr (std::is_same_v<T, DrawCmd>)
                 {

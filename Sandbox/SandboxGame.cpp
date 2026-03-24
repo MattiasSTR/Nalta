@@ -54,6 +54,18 @@ void SandboxGame::Initialize(const Nalta::InitContext& aContext)
     myTriangleVB = aContext.graphicsSystem->CreateVertexBuffer(vbDesc, std::as_bytes(std::span(vertices)));
 
     N_ASSERT(myTriangleVB.IsValid(), "SandboxGame: failed to create vertex buffer");
+    
+    constexpr std::array<uint32_t, 3> indices{ 0, 1, 2 };
+
+    Nalta::Graphics::IndexBufferDesc ibDesc;
+    ibDesc.count  = static_cast<uint32_t>(indices.size());
+    ibDesc.format = Nalta::Graphics::IndexFormat::Uint32;
+
+    myTriangleIB = aContext.graphicsSystem->CreateIndexBuffer(
+        ibDesc,
+        std::as_bytes(std::span(indices)));
+
+    N_ASSERT(myTriangleIB.IsValid(), "SandboxGame: failed to create index buffer");
 }
 
 void SandboxGame::Shutdown()
@@ -70,5 +82,6 @@ void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
 {
     aContext.frame.SetPipeline(myTrianglePipeline);
     aContext.frame.SetVertexBuffer(myTriangleVB);
+    aContext.frame.SetIndexBuffer(myTriangleIB);
     aContext.frame.Draw(3);
 }

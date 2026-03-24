@@ -29,7 +29,7 @@ namespace Nalta::Graphics
         void FlushUploads() override;
         
         [[nodiscard]] std::unique_ptr<IVertexBuffer> CreateVertexBuffer(const VertexBufferDesc& aDesc, std::span<const std::byte> aData) override;
-        
+        [[nodiscard]] std::unique_ptr<IIndexBuffer> CreateIndexBuffer(const IndexBufferDesc& aDesc, std::span<const std::byte> aData) override;
         [[nodiscard]] std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) override;
         [[nodiscard]] std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) override;
         

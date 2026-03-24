@@ -17,6 +17,11 @@ namespace Nalta
         {
             commands.emplace_back(Graphics::SetVertexBufferCmd{ aBuffer });
         }
+        
+        void SetIndexBuffer(const Graphics::IndexBufferHandle aBuffer)
+        {
+            commands.emplace_back(Graphics::SetIndexBufferCmd{ aBuffer });
+        }
 
         void Draw(const uint32_t aVertexCount, const uint32_t aInstanceCount = 1, const uint32_t aVertexOffset = 0, const uint32_t aInstanceOffset = 0)
         {
