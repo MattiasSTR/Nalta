@@ -30,10 +30,15 @@ namespace Nalta::Graphics
         
         [[nodiscard]] std::unique_ptr<IVertexBuffer> CreateVertexBuffer(const VertexBufferDesc& aDesc, std::span<const std::byte> aData) override;
         [[nodiscard]] std::unique_ptr<IIndexBuffer> CreateIndexBuffer(const IndexBufferDesc& aDesc, std::span<const std::byte> aData) override;
+        [[nodiscard]] std::unique_ptr<IConstantBuffer> CreateConstantBuffer(const ConstantBufferDesc& aDesc) override;
+        
         [[nodiscard]] std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) override;
         [[nodiscard]] std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) override;
         
         [[nodiscard]] std::unique_ptr<IRenderContext> CreateRenderContext() override;
+        
+        [[nodiscard]] uint32_t GetFrameIndex() const override;
+        [[nodiscard]] uint32_t GetFramesInFlight() const override;
 
         void Signal() const override;
         void WaitForGPU() const override;

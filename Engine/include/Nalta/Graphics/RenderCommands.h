@@ -2,9 +2,11 @@
 #include "IndexBufferHandle.h"
 #include "PipelineHandle.h"
 #include "VertexBufferHandle.h"
+#include "ConstantBufferHandle.h"
 
 #include <cstdint>
 #include <variant>
+#include <vector>
 
 namespace Nalta::Graphics
 {
@@ -23,6 +25,17 @@ namespace Nalta::Graphics
         IndexBufferHandle buffer;
     };
 
+    struct UpdateConstantBufferCmd
+    {
+        ConstantBufferHandle        buffer;
+        std::vector<std::byte>      data;
+    };
+
+    struct SetConstantBufferCmd
+    {
+        ConstantBufferHandle buffer;
+        uint32_t             rootParameterIndex{ 0 };
+    };
 
     struct DrawCmd
     {
@@ -45,6 +58,8 @@ namespace Nalta::Graphics
         SetPipelineCmd,
         SetVertexBufferCmd,
         SetIndexBufferCmd,
+        UpdateConstantBufferCmd,
+        SetConstantBufferCmd,
         DrawCmd,
         DrawIndexedCmd
     >;

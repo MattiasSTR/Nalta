@@ -4,6 +4,7 @@
 #include "Nalta/Graphics/GraphicsFactory.h"
 #include "Nalta/Graphics/IIndexBuffer.h"
 #include "Nalta/Graphics/IVertexBuffer.h"
+#include "Nalta/Graphics/IConstantBuffer.h"
 #include "Nalta/Graphics/RenderSurfaceDesc.h"
 #include "Nalta/Graphics/ShaderCompiler.h"
 #include "Nalta/Platform/IWindow.h"
@@ -212,5 +213,26 @@ namespace Nalta
             return b.get() == aHandle.Get();
         });
         NL_INFO(GCoreLogger, "GraphicsSystem: index buffer destroyed");
+    }
+
+    ConstantBufferHandle GraphicsSystem::CreateConstantBuffer(const ConstantBufferDesc& aDesc)
+    {
+        N_CORE_ASSERT(aDesc.size > 0, "GraphicsSystem: constant buffer size must be > 0");
+
+        auto buffer{ myDevice->CreateConstantBuffer(aDesc) };
+        const ConstantBufferHandle handle{ buffer.get() };
+        myConstantBuffers.push_back(std::move(buffer));
+
+        NL_INFO(GCoreLogger, "GraphicsSystem: constant buffer created ({} bytes)", aDesc.size);
+        return handle;
+    }
+
+    void GraphicsSystem::DestroyConstantBuffer(ConstantBufferHandle aHandle)
+    {
+        std::erase_if(myConstantBuffers, [&](const std::unique_ptr<IConstantBuffer>& b)
+        {
+            return b.get() == aHandle.Get();
+        });
+        NL_INFO(GCoreLogger, "GraphicsSystem: constant buffer destroyed");
     }
 }

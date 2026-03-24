@@ -1,4 +1,6 @@
 ﻿#pragma once
+#include "ConstantBufferDesc.h"
+#include "ConstantBufferHandle.h"
 #include "IndexBufferDesc.h"
 #include "IndexBufferHandle.h"
 #include "PipelineDesc.h"
@@ -50,6 +52,9 @@ namespace Nalta
         
         [[nodiscard]] Graphics::IndexBufferHandle CreateIndexBuffer(const Graphics::IndexBufferDesc& aDesc, std::span<const std::byte> aData);
         void DestroyIndexBuffer(Graphics::IndexBufferHandle aHandle);
+        
+        [[nodiscard]] Graphics::ConstantBufferHandle CreateConstantBuffer(const Graphics::ConstantBufferDesc& aDesc);
+        void DestroyConstantBuffer(Graphics::ConstantBufferHandle aHandle);
 
         [[nodiscard]] Graphics::IDevice* GetDevice() const { return myDevice.get(); }
         [[nodiscard]] Graphics::IRenderContext* GetRenderContext() const { return myRenderContext.get(); }
@@ -63,6 +68,7 @@ namespace Nalta
         std::vector<std::unique_ptr<Graphics::IPipeline>> myPipelines;
         std::vector<std::unique_ptr<Graphics::IVertexBuffer>> myVertexBuffers;
         std::vector<std::unique_ptr<Graphics::IIndexBuffer>> myIndexBuffers;
+        std::vector<std::unique_ptr<Graphics::IConstantBuffer>> myConstantBuffers;
         
         struct SurfaceEntry
         {

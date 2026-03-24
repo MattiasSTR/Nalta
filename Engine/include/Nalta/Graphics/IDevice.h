@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "ConstantBufferDesc.h"
 #include "VertexBufferDesc.h"
 #include "DeviceDesc.h"
 #include "IndexBufferDesc.h"
@@ -30,10 +31,15 @@ namespace Nalta
             // Create GPU resources
             [[nodiscard]] virtual std::unique_ptr<IVertexBuffer> CreateVertexBuffer(const VertexBufferDesc& aDesc, std::span<const std::byte> aData) = 0;
             [[nodiscard]] virtual std::unique_ptr<IIndexBuffer> CreateIndexBuffer(const IndexBufferDesc& aDesc, std::span<const std::byte> aData) = 0;
+            [[nodiscard]] virtual std::unique_ptr<IConstantBuffer> CreateConstantBuffer(const ConstantBufferDesc& aDesc) = 0;
+            
             [[nodiscard]] virtual std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) = 0;
             [[nodiscard]] virtual std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) = 0;
             
             [[nodiscard]] virtual std::unique_ptr<IRenderContext> CreateRenderContext() = 0;
+            
+            [[nodiscard]] virtual uint32_t GetFrameIndex() const = 0;
+            [[nodiscard]] virtual uint32_t GetFramesInFlight()  const = 0;
             
             virtual void BeginFrame() const = 0;
             virtual void EndFrame()   const = 0;

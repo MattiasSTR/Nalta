@@ -66,6 +66,11 @@ void SandboxGame::Initialize(const Nalta::InitContext& aContext)
         std::as_bytes(std::span(indices)));
 
     N_ASSERT(myTriangleIB.IsValid(), "SandboxGame: failed to create index buffer");
+    
+    Nalta::Graphics::ConstantBufferDesc cbDesc;
+    cbDesc.size = sizeof(float);
+    myFrameDataCB = aContext.graphicsSystem->CreateConstantBuffer(cbDesc);
+    N_ASSERT(myFrameDataCB.IsValid(), "SandboxGame: failed to create frame data buffer");
 }
 
 void SandboxGame::Shutdown()
@@ -73,15 +78,17 @@ void SandboxGame::Shutdown()
     myTrianglePipeline = Nalta::Graphics::PipelineHandle{};
 }
 
-void SandboxGame::Update(const Nalta::UpdateContext&)
+void SandboxGame::Update(const Nalta::UpdateContext& aContext)
 {
-    // Nothing yet
+    myTime += aContext.deltaTime;
 }
 
 void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
 {
+    aContext.frame.UpdateConstantBuffer(myFrameDataCB, &myTime, sizeof(myTime));
     aContext.frame.SetPipeline(myTrianglePipeline);
+    aContext.frame.SetConstantBuffer(myFrameDataCB, 0);
     aContext.frame.SetVertexBuffer(myTriangleVB);
     aContext.frame.SetIndexBuffer(myTriangleIB);
-    aContext.frame.Draw(3);
+    aContext.frame.DrawIndexed(3);
 }

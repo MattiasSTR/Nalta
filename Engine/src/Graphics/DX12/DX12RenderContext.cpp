@@ -3,6 +3,7 @@
 #include "Nalta/Graphics/DX12/DX12Device.h"
 #include "Nalta/Graphics/DX12/DX12Pipeline.h"
 #include "Nalta/Graphics/RenderCommands.h"
+#include "Nalta/Graphics/DX12/DX12ConstantBuffer.h"
 #include "Nalta/Graphics/DX12/DX12IndexBuffer.h"
 #include "Nalta/Graphics/DX12/DX12VertexBuffer.h"
 
@@ -71,6 +72,20 @@ namespace Nalta::Graphics
                     };
 
                     cmdList->IASetIndexBuffer(&view);
+                }
+                else if constexpr (std::is_same_v<T, UpdateConstantBufferCmd>)
+                {
+                    N_ASSERT(aCmd.buffer.IsValid(), "DX12RenderContext: invalid constant buffer handle");
+                    auto* cb{ static_cast<DX12ConstantBuffer*>(aCmd.buffer.Get()) };
+                    cb->Update(aCmd.data.data(), static_cast<uint32_t>(aCmd.data.size()));
+                }
+                else if constexpr (std::is_same_v<T, SetConstantBufferCmd>)
+                {
+                    N_ASSERT(aCmd.buffer.IsValid(), "DX12RenderContext: invalid constant buffer handle");
+                    auto* cb{ static_cast<DX12ConstantBuffer*>(aCmd.buffer.Get()) };
+                    cmdList->SetGraphicsRootConstantBufferView(
+                        aCmd.rootParameterIndex,
+                        cb->GetGPUAddress());
                 }
                 else if constexpr (std::is_same_v<T, DrawCmd>)
                 {

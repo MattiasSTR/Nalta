@@ -1,3 +1,10 @@
+struct FrameData
+{
+    float time;
+};
+
+ConstantBuffer<FrameData> gFrameData : register(b0);
+
 struct VSInput
 {
     float3 position : POSITION;
@@ -20,5 +27,6 @@ VSOutput VSMain(VSInput aInput)
 
 float4 PSMain(VSOutput aInput) : SV_Target
 {
-    return float4(aInput.color, 1.0f);
+    float pulse = (sin(gFrameData.time) + 1.0f) * 0.5f;
+    return float4(aInput.color * pulse, 1.0f);
 }

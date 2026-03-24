@@ -3,6 +3,7 @@
 #include "Nalta/Graphics/DX12/DX12Pipeline.h"
 #include "Nalta/Graphics/PipelineDesc.h"
 #include "Nalta/Graphics/Shader.h"
+#include "Nalta/Graphics/DX12/DX12ConstantBuffer.h"
 #include "Nalta/Graphics/DX12/DX12CopyQueue.h"
 #include "Nalta/Graphics/DX12/DX12IndexBuffer.h"
 #include "Nalta/Graphics/DX12/DX12RenderContext.h"
@@ -522,6 +523,12 @@ namespace Nalta::Graphics
         return buffer;
     }
 
+    std::unique_ptr<IConstantBuffer> DX12Device::CreateConstantBuffer(const ConstantBufferDesc& aDesc)
+    {
+        N_CORE_ASSERT(aDesc.size > 0, "DX12Device: constant buffer size must be > 0");
+        return std::make_unique<DX12ConstantBuffer>(aDesc.size, this);
+    }
+
     std::unique_ptr<IRenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
     {
         return std::make_unique<DX12RenderSurface>(aDesc, this);
@@ -601,6 +608,16 @@ namespace Nalta::Graphics
     std::unique_ptr<IRenderContext> DX12Device::CreateRenderContext()
     {
         return std::make_unique<DX12RenderContext>(this);
+    }
+
+    uint32_t DX12Device::GetFrameIndex() const
+    {
+        return myImpl->frameIndex;
+    }
+
+    uint32_t DX12Device::GetFramesInFlight() const
+    {
+        return myImpl->framesInFlight;
     }
 
     void DX12Device::Signal() const

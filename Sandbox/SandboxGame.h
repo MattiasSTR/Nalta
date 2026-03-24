@@ -1,5 +1,6 @@
 #pragma once
 #include <Nalta/Core/IGame.h>
+#include <Nalta/Graphics/ConstantBufferHandle.h>
 #include <Nalta/Graphics/IndexBufferHandle.h>
 #include <Nalta/Graphics/PipelineHandle.h>
 #include <Nalta/Graphics/VertexBufferHandle.h>
@@ -16,4 +17,6 @@ private:
     Nalta::Graphics::PipelineHandle myTrianglePipeline;
     Nalta::Graphics::VertexBufferHandle myTriangleVB;
     Nalta::Graphics::IndexBufferHandle myTriangleIB;
+    Nalta::Graphics::ConstantBufferHandle myFrameDataCB;
+    float myTime{ 0.0f };
 };
