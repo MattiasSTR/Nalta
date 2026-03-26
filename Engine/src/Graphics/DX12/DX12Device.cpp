@@ -5,6 +5,7 @@
 #include "Nalta/Graphics/Shader/Shader.h"
 #include "Nalta/Graphics/DX12/DX12ConstantBuffer.h"
 #include "Nalta/Graphics/DX12/DX12CopyQueue.h"
+#include "Nalta/Graphics/DX12/DX12DepthBuffer.h"
 #include "Nalta/Graphics/DX12/DX12IndexBuffer.h"
 #include "Nalta/Graphics/DX12/DX12RenderContext.h"
 #include "Nalta/Graphics/DX12/DX12RenderSurface.h"
@@ -618,6 +619,13 @@ namespace Nalta::Graphics
 
         NL_TRACE(GCoreLogger, "pipeline created");
         return std::make_unique<DX12Pipeline>(pipelineState.Get(), rootSignature.Get());
+    }
+
+    std::unique_ptr<IDepthBuffer> DX12Device::CreateDepthBuffer(const DepthBufferDesc& aDesc)
+    {
+        NL_SCOPE_CORE("DX12Device");
+        N_CORE_ASSERT(aDesc.width > 0 && aDesc.height > 0, "depth buffer dimensions must be > 0");
+        return std::make_unique<DX12DepthBuffer>(aDesc, this);
     }
 
     std::unique_ptr<IRenderContext> DX12Device::CreateRenderContext()

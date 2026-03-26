@@ -35,6 +35,8 @@ namespace Nalta::Graphics
         [[nodiscard]] std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) override;
         [[nodiscard]] std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) override;
         
+        [[nodiscard]] std::unique_ptr<IDepthBuffer> CreateDepthBuffer(const DepthBufferDesc& aDesc) override;
+        
         [[nodiscard]] std::unique_ptr<IRenderContext> CreateRenderContext() override;
         
         [[nodiscard]] uint32_t GetFrameIndex() const override;

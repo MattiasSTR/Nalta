@@ -6,6 +6,7 @@
 #include "Nalta/Graphics/Commands/IRenderContext.h"
 #include "Nalta/Graphics/Pipeline/IPipeline.h"
 #include "Nalta/Graphics/Pipeline/PipelineDesc.h"
+#include "Nalta/Graphics/RenderResources/DepthBufferDesc.h"
 #include "Nalta/Graphics/Surface/IRenderSurface.h"
 #include "Nalta/Graphics/Surface/RenderSurfaceDesc.h"
 
@@ -35,6 +36,8 @@ namespace Nalta
             
             [[nodiscard]] virtual std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) = 0;
             [[nodiscard]] virtual std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) = 0;
+            
+            [[nodiscard]] virtual std::unique_ptr<IDepthBuffer> CreateDepthBuffer(const DepthBufferDesc& aDesc) = 0;
             
             [[nodiscard]] virtual std::unique_ptr<IRenderContext> CreateRenderContext() = 0;
             

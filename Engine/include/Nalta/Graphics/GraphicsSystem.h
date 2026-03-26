@@ -10,6 +10,8 @@
 #include "Surface/RenderSurfaceDesc.h"
 #include "Surface/RenderSurfaceHandle.h"
 #include "Nalta/Platform/WindowHandle.h"
+#include "RenderResources/DepthBufferDesc.h"
+#include "RenderResources/DepthBufferHandle.h"
 
 #include <memory>
 #include <vector>
@@ -43,6 +45,7 @@ namespace Nalta
         [[nodiscard]] Graphics::RenderSurfaceHandle CreateSurface(const Graphics::RenderSurfaceDesc& aDesc);
         void DestroySurface(Graphics::RenderSurfaceHandle aHandle);
         void DestroySurface(WindowHandle aWindow);
+        void SetSurfaceDepthBuffer(Graphics::RenderSurfaceHandle aSurface, Graphics::DepthBufferHandle aDepthBuffer);
         
         [[nodiscard]] Graphics::PipelineHandle CreatePipeline(const Graphics::PipelineDesc& aDesc);
         void DestroyPipeline(Graphics::PipelineHandle aHandle);
@@ -55,6 +58,9 @@ namespace Nalta
         
         [[nodiscard]] Graphics::ConstantBufferHandle CreateConstantBuffer(const Graphics::ConstantBufferDesc& aDesc);
         void DestroyConstantBuffer(Graphics::ConstantBufferHandle aHandle);
+        
+        [[nodiscard]] Graphics::DepthBufferHandle CreateDepthBuffer(const Graphics::DepthBufferDesc& aDesc);
+        void DestroyDepthBuffer(Graphics::DepthBufferHandle aHandle);
 
         [[nodiscard]] Graphics::IDevice* GetDevice() const { return myDevice.get(); }
         [[nodiscard]] Graphics::IRenderContext* GetRenderContext() const { return myRenderContext.get(); }
@@ -69,11 +75,13 @@ namespace Nalta
         std::vector<std::unique_ptr<Graphics::IVertexBuffer>> myVertexBuffers;
         std::vector<std::unique_ptr<Graphics::IIndexBuffer>> myIndexBuffers;
         std::vector<std::unique_ptr<Graphics::IConstantBuffer>> myConstantBuffers;
+        std::vector<std::unique_ptr<Graphics::IDepthBuffer>> myDepthBuffers;
         
         struct SurfaceEntry
         {
             WindowHandle window;
             std::unique_ptr<Graphics::IRenderSurface> surface;
+            Graphics::DepthBufferHandle depthBuffer;
         };
         std::vector<SurfaceEntry> mySurfaces;
     };

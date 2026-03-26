@@ -6,6 +6,7 @@
 #include "Nalta/Graphics/Buffers/IVertexBuffer.h"
 #include "Nalta/Graphics/Buffers/IConstantBuffer.h"
 #include "Nalta/Graphics/Surface/IRenderSurface.h"
+#include "Nalta/Graphics/RenderResources/IDepthBuffer.h"
 #include "Nalta/Graphics/Shader/ShaderCompiler.h"
 #include "Nalta/Platform/IWindow.h"
 
@@ -45,6 +46,7 @@ namespace Nalta
             myDevice->SignalAndWait(); // Drain GPU before releasing any surfaces
         }
         
+        myDepthBuffers.clear();
         myConstantBuffers.clear();
         myVertexBuffers.clear();
         myIndexBuffers.clear();
@@ -66,13 +68,18 @@ namespace Nalta
 
         for (const auto& entry : mySurfaces)
         {
-            const uint32_t width { entry.window->GetWidth() };
+            const uint32_t width{ entry.window->GetWidth() };
             const uint32_t height{ entry.window->GetHeight() };
 
             if (width != entry.surface->GetWidth() || height != entry.surface->GetHeight())
             {
                 myDevice->SignalAndWait();
                 entry.surface->Resize(width, height);
+                
+                if (entry.depthBuffer.IsValid())
+                {
+                    entry.depthBuffer->Resize(width, height);
+                }
             }
         }
     }
@@ -150,6 +157,19 @@ namespace Nalta
         mySurfaces.erase(it);
 
         NL_INFO(GCoreLogger, "surface destroyed for window");
+    }
+
+    void GraphicsSystem::SetSurfaceDepthBuffer(RenderSurfaceHandle aSurface, DepthBufferHandle aDepthBuffer)
+    {
+        const auto it{ std::ranges::find_if(mySurfaces, [&](const SurfaceEntry& aEntry)
+        {
+            return aEntry.surface.get() == aSurface.Get();
+        }) };
+
+        if (it != mySurfaces.end())
+        {
+            it->depthBuffer = aDepthBuffer;
+        }
     }
 
     PipelineHandle GraphicsSystem::CreatePipeline(const PipelineDesc& aDesc)
@@ -255,5 +275,30 @@ namespace Nalta
             return b.get() == aHandle.Get();
         });
         NL_INFO(GCoreLogger, "constant buffer destroyed");
+    }
+
+    DepthBufferHandle GraphicsSystem::CreateDepthBuffer(const DepthBufferDesc& aDesc)
+    {
+        NL_SCOPE_CORE("GraphicsSystem");
+
+        auto buffer{ myDevice->CreateDepthBuffer(aDesc) };
+        const DepthBufferHandle handle{ buffer.get() };
+        myDepthBuffers.push_back(std::move(buffer));
+
+        NL_INFO(GCoreLogger, "depth buffer created ({}x{})", aDesc.width, aDesc.height);
+        return handle;
+    }
+
+    void GraphicsSystem::DestroyDepthBuffer(const DepthBufferHandle aHandle)
+    {
+        NL_SCOPE_CORE("GraphicsSystem");
+
+        myDevice->SignalAndWait();
+        std::erase_if(myDepthBuffers, [&](const std::unique_ptr<IDepthBuffer>& b)
+        {
+            return b.get() == aHandle.Get();
+        });
+
+        NL_INFO(GCoreLogger, "depth buffer destroyed");
     }
 }

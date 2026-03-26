@@ -87,7 +87,14 @@ namespace Nalta
 			surfaceDesc.bufferCount = 2;
 
 			myMainSurface = myGraphicsSystem->CreateSurface(surfaceDesc);
+			
 			NL_INFO(GCoreLogger, "Main surface created");
+			Graphics::DepthBufferDesc depthDesc;
+			depthDesc.width  = myConfig.mainWindowDesc->width;
+			depthDesc.height = myConfig.mainWindowDesc->height;
+			myMainDepthBuffer = myGraphicsSystem->CreateDepthBuffer(depthDesc);
+			myGraphicsSystem->SetSurfaceDepthBuffer(myMainSurface, myMainDepthBuffer);
+			NL_INFO(GCoreLogger, "Main depth buffer created");
 		}
 		else
 		{
@@ -275,7 +282,7 @@ namespace Nalta
 			}
 			
 			myGraphicsSystem->BeginFrame();
-			myMainSurface->SetAsRenderTarget();
+			myMainSurface->SetAsRenderTarget(myMainDepthBuffer);
 			myMainSurface->Clear(clearColor);
 			myGraphicsSystem->GetRenderContext()->Execute(frame);
 			myGraphicsSystem->EndFrame();

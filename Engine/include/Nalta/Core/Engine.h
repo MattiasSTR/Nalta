@@ -4,6 +4,7 @@
 #include "FrameQueue.h"
 #include "Nalta/Core/IGame.h"
 #include "Nalta/Graphics/Commands/RenderFrame.h"
+#include "Nalta/Graphics/RenderResources/DepthBufferHandle.h"
 #include "Nalta/Graphics/Surface/RenderSurfaceHandle.h"
 #include "Nalta/Platform/WindowHandle.h"
 
@@ -59,6 +60,7 @@ namespace Nalta
 		std::atomic<bool> myStop{ false };
 		std::atomic<bool> myRestart{ false };
 		Graphics::RenderSurfaceHandle myMainSurface;
+		Graphics::DepthBufferHandle myMainDepthBuffer;
 
 		static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{ 2 };
 		FrameQueue<RenderFrame> myRenderQueue{ MAX_FRAMES_IN_FLIGHT };

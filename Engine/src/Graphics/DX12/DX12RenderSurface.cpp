@@ -1,5 +1,7 @@
 ﻿#include "npch.h"
 #include "Nalta/Graphics/DX12/DX12RenderSurface.h"
+
+#include "Nalta/Graphics/DX12/DX12DepthBuffer.h"
 #include "Nalta/Graphics/DX12/DX12Device.h"
 #include "Nalta/Graphics/DX12/DX12Util.h"
 #include "Nalta/Platform/IWindow.h"
@@ -179,7 +181,7 @@ namespace Nalta::Graphics
         }
     }
 
-    void DX12RenderSurface::SetAsRenderTarget()
+    void DX12RenderSurface::SetAsRenderTarget(DepthBufferHandle aDepthBuffer)
     {
         auto* cmdList{ myDevice->GetCommandList() };
         const uint32_t backBufferIndex{ GetCurrentBackBufferIndex() };
@@ -193,7 +195,20 @@ namespace Nalta::Graphics
         barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         cmdList->ResourceBarrier(1, &barrier);
 
-        cmdList->OMSetRenderTargets(1, &myImpl->rtvHandles[backBufferIndex], FALSE, nullptr);
+        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle{};
+        const D3D12_CPU_DESCRIPTOR_HANDLE* dsv{ nullptr };
+
+        if (aDepthBuffer.IsValid())
+        {
+            dsvHandle = static_cast<DX12DepthBuffer*>(aDepthBuffer.Get())->GetDSV();
+            dsv = &dsvHandle;
+        }
+        
+        cmdList->OMSetRenderTargets(
+            1, 
+            &myImpl->rtvHandles[backBufferIndex], 
+            FALSE,
+            dsv);
 
         D3D12_VIEWPORT viewport{};
         viewport.TopLeftX = 0.0f;
@@ -235,7 +250,7 @@ namespace Nalta::Graphics
         cmdList->ClearRenderTargetView(myImpl->rtvHandles[backBufferIndex], aClearColor, 0, nullptr);
     }
     
-    uint32_t     DX12RenderSurface::GetWidth()  const { return myWidth; }
-    uint32_t     DX12RenderSurface::GetHeight() const { return myHeight; }
+    uint32_t DX12RenderSurface::GetWidth() const { return myWidth; }
+    uint32_t DX12RenderSurface::GetHeight() const { return myHeight; }
     WindowHandle DX12RenderSurface::GetWindow() const { return myWindow; }
 }
