@@ -26,6 +26,7 @@ namespace Nalta::Graphics
     
     void DX12RenderContext::Execute(const RenderFrame& aFrame)
     {
+        NL_SCOPE_CORE("DX12RenderContext");
         auto* cmdList{ myDevice->GetCommandList() };
 
         for (const auto& command : aFrame.commands)
@@ -36,7 +37,7 @@ namespace Nalta::Graphics
 
                 if constexpr (std::is_same_v<T, SetPipelineCmd>)
                 {
-                    N_CORE_ASSERT(aCmd.pipeline.IsValid(), "DX12RenderContext: invalid pipeline handle");
+                    N_CORE_ASSERT(aCmd.pipeline.IsValid(), "invalid pipeline handle");
                     const auto* pipeline{ static_cast<DX12Pipeline*>(aCmd.pipeline.Get()) };
                     cmdList->SetGraphicsRootSignature(pipeline->GetRootSignature());
                     cmdList->SetPipelineState(pipeline->GetPipelineState());
@@ -44,9 +45,9 @@ namespace Nalta::Graphics
                 }
                 else if constexpr (std::is_same_v<T, SetVertexBufferCmd>)
                 {
-                    N_ASSERT(aCmd.buffer.IsValid(), "DX12RenderContext: invalid vertex buffer handle");
+                    N_ASSERT(aCmd.buffer.IsValid(), "invalid vertex buffer handle");
                     const auto* vb{ static_cast<DX12VertexBuffer*>(aCmd.buffer.Get()) };
-                    N_ASSERT(vb->IsReady(), "DX12RenderContext: vertex buffer not yet uploaded");
+                    N_ASSERT(vb->IsReady(), "vertex buffer not yet uploaded");
 
                     const D3D12_VERTEX_BUFFER_VIEW view
                     {
@@ -59,9 +60,9 @@ namespace Nalta::Graphics
                 }
                 else if constexpr (std::is_same_v<T, SetIndexBufferCmd>)
                 {
-                    N_ASSERT(aCmd.buffer.IsValid(), "DX12RenderContext: invalid index buffer handle");
+                    N_ASSERT(aCmd.buffer.IsValid(), "invalid index buffer handle");
                     auto* ib{ static_cast<DX12IndexBuffer*>(aCmd.buffer.Get()) };
-                    N_ASSERT(ib->IsReady(), "DX12RenderContext: index buffer not yet uploaded");
+                    N_ASSERT(ib->IsReady(), "index buffer not yet uploaded");
 
                     const D3D12_INDEX_BUFFER_VIEW view
                     {
@@ -76,13 +77,13 @@ namespace Nalta::Graphics
                 }
                 else if constexpr (std::is_same_v<T, UpdateConstantBufferCmd>)
                 {
-                    N_ASSERT(aCmd.buffer.IsValid(), "DX12RenderContext: invalid constant buffer handle");
+                    N_ASSERT(aCmd.buffer.IsValid(), "invalid constant buffer handle");
                     auto* cb{ static_cast<DX12ConstantBuffer*>(aCmd.buffer.Get()) };
                     cb->Update(aCmd.data.data(), static_cast<uint32_t>(aCmd.data.size()));
                 }
                 else if constexpr (std::is_same_v<T, SetConstantBufferCmd>)
                 {
-                    N_ASSERT(aCmd.buffer.IsValid(), "DX12RenderContext: invalid constant buffer handle");
+                    N_ASSERT(aCmd.buffer.IsValid(), "invalid constant buffer handle");
                     auto* cb{ static_cast<DX12ConstantBuffer*>(aCmd.buffer.Get()) };
                     cmdList->SetGraphicsRootConstantBufferView(
                         aCmd.rootParameterIndex,

@@ -18,7 +18,8 @@ namespace Nalta
 
     void GraphicsSystem::Initialize()
     {
-        N_CORE_ASSERT(myDevice == nullptr, "GraphicsSystem: already initialized");
+        NL_SCOPE_CORE("GraphicsSystem");
+        N_CORE_ASSERT(myDevice == nullptr, "already initialized");
 
         myDevice = CreateDevice();
         
@@ -31,11 +32,12 @@ namespace Nalta
         myShaderCompiler = std::make_unique<ShaderCompiler>();
         myShaderCompiler->Initialize();
 
-        NL_INFO(GCoreLogger, "GraphicsSystem: initialized");
+        NL_INFO(GCoreLogger, "initialized");
     }
 
     void GraphicsSystem::Shutdown()
     {
+        NL_SCOPE_CORE("GraphicsSystem");
         myShaderCompiler->Shutdown();
         
         if (myDevice)
@@ -55,7 +57,7 @@ namespace Nalta
             myDevice.reset();
         }
         
-        NL_INFO(GCoreLogger, "GraphicsSystem: shutdown");
+        NL_INFO(GCoreLogger, "shutdown");
     }
 
     void GraphicsSystem::BeginFrame() const
@@ -92,24 +94,28 @@ namespace Nalta
 
     void GraphicsSystem::FlushUploads() const
     {
+        NL_SCOPE_CORE("GraphicsSystem");
         myDevice->FlushUploads();
-        NL_TRACE(GCoreLogger, "GraphicsSystem: uploads flushed");
+        NL_TRACE(GCoreLogger, "uploads flushed");
     }
 
     RenderSurfaceHandle GraphicsSystem::CreateSurface(const RenderSurfaceDesc& aDesc)
     {
-        N_CORE_ASSERT(aDesc.window.IsValid(), "GraphicsSystem: invalid window handle");
+        NL_SCOPE_CORE("GraphicsSystem");
+        N_CORE_ASSERT(aDesc.window.IsValid(), "invalid window handle");
 
         auto surface{ myDevice->CreateRenderSurface(aDesc) };
         const RenderSurfaceHandle handle{ surface.get() };
         mySurfaces.push_back({ aDesc.window, std::move(surface) });
 
-        NL_INFO(GCoreLogger, "GraphicsSystem: surface created");
+        NL_INFO(GCoreLogger, "surface created");
         return handle;
     }
 
     void GraphicsSystem::DestroySurface(const RenderSurfaceHandle aHandle)
     {
+        NL_SCOPE_CORE("GraphicsSystem");
+        
         const auto it{ std::ranges::find_if(mySurfaces, [&](const SurfaceEntry& aEntry)
         {
             return aEntry.surface.get() == aHandle.Get();
@@ -123,11 +129,13 @@ namespace Nalta
         myDevice->SignalAndWait();
         mySurfaces.erase(it);
 
-        NL_INFO(GCoreLogger, "GraphicsSystem: surface destroyed");
+        NL_INFO(GCoreLogger, "surface destroyed");
     }
     
     void GraphicsSystem::DestroySurface(const WindowHandle aWindow)
     {
+        NL_SCOPE_CORE("GraphicsSystem");
+        
         const auto it{ std::ranges::find_if(mySurfaces, [&](const SurfaceEntry& aEntry)
         {
             return aEntry.window == aWindow;
@@ -141,47 +149,53 @@ namespace Nalta
         myDevice->SignalAndWait();
         mySurfaces.erase(it);
 
-        NL_INFO(GCoreLogger, "GraphicsSystem: surface destroyed for window");
+        NL_INFO(GCoreLogger, "surface destroyed for window");
     }
 
     PipelineHandle GraphicsSystem::CreatePipeline(const PipelineDesc& aDesc)
     {
+        NL_SCOPE_CORE("GraphicsSystem");
+        
         auto pipeline{ myDevice->CreatePipeline(aDesc) };
         if (pipeline == nullptr)
         {
-            NL_ERROR(GCoreLogger, "GraphicsSystem: failed to create pipeline");
+            NL_ERROR(GCoreLogger, "failed to create pipeline");
             return PipelineHandle{};
         }
 
         const PipelineHandle handle{ pipeline.get() };
         myPipelines.push_back(std::move(pipeline));
 
-        NL_INFO(GCoreLogger, "GraphicsSystem: pipeline created");
+        NL_INFO(GCoreLogger, "pipeline created");
         return handle;
     }
 
     void GraphicsSystem::DestroyPipeline(const PipelineHandle aHandle)
     {
+        NL_SCOPE_CORE("GraphicsSystem");
+        
         std::erase_if(myPipelines, [&](const std::unique_ptr<IPipeline>& p)
         {
             return p.get() == aHandle.Get();
         });
 
-        NL_INFO(GCoreLogger, "GraphicsSystem: pipeline destroyed");
+        NL_INFO(GCoreLogger, "pipeline destroyed");
     }
 
     VertexBufferHandle GraphicsSystem::CreateVertexBuffer(const VertexBufferDesc& aDesc, const std::span<const std::byte> aData)
     {
-        N_CORE_ASSERT(aDesc.stride > 0, "GraphicsSystem: vertex buffer stride must be > 0");
-        N_CORE_ASSERT(aDesc.count  > 0, "GraphicsSystem: vertex buffer count must be > 0");
-        N_CORE_ASSERT(!aData.empty(),   "GraphicsSystem: vertex buffer data must not be empty");
+        NL_SCOPE_CORE("GraphicsSystem");
+        
+        N_CORE_ASSERT(aDesc.stride > 0, "vertex buffer stride must be > 0");
+        N_CORE_ASSERT(aDesc.count  > 0, "vertex buffer count must be > 0");
+        N_CORE_ASSERT(!aData.empty(),   "vertex buffer data must not be empty");
 
         auto buffer{ myDevice->CreateVertexBuffer(aDesc, aData) };
         
         const VertexBufferHandle handle{ buffer.get() };
         myVertexBuffers.push_back(std::move(buffer));
         
-        NL_INFO(GCoreLogger, "GraphicsSystem: vertex buffer created ({} vertices, {} stride)",aDesc.count, aDesc.stride);
+        NL_INFO(GCoreLogger, "vertex buffer created ({} vertices, {} stride)",aDesc.count, aDesc.stride);
         return handle;
     }
 
@@ -191,19 +205,21 @@ namespace Nalta
         {
             return b.get() == aHandle.Get();
         });
-        NL_INFO(GCoreLogger, "GraphicsSystem: vertex buffer destroyed");
+        NL_INFO(GCoreLogger, "vertex buffer destroyed");
     }
 
     IndexBufferHandle GraphicsSystem::CreateIndexBuffer(const IndexBufferDesc& aDesc, const std::span<const std::byte> aData)
     {
-        N_CORE_ASSERT(aDesc.count > 0, "GraphicsSystem: index buffer count must be > 0");
-        N_CORE_ASSERT(!aData.empty(), "GraphicsSystem: index buffer data must not be empty");
+        NL_SCOPE_CORE("GraphicsSystem");
+        
+        N_CORE_ASSERT(aDesc.count > 0, "index buffer count must be > 0");
+        N_CORE_ASSERT(!aData.empty(), "index buffer data must not be empty");
 
         auto buffer{ myDevice->CreateIndexBuffer(aDesc, aData) };
         const IndexBufferHandle handle{ buffer.get() };
         myIndexBuffers.push_back(std::move(buffer));
 
-        NL_INFO(GCoreLogger, "GraphicsSystem: index buffer created ({} indices)", aDesc.count);
+        NL_INFO(GCoreLogger, "index buffer created ({} indices)", aDesc.count);
         return handle;
     }
 
@@ -213,27 +229,31 @@ namespace Nalta
         {
             return b.get() == aHandle.Get();
         });
-        NL_INFO(GCoreLogger, "GraphicsSystem: index buffer destroyed");
+        NL_INFO(GCoreLogger, "index buffer destroyed");
     }
 
     ConstantBufferHandle GraphicsSystem::CreateConstantBuffer(const ConstantBufferDesc& aDesc)
     {
-        N_CORE_ASSERT(aDesc.size > 0, "GraphicsSystem: constant buffer size must be > 0");
+        NL_SCOPE_CORE("GraphicsSystem");
+        
+        N_CORE_ASSERT(aDesc.size > 0, "constant buffer size must be > 0");
 
         auto buffer{ myDevice->CreateConstantBuffer(aDesc) };
         const ConstantBufferHandle handle{ buffer.get() };
         myConstantBuffers.push_back(std::move(buffer));
 
-        NL_INFO(GCoreLogger, "GraphicsSystem: constant buffer created ({} bytes)", aDesc.size);
+        NL_INFO(GCoreLogger, "constant buffer created ({} bytes)", aDesc.size);
         return handle;
     }
 
     void GraphicsSystem::DestroyConstantBuffer(ConstantBufferHandle aHandle)
     {
+        NL_SCOPE_CORE("GraphicsSystem");
+        
         std::erase_if(myConstantBuffers, [&](const std::unique_ptr<IConstantBuffer>& b)
         {
             return b.get() == aHandle.Get();
         });
-        NL_INFO(GCoreLogger, "GraphicsSystem: constant buffer destroyed");
+        NL_INFO(GCoreLogger, "constant buffer destroyed");
     }
 }

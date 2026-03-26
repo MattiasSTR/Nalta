@@ -40,7 +40,8 @@ namespace Nalta::Graphics
 
     uint64_t DX12IndexBuffer::GetGPUAddress() const
     {
-        N_CORE_ASSERT(IsReady(), "DX12IndexBuffer: resource not yet uploaded");
+        NL_SCOPE_CORE("DX12IndexBuffer");
+        N_CORE_ASSERT(IsReady(), "resource not yet uploaded");
         return myImpl->resource->GetGPUVirtualAddress();
     }
 

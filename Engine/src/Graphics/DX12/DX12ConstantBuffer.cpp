@@ -33,6 +33,7 @@ namespace Nalta::Graphics
         , mySize(aSize)
         , myAlignedSize(AlignToCBV(aSize))
     {
+        NL_SCOPE_CORE("DX12ConstantBuffer");
         const uint32_t framesInFlight{ aDevice->GetFramesInFlight() };
         const uint64_t totalSize{ static_cast<uint64_t>(myAlignedSize) * framesInFlight };
 
@@ -65,7 +66,7 @@ namespace Nalta::Graphics
             nullptr,
             IID_PPV_ARGS(&myImpl->resource))))
         {
-            NL_FATAL(GCoreLogger, "DX12ConstantBuffer: failed to create resource");
+            NL_FATAL(GCoreLogger, "failed to create resource");
         }
 
         DX12_SET_NAME(myImpl->resource.Get(), "Constant Buffer");
@@ -75,10 +76,10 @@ namespace Nalta::Graphics
         if (FAILED(myImpl->resource->Map(0, &readRange,
             reinterpret_cast<void**>(&myImpl->mappedPtr))))
         {
-            NL_FATAL(GCoreLogger, "DX12ConstantBuffer: failed to map resource");
+            NL_FATAL(GCoreLogger, "failed to map resource");
         }
 
-        NL_TRACE(GCoreLogger, "DX12ConstantBuffer: created ({} bytes x {} frames)", myAlignedSize, framesInFlight);
+        NL_TRACE(GCoreLogger, "created ({} bytes x {} frames)", myAlignedSize, framesInFlight);
     }
 
     DX12ConstantBuffer::~DX12ConstantBuffer()
@@ -95,8 +96,9 @@ namespace Nalta::Graphics
 
     void DX12ConstantBuffer::Update(const void* aData, const uint32_t aSize) const
     {
-        N_CORE_ASSERT(aData, "DX12ConstantBuffer: null data");
-        N_CORE_ASSERT(aSize <= mySize, "DX12ConstantBuffer: data exceeds buffer size");
+        NL_SCOPE_CORE("DX12ConstantBuffer");
+        N_CORE_ASSERT(aData, "null data");
+        N_CORE_ASSERT(aSize <= mySize, "data exceeds buffer size");
 
         const uint32_t frameIndex{ myDevice->GetFrameIndex() };
         const uint32_t offset{ frameIndex * myAlignedSize };
@@ -106,7 +108,8 @@ namespace Nalta::Graphics
 
     uint64_t DX12ConstantBuffer::GetGPUAddress() const
     {
-        N_CORE_ASSERT(IsValid(), "DX12ConstantBuffer: resource not valid");
+        NL_SCOPE_CORE("DX12ConstantBuffer");
+        N_CORE_ASSERT(IsValid(), "resource not valid");
 
         const uint32_t frameIndex{ myDevice->GetFrameIndex() };
         const uint32_t offset{ frameIndex * myAlignedSize };

@@ -24,41 +24,49 @@ namespace Nalta::Graphics
     
     void DX12UploadBatch::Initialize(ID3D12Device10* aDevice, DX12CopyQueue* aCopyQueue)
     {
-        N_CORE_ASSERT(aDevice, "DX12UploadBatch: null device");
-        N_CORE_ASSERT(aCopyQueue, "DX12UploadBatch: null copy queue");
+        NL_SCOPE_CORE("DX12UploadBatch");
+        N_CORE_ASSERT(aDevice, "null device");
+        N_CORE_ASSERT(aCopyQueue, "null copy queue");
 
         myDevice = aDevice;
         myCopyQueue = aCopyQueue;
 
-        NL_TRACE(GCoreLogger, "DX12UploadBatch: initialized");
+        NL_TRACE(GCoreLogger, "initialized");
     }
     
     void DX12UploadBatch::Shutdown()
     {
+        NL_SCOPE_CORE("DX12UploadBatch");
         myImpl->stagingBuffers.clear();
         myPendingUploads.clear();
         myDevice    = nullptr;
         myCopyQueue = nullptr;
 
-        NL_TRACE(GCoreLogger, "DX12UploadBatch: shutdown");
+        NL_TRACE(GCoreLogger, "shutdown");
     }
 
     void DX12UploadBatch::QueueUpload(std::span<const std::byte> aData, IDX12GPUResource* aTarget)
     {
-        N_CORE_ASSERT(!aData.empty(), "DX12UploadBatch: empty data");
-        N_CORE_ASSERT(aTarget, "DX12UploadBatch: null target");
+        NL_SCOPE_CORE("DX12UploadBatch");
+        N_CORE_ASSERT(!aData.empty(), "empty data");
+        N_CORE_ASSERT(aTarget, "null target");
 
         PendingUpload upload;
         upload.data.assign(aData.begin(), aData.end());
         upload.target = aTarget;
         myPendingUploads.push_back(std::move(upload));
 
-        NL_TRACE(GCoreLogger, "DX12UploadBatch: queued upload ({} bytes)", aData.size());
+        NL_TRACE(GCoreLogger, "queued upload ({} bytes)", aData.size());
     }
 
     void DX12UploadBatch::Flush()
     {
-        if (myPendingUploads.empty()) return;
+        if (myPendingUploads.empty())
+        {
+            return;
+        }
+        
+        NL_SCOPE_CORE("DX12UploadBatch");
         
         myImpl->stagingBuffers.clear();
 
@@ -99,7 +107,7 @@ namespace Nalta::Graphics
                 nullptr,
                 IID_PPV_ARGS(&defaultBuffer))))
             {
-                NL_ERROR(GCoreLogger, "DX12UploadBatch: failed to create default buffer");
+                NL_ERROR(GCoreLogger, "failed to create default buffer");
                 continue;
             }
 
@@ -121,7 +129,7 @@ namespace Nalta::Graphics
                 nullptr,
                 IID_PPV_ARGS(&stagingBuffer))))
             {
-                NL_ERROR(GCoreLogger, "DX12UploadBatch: failed to create staging buffer");
+                NL_ERROR(GCoreLogger, "failed to create staging buffer");
                 continue;
             }
 
@@ -131,7 +139,7 @@ namespace Nalta::Graphics
             constexpr D3D12_RANGE readRange{ 0, 0 };
             if (FAILED(stagingBuffer->Map(0, &readRange, &mapped)))
             {
-                NL_ERROR(GCoreLogger, "DX12UploadBatch: failed to map staging buffer");
+                NL_ERROR(GCoreLogger, "failed to map staging buffer");
                 continue;
             }
 
@@ -152,7 +160,7 @@ namespace Nalta::Graphics
         myCopyQueue->ExecuteAndWait();
 
         myPendingUploads.clear();
-        NL_TRACE(GCoreLogger, "DX12UploadBatch: flushed");
+        NL_TRACE(GCoreLogger, "flushed");
     }
 
     bool DX12UploadBatch::HasPendingUploads() const

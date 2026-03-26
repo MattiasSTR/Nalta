@@ -69,6 +69,8 @@ namespace Nalta
 
     void Win32PlatformSystem::Initialize()
     {
+        NL_SCOPE_CORE("Win32PlatformSystem");
+        
         WNDCLASSEXW wc{};
         wc.cbSize        = sizeof(wc);
         wc.style         = CS_HREDRAW | CS_VREDRAW;
@@ -79,27 +81,31 @@ namespace Nalta
 
         if (RegisterClassExW(&wc) == 0u)
         {
-            NL_FATAL(GCoreLogger, "Win32PlatformSystem: failed to register window class");
+            NL_FATAL(GCoreLogger, "failed to register window class");
         }
         
-        NL_TRACE(GCoreLogger, "Win32PlatformSystem: initialized");
+        NL_TRACE(GCoreLogger, "initialized");
     }
 
     void Win32PlatformSystem::Shutdown()
     {
+        NL_SCOPE_CORE("Win32PlatformSystem");
+        
         myWindows.clear();
         UnregisterClassW(WINDOW_CLASS, GetModuleHandleW(nullptr));
-        NL_TRACE(GCoreLogger, "Win32PlatformSystem: shutdown");
+        NL_TRACE(GCoreLogger, "shutdown");
     }
 
     bool Win32PlatformSystem::PollEvents()
     {
+        NL_SCOPE_CORE("Win32PlatformSystem");
+        
         MSG msg{};
         while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE) != 0)
         {
             if (msg.message == WM_QUIT)
             {
-                NL_TRACE(GCoreLogger, "Win32PlatformSystem: WM_QUIT received");
+                NL_TRACE(GCoreLogger, "WM_QUIT received");
                 return false;
             }
 
@@ -114,7 +120,7 @@ namespace Nalta
                 if (myImpl->onWindowDestroyed)
                 {
                     myImpl->onWindowDestroyed(WindowHandle{ aWindow.get() });
-                    NL_TRACE(GCoreLogger, "Win32PlatformSystem: window destroyed callback fired");
+                    NL_TRACE(GCoreLogger, "window destroyed callback fired");
                 }
                 return true;
             }
@@ -126,10 +132,11 @@ namespace Nalta
 
     WindowHandle Win32PlatformSystem::CreatePlatformWindow(const WindowDesc& aDesc)
     {
+        NL_SCOPE_CORE("Win32PlatformSystem");
         auto window{ std::make_unique<Win32Window>(aDesc) };
         const WindowHandle handle{ window.get() };
         myWindows.push_back(std::move(window));
-        NL_TRACE(GCoreLogger, "Win32PlatformSystem: created window '{}'", aDesc.caption);
+        NL_TRACE(GCoreLogger, "created window '{}'", aDesc.caption);
         return handle;
     }
 
@@ -139,7 +146,7 @@ namespace Nalta
         {
             return w.get() == aHandle.Get();
         });
-        NL_TRACE(GCoreLogger, "Win32PlatformSystem: destroyed window");
+        NL_TRACE(GCoreLogger, "destroyed window");
     }
 
     WindowHandle Win32PlatformSystem::GetMainWindow() const

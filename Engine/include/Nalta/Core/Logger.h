@@ -93,3 +93,15 @@ namespace Nalta
 #define NL_CRITICAL(logger, ...) ((void)0)
 #define NL_FATAL(logger, msg, ...) ((void)0)
 #endif
+
+#ifndef N_SHIPPING
+#define NALTA_CONCAT_IMPL(a, b) a##b
+#define NALTA_CONCAT(a, b)           NALTA_CONCAT_IMPL(a, b)
+#define NL_SCOPE(logger, name)       ::Nalta::LoggerScope NALTA_CONCAT(loggerScope_, __LINE__)(logger, name)
+#define NL_SCOPE_CORE(name)          NL_SCOPE(::Nalta::GCoreLogger, name)
+#define NL_SCOPE_GAME(name)          NL_SCOPE(::Nalta::GGameLogger, name)
+#else
+#define NL_SCOPE(logger, name)       ((void)0)
+#define NL_SCOPE_CORE(name)          ((void)0)
+#define NL_SCOPE_GAME(name)          ((void)0)
+#endif

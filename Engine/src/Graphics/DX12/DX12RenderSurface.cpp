@@ -39,7 +39,8 @@ namespace Nalta::Graphics
         myWidth (aDesc.window->GetWidth()),
         myHeight(aDesc.window->GetHeight())
     {
-        N_CORE_ASSERT(aDesc.bufferCount >= 2 && aDesc.bufferCount <= MAX_BACKBUFFERS, "DX12RenderSurface: bufferCount must be between 2 and 3");
+        NL_SCOPE_CORE("DX12RenderSurface");
+        N_CORE_ASSERT(aDesc.bufferCount >= 2 && aDesc.bufferCount <= MAX_BACKBUFFERS, "bufferCount must be between 2 and 3");
 
         myImpl->bufferCount = aDesc.bufferCount;
         myImpl->factory = aDevice->GetFactory();
@@ -49,13 +50,14 @@ namespace Nalta::Graphics
         CreateSwapChain();
         CreateRenderTargetViews();
 
-        NL_TRACE(GCoreLogger, "DX12RenderSurface: created ({}x{})", myWidth, myHeight);
+        NL_TRACE(GCoreLogger, "created ({}x{})", myWidth, myHeight);
     }
     
     DX12RenderSurface::~DX12RenderSurface()
     {
+        NL_SCOPE_CORE("DX12RenderSurface");
         ReleaseBackbuffers();
-        NL_TRACE(GCoreLogger, "DX12RenderSurface: destroyed");
+        NL_TRACE(GCoreLogger, "destroyed");
     }
     
     void DX12RenderSurface::CreateSwapChain() const
@@ -84,7 +86,7 @@ namespace Nalta::Graphics
             nullptr,
             &swapChain1)))
         {
-            NL_FATAL(GCoreLogger, "DX12RenderSurface: failed to create swapchain");
+            NL_FATAL(GCoreLogger, "failed to create swapchain");
         }
         
         // Opt out of Alt+Enter — we manage fullscreen ourselves via Win32
@@ -92,7 +94,7 @@ namespace Nalta::Graphics
         
         if (FAILED(swapChain1.As(&myImpl->swapChain)))
         {
-            NL_FATAL(GCoreLogger, "DX12RenderSurface: failed to query IDXGISwapChain4");
+            NL_FATAL(GCoreLogger, "failed to query IDXGISwapChain4");
         }
     }
     
@@ -105,7 +107,7 @@ namespace Nalta::Graphics
 
         if (FAILED(myImpl->device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&myImpl->rtvHeap))))
         {
-            NL_FATAL(GCoreLogger, "DX12RenderSurface: failed to create RTV descriptor heap");
+            NL_FATAL(GCoreLogger, "failed to create RTV descriptor heap");
         }
 
         myImpl->rtvDescriptorSize = myImpl->device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -118,7 +120,7 @@ namespace Nalta::Graphics
         {
             if (FAILED(myImpl->swapChain->GetBuffer(i, IID_PPV_ARGS(&myImpl->backbuffers[i]))))
             {
-                NL_FATAL(GCoreLogger, "DX12RenderSurface: failed to get backbuffer {}", i);
+                NL_FATAL(GCoreLogger, "failed to get backbuffer {}", i);
             }
 
             myImpl->device->CreateRenderTargetView(myImpl->backbuffers[i].Get(), nullptr, handle);
@@ -149,6 +151,7 @@ namespace Nalta::Graphics
         {
             return;
         }
+        NL_SCOPE_CORE("DX12RenderSurface");
 
         myWidth  = aWidth;
         myHeight = aHeight;
@@ -161,18 +164,18 @@ namespace Nalta::Graphics
             BACKBUFFER_FORMAT,
             DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING)))
         {
-            NL_FATAL(GCoreLogger, "DX12RenderSurface: failed to resize swapchain");
+            NL_FATAL(GCoreLogger, "failed to resize swapchain");
         }
 
         CreateRenderTargetViews();
-        NL_TRACE(GCoreLogger, "DX12RenderSurface: resized to {}x{}", aWidth, aHeight);
+        NL_TRACE(GCoreLogger, "resized to {}x{}", aWidth, aHeight);
     }
     
     void DX12RenderSurface::Present(const uint32_t aSyncInterval)
     {
         if (FAILED(myImpl->swapChain->Present(aSyncInterval, 0)))
         {
-            NL_FATAL(GCoreLogger, "DX12RenderSurface: present failed");
+            NL_FATAL(GCoreLogger, "present failed");
         }
     }
 

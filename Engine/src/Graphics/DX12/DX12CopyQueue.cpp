@@ -27,6 +27,7 @@ namespace Nalta::Graphics
 
     void DX12CopyQueue::Initialize(ID3D12Device10* aDevice) const
     {
+        NL_SCOPE_CORE("DX12CopyQueue");
         // Create copy queue
         D3D12_COMMAND_QUEUE_DESC queueDesc{};
         queueDesc.Type     = D3D12_COMMAND_LIST_TYPE_COPY;
@@ -35,7 +36,7 @@ namespace Nalta::Graphics
 
         if (FAILED(aDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&myImpl->queue))))
         {
-            NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to create command queue");
+            NL_FATAL(GCoreLogger, "failed to create command queue");
         }
 
         DX12_SET_NAME(myImpl->queue.Get(), "Copy Queue");
@@ -45,7 +46,7 @@ namespace Nalta::Graphics
             D3D12_COMMAND_LIST_TYPE_COPY,
             IID_PPV_ARGS(&myImpl->allocator))))
         {
-            NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to create command allocator");
+            NL_FATAL(GCoreLogger, "failed to create command allocator");
         }
 
         DX12_SET_NAME(myImpl->allocator.Get(), "Copy Command Allocator");
@@ -57,7 +58,7 @@ namespace Nalta::Graphics
             D3D12_COMMAND_LIST_FLAG_NONE,
             IID_PPV_ARGS(&myImpl->commandList))))
         {
-            NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to create command list");
+            NL_FATAL(GCoreLogger, "failed to create command list");
         }
 
         DX12_SET_NAME(myImpl->commandList.Get(), "Copy Command List");
@@ -65,7 +66,7 @@ namespace Nalta::Graphics
         // Create fence
         if (FAILED(aDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&myImpl->fence))))
         {
-            NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to create fence");
+            NL_FATAL(GCoreLogger, "failed to create fence");
         }
 
         DX12_SET_NAME(myImpl->fence.Get(), "Copy Fence");
@@ -73,14 +74,15 @@ namespace Nalta::Graphics
         myImpl->fenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
         if (!myImpl->fenceEvent)
         {
-            NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to create fence event");
+            NL_FATAL(GCoreLogger, "failed to create fence event");
         }
 
-        NL_TRACE(GCoreLogger, "DX12CopyQueue: initialized");
+        NL_TRACE(GCoreLogger, "initialized");
     }
 
     void DX12CopyQueue::Shutdown() const
     {
+        NL_SCOPE_CORE("DX12CopyQueue");
         WaitForCompletion();
 
         if (myImpl->fenceEvent)
@@ -94,49 +96,57 @@ namespace Nalta::Graphics
         myImpl->allocator.Reset();
         myImpl->queue.Reset();
 
-        NL_TRACE(GCoreLogger, "DX12CopyQueue: shutdown");
+        NL_TRACE(GCoreLogger, "shutdown");
     }
 
     void DX12CopyQueue::Begin() const
     {
+        NL_SCOPE_CORE("DX12CopyQueue");
+        
         if (FAILED(myImpl->allocator->Reset()))
         {
-            NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to reset allocator");
+            NL_FATAL(GCoreLogger, "failed to reset allocator");
         }
 
         if (FAILED(myImpl->commandList->Reset(myImpl->allocator.Get(), nullptr)))
         {
-            NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to reset command list");
+            NL_FATAL(GCoreLogger, "failed to reset command list");
         }
     }
 
     void DX12CopyQueue::End() const
     {
+        NL_SCOPE_CORE("DX12CopyQueue");
+        
         if (FAILED(myImpl->commandList->Close()))
         {
-            NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to close command list");
+            NL_FATAL(GCoreLogger, "failed to close command list");
         }
     }
 
     void DX12CopyQueue::Execute() const
     {
+        NL_SCOPE_CORE("DX12CopyQueue");
+        
         ID3D12CommandList* lists[]{ myImpl->commandList.Get() };
         myImpl->queue->ExecuteCommandLists(1, lists);
 
         ++myImpl->fenceValue;
         if (FAILED(myImpl->queue->Signal(myImpl->fence.Get(), myImpl->fenceValue)))
         {
-            NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to signal fence");
+            NL_FATAL(GCoreLogger, "failed to signal fence");
         }
     }
 
     void DX12CopyQueue::WaitForCompletion() const
     {
+        NL_SCOPE_CORE("DX12CopyQueue");
+        
         if (myImpl->fence->GetCompletedValue() < myImpl->fenceValue)
         {
             if (FAILED(myImpl->fence->SetEventOnCompletion(myImpl->fenceValue, myImpl->fenceEvent)))
             {
-                NL_FATAL(GCoreLogger, "DX12CopyQueue: failed to set fence event");
+                NL_FATAL(GCoreLogger, "failed to set fence event");
             }
             WaitForSingleObject(myImpl->fenceEvent, INFINITE);
         }

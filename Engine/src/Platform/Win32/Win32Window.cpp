@@ -25,6 +25,7 @@ namespace Nalta
         myHeight(aDesc.height),
         myIsMainWindow(aDesc.isMainWindow)
     {
+        NL_SCOPE_CORE("Win32Window");
         DWORD style{ WS_OVERLAPPEDWINDOW };
         if (!aDesc.resizable)
         {
@@ -51,7 +52,7 @@ namespace Nalta
         
         if (myImpl->hwnd == nullptr)
         {
-            NL_FATAL(GCoreLogger, "Win32Window: CreateWindowExW failed for '{}'", aDesc.caption);
+            NL_FATAL(GCoreLogger, "CreateWindowExW failed for '{}'", aDesc.caption);
         }
         
         myImpl->savedPlacement.length = sizeof(WINDOWPLACEMENT);
@@ -62,14 +63,14 @@ namespace Nalta
             ApplyWindowMode(aDesc.windowMode);
         }
         
-        NL_TRACE(GCoreLogger, "Win32Window: created '{}' ({}x{})", aDesc.caption, myWidth, myHeight);
+        NL_TRACE(GCoreLogger, "created '{}' ({}x{})", aDesc.caption, myWidth, myHeight);
     }
     
     Win32Window::~Win32Window()
     {
         if (myImpl->hwnd != nullptr)
         {
-            NL_TRACE(GCoreLogger, "Win32Window: destroying {}x{}", GetWidth(), GetHeight());
+            NL_TRACE(GCoreLogger, "destroying {}x{}", GetWidth(), GetHeight());
             ::DestroyWindow(myImpl->hwnd);
             myImpl->hwnd = nullptr;
         }
@@ -102,6 +103,7 @@ namespace Nalta
     
     void Win32Window::ApplyWindowMode(WindowMode aMode)
     {
+        NL_SCOPE_CORE("Win32Window");
         if (aMode == WindowMode::Windowed)
         {
             SetWindowLongW(myImpl->hwnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
@@ -126,7 +128,7 @@ namespace Nalta
                 SWP_FRAMECHANGED);
         }
 
-        NL_TRACE(GCoreLogger, "Win32Window: window mode changed to {}", static_cast<uint8_t>(aMode));
+        NL_TRACE(GCoreLogger, "window mode changed to {}", static_cast<uint8_t>(aMode));
         myWindowMode = aMode;
     }
     
@@ -164,7 +166,9 @@ namespace Nalta
 
     void Win32Window::MarkForDestroy()
     {
+        NL_SCOPE_CORE("Win32Window");
+        
         myMarkedForDestroy = true;
-        NL_TRACE(GCoreLogger, "Win32Window: marked for destroy");
+        NL_TRACE(GCoreLogger, "marked for destroy");
     }
 }

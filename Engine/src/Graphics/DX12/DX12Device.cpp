@@ -85,7 +85,7 @@ namespace Nalta::Graphics
             ComPtr<ID3D12Device> tempDevice;
             if (FAILED(D3D12CreateDevice(aAdapter, MIN_FEATURE_LEVEL, IID_PPV_ARGS(&tempDevice))))
             {
-                NL_FATAL(GCoreLogger, "DX12Device: failed to create temp device for feature level query");
+                NL_FATAL(GCoreLogger, "failed to create temp device for feature level query");
             }
 
             D3D12_FEATURE_DATA_FEATURE_LEVELS featureLevelInfo{};
@@ -94,7 +94,7 @@ namespace Nalta::Graphics
 
             if (FAILED(tempDevice->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featureLevelInfo, sizeof(featureLevelInfo))))
             {
-                NL_FATAL(GCoreLogger, "DX12Device: failed to query feature levels");
+                NL_FATAL(GCoreLogger, "failed to query feature levels");
             }
 
             return featureLevelInfo.MaxSupportedFeatureLevel;
@@ -122,7 +122,7 @@ namespace Nalta::Graphics
                 ComPtr<ID3D12ShaderReflection> reflection;
                 if (FAILED(aDxcUtils->CreateReflection(&reflBuffer, IID_PPV_ARGS(&reflection))))
                 {
-                    NL_WARN(GCoreLogger, "DX12Device: failed to reflect stage, skipping");
+                    NL_WARN(GCoreLogger, "failed to reflect stage, skipping");
                     continue;
                 }
 
@@ -242,7 +242,7 @@ namespace Nalta::Graphics
             {
                 if (serializeErrors)
                 {
-                    NL_ERROR(GCoreLogger, "DX12Device: root signature serialize error: {}", static_cast<const char*>(serializeErrors->GetBufferPointer()));
+                    NL_ERROR(GCoreLogger, "root signature serialize error: {}", static_cast<const char*>(serializeErrors->GetBufferPointer()));
                 }
                 return nullptr;
             }
@@ -254,11 +254,11 @@ namespace Nalta::Graphics
                 serialized->GetBufferSize(),
                 IID_PPV_ARGS(&rootSignature))))
             {
-                NL_ERROR(GCoreLogger, "DX12Device: failed to create root signature");
+                NL_ERROR(GCoreLogger, "failed to create root signature");
                 return nullptr;
             }
 
-            NL_TRACE(GCoreLogger, "DX12Device: root signature reflected ({} params, {} samplers)", rootParams.size(), staticSamplers.size());
+            NL_TRACE(GCoreLogger, "root signature reflected ({} params, {} samplers)", rootParams.size(), staticSamplers.size());
 
             return rootSignature;
         }
@@ -287,7 +287,7 @@ namespace Nalta::Graphics
             
             if (FAILED(aDxcUtils->CreateReflection(&reflBuffer, IID_PPV_ARGS(&result.reflection))))
             {
-                NL_WARN(GCoreLogger, "DX12Device: failed to reflect vertex shader input layout");
+                NL_WARN(GCoreLogger, "failed to reflect vertex shader input layout");
                 return result;
             }
             
@@ -341,7 +341,7 @@ namespace Nalta::Graphics
                 });
             }
             
-            NL_TRACE(GCoreLogger, "DX12Device: reflected {} input elements", result.elements.size());
+            NL_TRACE(GCoreLogger, "reflected {} input elements", result.elements.size());
             return result;
         }
     }
@@ -379,6 +379,8 @@ namespace Nalta::Graphics
 
     void DX12Device::Initialize(const DeviceDesc& aDesc)
     {
+        NL_SCOPE_CORE("DX12Device::Initialize");
+        
         myImpl = std::make_unique<Impl>();
         myImpl->framesInFlight = aDesc.framesInFlight;
 
@@ -390,17 +392,17 @@ namespace Nalta::Graphics
 #endif
         if (FAILED(CreateDXGIFactory2(factoryFlags, IID_PPV_ARGS(&myImpl->factory))))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to create DXGI factory");
+            NL_FATAL(GCoreLogger, "failed to create DXGI factory");
         }
 
         SelectAdapter();
 
         const D3D_FEATURE_LEVEL maxFeatureLevel{ QueryMaxFeatureLevel(myImpl->adapter.Get()) };
-        NL_INFO(GCoreLogger, "DX12Device: max feature level {:#010x}", static_cast<uint32_t>(maxFeatureLevel));
+        NL_INFO(GCoreLogger, " max feature level {:#010x}", static_cast<uint32_t>(maxFeatureLevel));
 
         if (FAILED(D3D12CreateDevice(myImpl->adapter.Get(), maxFeatureLevel, IID_PPV_ARGS(&myImpl->device))))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to create D3D12 device");
+            NL_FATAL(GCoreLogger, "failed to create D3D12 device");
         }
         
         DX12_SET_NAME(myImpl->device.Get(), "Main D3D12 Device");
@@ -413,18 +415,20 @@ namespace Nalta::Graphics
         
         myImpl->copyQueue.Initialize(myImpl->device.Get());
         myImpl->uploadBatch.Initialize(myImpl->device.Get(), &myImpl->copyQueue);
-        NL_TRACE(GCoreLogger, "DX12Device: copy queue and upload batch initialized");
+        NL_TRACE(GCoreLogger, "copy queue and upload batch initialized");
         
         if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&myImpl->dxcUtils))))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to create DXC utils for reflection");
+            NL_FATAL(GCoreLogger, "failed to create DXC utils for reflection");
         }
 
-        NL_INFO(GCoreLogger, "DX12Device: initialized");
+        NL_INFO(GCoreLogger, "initialized");
     }
 
     void DX12Device::Shutdown()
     {
+        NL_SCOPE_CORE("DX12Device::Shutdown");
+        
         SignalAndWait();
 
         if (myImpl->fenceEvent != nullptr)
@@ -460,37 +464,41 @@ namespace Nalta::Graphics
 #endif
         
         myImpl.reset();
-        NL_INFO(GCoreLogger, "DX12Device: shutdown");
+        NL_INFO(GCoreLogger, "shutdown");
     }
 
     void DX12Device::BeginFrame() const
     {
+        NL_SCOPE_CORE("DX12Device");
+        
         const uint64_t completedValue{ myImpl->fence->GetCompletedValue() };
         if (myImpl->frameFenceValues[myImpl->frameIndex] > completedValue)
         {
             if (FAILED(myImpl->fence->SetEventOnCompletion(myImpl->frameFenceValues[myImpl->frameIndex], myImpl->fenceEvent)))
             {
-                NL_FATAL(GCoreLogger, "DX12Device: failed to set fence event on BeginFrame");
+                NL_FATAL(GCoreLogger, "failed to set fence event on BeginFrame");
             }
             WaitForSingleObject(myImpl->fenceEvent, INFINITE);
         }
 
         if (FAILED(myImpl->commandAllocators[myImpl->frameIndex]->Reset()))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to reset command allocator");
+            NL_FATAL(GCoreLogger, "failed to reset command allocator");
         }
 
         if (FAILED(myImpl->commandList->Reset(myImpl->commandAllocators[myImpl->frameIndex].Get(), nullptr)))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to reset command list");
+            NL_FATAL(GCoreLogger, "failed to reset command list");
         }
     }
 
     void DX12Device::EndFrame() const
     {
+        NL_SCOPE_CORE("DX12Device");
+        
         if (FAILED(myImpl->commandList->Close()))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to close command list");
+            NL_FATAL(GCoreLogger, "failed to close command list");
         }
 
         ID3D12CommandList* lists[]{ myImpl->commandList.Get() };
@@ -503,46 +511,53 @@ namespace Nalta::Graphics
 
     void DX12Device::FlushUploads()
     {
+        NL_SCOPE_CORE("DX12Device");
         myImpl->uploadBatch.Flush();
     }
 
     std::unique_ptr<IVertexBuffer> DX12Device::CreateVertexBuffer(const VertexBufferDesc& aDesc, const std::span<const std::byte> aData)
     {
+        NL_SCOPE_CORE("DX12Device");
+        
         auto buffer{ std::make_unique<DX12VertexBuffer>(aDesc.stride, aDesc.count) };
         myImpl->uploadBatch.QueueUpload(aData, buffer.get());
 
-        NL_TRACE(GCoreLogger, "DX12Device: vertex buffer queued ({} vertices)", aDesc.count);
+        NL_TRACE(GCoreLogger, "vertex buffer queued ({} vertices)", aDesc.count);
         return buffer;
     }
 
     std::unique_ptr<IIndexBuffer> DX12Device::CreateIndexBuffer(const IndexBufferDesc& aDesc, std::span<const std::byte> aData)
     {
+        NL_SCOPE_CORE("DX12Device");
+        
         auto buffer{ std::make_unique<DX12IndexBuffer>(aDesc.count, aDesc.format) };
         myImpl->uploadBatch.QueueUpload(aData, buffer.get());
-        NL_TRACE(GCoreLogger, "DX12Device: index buffer queued ({} indices)", aDesc.count);
+        NL_TRACE(GCoreLogger, "index buffer queued ({} indices)", aDesc.count);
         return buffer;
     }
 
     std::unique_ptr<IConstantBuffer> DX12Device::CreateConstantBuffer(const ConstantBufferDesc& aDesc)
     {
-        N_CORE_ASSERT(aDesc.size > 0, "DX12Device: constant buffer size must be > 0");
+        N_CORE_ASSERT(aDesc.size > 0, "constant buffer size must be > 0");
         return std::make_unique<DX12ConstantBuffer>(aDesc.size, this);
     }
 
     std::unique_ptr<IRenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
     {
+        NL_SCOPE_CORE("DX12Device");
         return std::make_unique<DX12RenderSurface>(aDesc, this);
     }
 
     std::unique_ptr<IPipeline> DX12Device::CreatePipeline(const PipelineDesc& aDesc)
     {
-        N_CORE_ASSERT(aDesc.shader, "DX12Device: CreatePipeline called with null shader");
+        NL_SCOPE_CORE("DX12Device");
+        N_CORE_ASSERT(aDesc.shader, "CreatePipeline called with null shader");
 
         ComPtr<ID3D12RootSignature> rootSignature{ ReflectRootSignature(myImpl->dxcUtils.Get(), myImpl->device.Get(), *aDesc.shader) };
         
         if (rootSignature == nullptr)
         {
-            NL_ERROR(GCoreLogger, "DX12Device: failed to reflect root signature");
+            NL_ERROR(GCoreLogger, "failed to reflect root signature");
             return nullptr;
         }
         
@@ -594,19 +609,20 @@ namespace Nalta::Graphics
         ComPtr<ID3D12PipelineState> pipelineState;
         if (FAILED(myImpl->device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState))))
         {
-            NL_ERROR(GCoreLogger, "DX12Device: failed to create pipeline state");
+            NL_ERROR(GCoreLogger, "failed to create pipeline state");
             return nullptr;
         }
         
         DX12_SET_NAME(rootSignature.Get(), "Reflected Root Signature");
         DX12_SET_NAME(pipelineState.Get(), "Graphics Pipeline State");
 
-        NL_TRACE(GCoreLogger, "DX12Device: pipeline created");
+        NL_TRACE(GCoreLogger, "pipeline created");
         return std::make_unique<DX12Pipeline>(pipelineState.Get(), rootSignature.Get());
     }
 
     std::unique_ptr<IRenderContext> DX12Device::CreateRenderContext()
     {
+        NL_SCOPE_CORE("DX12Device");
         return std::make_unique<DX12RenderContext>(this);
     }
 
@@ -622,20 +638,24 @@ namespace Nalta::Graphics
 
     void DX12Device::Signal() const
     {
+        NL_SCOPE_CORE("DX12Device");
+        
         ++myImpl->fenceValue;
         if (FAILED(myImpl->commandQueue->Signal(myImpl->fence.Get(), myImpl->fenceValue)))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to signal fence");
+            NL_FATAL(GCoreLogger, "failed to signal fence");
         }
     }
 
     void DX12Device::WaitForGPU() const
     {
+        NL_SCOPE_CORE("DX12Device");
+        
         if (myImpl->fence->GetCompletedValue() < myImpl->fenceValue)
         {
             if (FAILED(myImpl->fence->SetEventOnCompletion(myImpl->fenceValue, myImpl->fenceEvent)))
             {
-                NL_FATAL(GCoreLogger, "DX12Device: failed to set fence event");
+                NL_FATAL(GCoreLogger, "failed to set fence event");
             }
 
             WaitForSingleObject(myImpl->fenceEvent, INFINITE);
@@ -691,13 +711,13 @@ namespace Nalta::Graphics
             myImpl->debugController->EnableDebugLayer();
 #ifdef N_DEBUG
             myImpl->debugController->SetEnableGPUBasedValidation(TRUE);
-            NL_INFO(GCoreLogger, "DX12Device: GPU based validation is enabled. This will considerably slow down the renderer!");
+            NL_INFO(GCoreLogger, "GPU based validation is enabled. This will considerably slow down the renderer!");
 #endif
-            NL_TRACE(GCoreLogger, "DX12Device: debug layer enabled");
+            NL_TRACE(GCoreLogger, "debug layer enabled");
         }
         else
         {
-            NL_WARN(GCoreLogger, "DX12Device: failed to enable debug layer");
+            NL_WARN(GCoreLogger, "failed to enable debug layer");
         }
 #endif
     }
@@ -762,7 +782,7 @@ namespace Nalta::Graphics
                 &myImpl->callbackCookie);
         }
 
-        NL_TRACE(GCoreLogger, "DX12Device: info queue configured");
+        NL_TRACE(GCoreLogger, "info queue configured");
 #endif
     }
 
@@ -783,7 +803,7 @@ namespace Nalta::Graphics
 
         if (myImpl->adapter == nullptr)
         {
-            NL_FATAL(GCoreLogger, "DX12Device: no adapter found that supports feature level 12_0");
+            NL_FATAL(GCoreLogger, "no adapter found that supports feature level 12_0");
         }
 
         DXGI_ADAPTER_DESC1 desc{};
@@ -796,7 +816,7 @@ namespace Nalta::Graphics
         
         char adapterName[128]{};
         WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, adapterName, sizeof(adapterName), nullptr, nullptr);
-        NL_INFO(GCoreLogger, "DX12Device: selected adapter '{}' VRAM: {} MB", adapterName, toMB(desc.DedicatedVideoMemory));
+        NL_INFO(GCoreLogger, "selected adapter '{}' VRAM: {} MB", adapterName, toMB(desc.DedicatedVideoMemory));
     }
     
     void DX12Device::CreateCommandQueue() const
@@ -808,10 +828,10 @@ namespace Nalta::Graphics
 
         if (FAILED(myImpl->device->CreateCommandQueue(&desc, IID_PPV_ARGS(&myImpl->commandQueue))))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to create command queue");
+            NL_FATAL(GCoreLogger, "failed to create command queue");
         }
 
-        NL_TRACE(GCoreLogger, "DX12Device: command queue created");
+        NL_TRACE(GCoreLogger, "command queue created");
         DX12_SET_NAME(myImpl->commandQueue.Get(), "Main Command Queue");
     }
 
@@ -826,14 +846,14 @@ namespace Nalta::Graphics
                 D3D12_COMMAND_LIST_TYPE_DIRECT,
                 IID_PPV_ARGS(&myImpl->commandAllocators[i]))))
             {
-                NL_FATAL(GCoreLogger, "DX12Device: failed to create command allocator {}", i);
+                NL_FATAL(GCoreLogger, "failed to create command allocator {}", i);
             }
             
             const std::wstring name{ L"Command Allocator " + std::to_wstring(i) };
             DX12_SET_NAME_W(myImpl->commandAllocators[i].Get(), name.c_str());
         }
 
-        NL_TRACE(GCoreLogger, "DX12Device: {} command allocators created", myImpl->framesInFlight);
+        NL_TRACE(GCoreLogger, "{} command allocators created", myImpl->framesInFlight);
     }
 
     void DX12Device::CreateCommandList() const
@@ -844,10 +864,10 @@ namespace Nalta::Graphics
             D3D12_COMMAND_LIST_FLAG_NONE,
             IID_PPV_ARGS(&myImpl->commandList))))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to create command list");
+            NL_FATAL(GCoreLogger, "failed to create command list");
         }
 
-        NL_TRACE(GCoreLogger, "DX12Device: command list created");
+        NL_TRACE(GCoreLogger, "command list created");
         DX12_SET_NAME(myImpl->commandList.Get(), "Main Command List");
     }
 
@@ -855,7 +875,7 @@ namespace Nalta::Graphics
     {
         if (FAILED(myImpl->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&myImpl->fence))))
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to create fence");
+            NL_FATAL(GCoreLogger, "failed to create fence");
         }
 
         myImpl->fenceValue = 0;
@@ -863,10 +883,10 @@ namespace Nalta::Graphics
 
         if (myImpl->fenceEvent == nullptr)
         {
-            NL_FATAL(GCoreLogger, "DX12Device: failed to create fence event");
+            NL_FATAL(GCoreLogger, "failed to create fence event");
         }
 
-        NL_TRACE(GCoreLogger, "DX12Device: fence created");
+        NL_TRACE(GCoreLogger, "fence created");
         DX12_SET_NAME(myImpl->fence.Get(), "Main Fence");
     }
 }

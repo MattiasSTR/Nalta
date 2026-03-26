@@ -23,7 +23,7 @@ namespace Nalta
 		myCoreLogger->Init(aConfig.coreLogger);
 		GCoreLogger = myCoreLogger.get();
 		
-		const LoggerScope engineScope(GCoreLogger, "Engine::Construct");
+		NL_SCOPE_CORE("Engine::Construct");
 		NL_INFO(GCoreLogger, "Core Logger Created");
 
 		if (!aConfig.gameLogger.name.empty())
@@ -54,7 +54,7 @@ namespace Nalta
 
 	void Engine::Initialize()
 	{
-		const LoggerScope engineScope(GCoreLogger, "Engine::Initialize");
+		NL_SCOPE_CORE("Engine::Initialize");
 		NL_INFO(GCoreLogger, "Initializing Engine Systems");
 		
 		if (myConfig.ShouldCreateWindow())
@@ -107,13 +107,13 @@ namespace Nalta
 				myGraphicsSystem->FlushUploads();
 			}
 
-			NL_INFO(GCoreLogger, "Engine: game initialized");
+			NL_INFO(GCoreLogger, "game initialized");
 		}
 	}
 
 	void Engine::Shutdown()
 	{
-		const LoggerScope engineScope(GCoreLogger, "Engine::Shutdown");
+		NL_SCOPE_CORE("Engine::Shutdown");
 		
 		if (myGame)
 		{
@@ -154,7 +154,7 @@ namespace Nalta
 
 	void Engine::Run()
 	{
-		const LoggerScope engineScope(GCoreLogger, "Engine::Run");
+		NL_SCOPE_CORE("Engine::Run");
 		NL_INFO(GCoreLogger, "Starting run loop");
 
 		if (myConfig.mode == EngineMode::Client)
@@ -214,7 +214,7 @@ namespace Nalta
 			myPlatformSystem->SetCurrentThreadName("Update");
 		}
 		
-		const LoggerScope gameScope(GCoreLogger, "UpdateLoop");
+		NL_SCOPE_CORE("UpdateLoop");
 		NL_INFO(GCoreLogger, "Update loop started");
 		
 		constexpr double fixedDelta{ 1.0 / 50.0 };
@@ -260,7 +260,7 @@ namespace Nalta
 			myPlatformSystem->SetCurrentThreadName("Render");
 		}
 		
-		const LoggerScope renderScope(GCoreLogger, "RenderLoop");
+		NL_SCOPE_CORE("RenderLoop");
 		NL_INFO(GCoreLogger, "Render loop started");
 		
 		constexpr float clearColor[]{ 0.1f, 0.1f, 0.1f, 1.0f };

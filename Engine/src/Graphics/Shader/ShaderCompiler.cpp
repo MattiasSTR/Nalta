@@ -47,28 +47,31 @@ namespace Nalta::Graphics
     
     void ShaderCompiler::Initialize()
     {
+        NL_SCOPE_CORE("ShaderCompiler");
         myImpl = std::make_unique<Impl>();
 
         if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&myImpl->utils))))
         {
-            NL_FATAL(GCoreLogger, "ShaderCompiler: failed to create DXC utils");
+            NL_FATAL(GCoreLogger, "failed to create DXC utils");
         }
 
         if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&myImpl->compiler))))
         {
-            NL_FATAL(GCoreLogger, "ShaderCompiler: failed to create DXC compiler");
+            NL_FATAL(GCoreLogger, "failed to create DXC compiler");
         }
 
         if (FAILED(myImpl->utils->CreateDefaultIncludeHandler(&myImpl->defaultIncludeHandler)))
         {
-            NL_FATAL(GCoreLogger, "ShaderCompiler: failed to create include handler");
+            NL_FATAL(GCoreLogger, "failed to create include handler");
         }
 
-        NL_INFO(GCoreLogger, "ShaderCompiler: initialized");
+        NL_INFO(GCoreLogger, "initialized");
     }
     
     void ShaderCompiler::Shutdown()
     {
+        NL_SCOPE_CORE("ShaderCompiler");
+        
         myCache.clear();
 
         myImpl->defaultIncludeHandler.Reset();
@@ -76,16 +79,18 @@ namespace Nalta::Graphics
         myImpl->utils.Reset();
 
         myImpl.reset();
-        NL_INFO(GCoreLogger, "ShaderCompiler: shutdown");
+        NL_INFO(GCoreLogger, "shutdown");
     }
     
     std::shared_ptr<Shader> ShaderCompiler::Compile(const ShaderDesc& aDesc)
     {
+        NL_SCOPE_CORE("ShaderCompiler");
+        
         const std::string key{ BuildCacheKey(aDesc) };
 
         if (const auto it{ myCache.find(key) }; it != myCache.end())
         {
-            NL_TRACE(GCoreLogger, "ShaderCompiler: cache hit for '{}'", aDesc.filePath.string());
+            NL_TRACE(GCoreLogger, "cache hit for '{}'", aDesc.filePath.string());
             return it->second;
         }
 
@@ -93,7 +98,7 @@ namespace Nalta::Graphics
         if (shader && shader->HasStage(aDesc.stages.front().stage))
         {
             myCache[key] = shader;
-            NL_INFO(GCoreLogger, "ShaderCompiler: compiled '{}'", aDesc.filePath.string());
+            NL_INFO(GCoreLogger, "compiled '{}'", aDesc.filePath.string());
         }
 
         return shader;
@@ -107,18 +112,20 @@ namespace Nalta::Graphics
 
     void ShaderCompiler::InvalidateCache(const std::filesystem::path& aPath)
     {
+        NL_SCOPE_CORE("ShaderCompiler");
+        
         const std::string pathStr{ aPath.string() };
         std::erase_if(myCache, [&](const auto& aEntry)
         {
             return aEntry.first.starts_with(pathStr);
         });
 
-        NL_TRACE(GCoreLogger, "ShaderCompiler: invalidated cache for '{}'", pathStr);
+        NL_TRACE(GCoreLogger, "invalidated cache for '{}'", pathStr);
     }
     
     std::shared_ptr<Shader> ShaderCompiler::CompileInternal(const ShaderDesc& aDesc) const
     {
-        N_CORE_ASSERT(std::filesystem::exists(aDesc.filePath), "ShaderCompiler: file not found '{}'", aDesc.filePath.string().c_str());
+        N_CORE_ASSERT(std::filesystem::exists(aDesc.filePath), "file not found '{}'", aDesc.filePath.string().c_str());
 
         auto shader{ std::make_shared<Shader>() };
 
@@ -126,7 +133,7 @@ namespace Nalta::Graphics
         {
             if (!CompileStage(stageDesc, aDesc, *shader))
             {
-                NL_ERROR(GCoreLogger, "ShaderCompiler: failed to compile stage '{}' in '{}'", stageDesc.entryPoint, aDesc.filePath.string());
+                NL_ERROR(GCoreLogger, "failed to compile stage '{}' in '{}'", stageDesc.entryPoint, aDesc.filePath.string());
                 return nullptr;
             }
         }
@@ -140,7 +147,7 @@ namespace Nalta::Graphics
         if (FAILED(myImpl->utils->LoadFile(
             aDesc.filePath.wstring().c_str(), nullptr, &sourceBlob)))
         {
-            NL_ERROR(GCoreLogger, "ShaderCompiler: failed to load '{}'",
+            NL_ERROR(GCoreLogger, "failed to load '{}'",
                 aDesc.filePath.string());
             return false;
         }
@@ -191,7 +198,7 @@ namespace Nalta::Graphics
             myImpl->defaultIncludeHandler.Get(),
             IID_PPV_ARGS(&result))))
         {
-            NL_ERROR(GCoreLogger, "ShaderCompiler: compile call failed for '{}'", aDesc.filePath.string());
+            NL_ERROR(GCoreLogger, "compile call failed for '{}'", aDesc.filePath.string());
             return false;
         }
 
@@ -199,7 +206,7 @@ namespace Nalta::Graphics
         result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
         if (errors && errors->GetStringLength() > 0)
         {
-            NL_ERROR(GCoreLogger, "ShaderCompiler: '{}' ({}):\n{}",
+            NL_ERROR(GCoreLogger, "'{}' ({}):\n{}",
                 aDesc.filePath.string(),
                 aStage.entryPoint,
                 errors->GetStringPointer());
@@ -216,7 +223,7 @@ namespace Nalta::Graphics
         result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&bytecodeBlob), nullptr);
         if ((bytecodeBlob == nullptr) || bytecodeBlob->GetBufferSize() == 0)
         {
-            NL_ERROR(GCoreLogger, "ShaderCompiler: empty bytecode for '{}'", aDesc.filePath.string());
+            NL_ERROR(GCoreLogger, "empty bytecode for '{}'", aDesc.filePath.string());
             return false;
         }
         
@@ -231,11 +238,11 @@ namespace Nalta::Graphics
         {
             const auto* reflData{ static_cast<const uint8_t*>(reflectionBlob->GetBufferPointer()) };
             bytecode.reflection.assign(reflData, reflData + reflectionBlob->GetBufferSize());
-            NL_TRACE(GCoreLogger, "ShaderCompiler: reflection data captured for '{}'", aStage.entryPoint);
+            NL_TRACE(GCoreLogger, "reflection data captured for '{}'", aStage.entryPoint);
         }
         else
         {
-            NL_WARN(GCoreLogger, "ShaderCompiler: no reflection data for '{}'", aStage.entryPoint);
+            NL_WARN(GCoreLogger, "no reflection data for '{}'", aStage.entryPoint);
         }
 
         aOutShader.SetBytecode(aStage.stage, std::move(bytecode));

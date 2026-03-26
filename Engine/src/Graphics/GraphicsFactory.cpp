@@ -11,8 +11,9 @@ namespace Nalta::Graphics
 {
     std::unique_ptr<IDevice> CreateDevice()
     {
+        NL_SCOPE_CORE("GraphicsFactory");
 #ifdef N_GRAPHICS_API_DX12
-        NL_INFO(GCoreLogger, "[GraphicsFactory] Creating DX12Device");
+        NL_INFO(GCoreLogger, "Creating DX12Device");
         return std::make_unique<DX12Device>();
 #else
         static_assert(false, "No graphics API defined or API not supported");
