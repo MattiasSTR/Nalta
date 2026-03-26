@@ -12,17 +12,21 @@ namespace Nalta
     class Win32PlatformSystem : public IPlatformSystem
     {
     public:
+        struct Impl;
+        
         Win32PlatformSystem();
         ~Win32PlatformSystem() override;
         
         void Initialize() override;
         void Shutdown() override;
         bool PollEvents() override;
+        void TickInput() override;
         
         [[nodiscard]] WindowHandle CreatePlatformWindow(const WindowDesc& aDesc) override;
         void DestroyWindow(WindowHandle aHandle) override;
         
         [[nodiscard]] WindowHandle GetMainWindow() const override;
+        [[nodiscard]] InputSystem& GetInputSystem() override;
         
         void SetOnWindowDestroyedCallback(OnWindowDestroyedCallback aCallback) override;
         
@@ -32,7 +36,6 @@ namespace Nalta
         [[nodiscard]] uint64_t GetSystemMemoryBytes() const override;
         
     private:
-        struct Impl;
         std::unique_ptr<Impl> myImpl;
 
         std::vector<std::unique_ptr<Win32Window>> myWindows;

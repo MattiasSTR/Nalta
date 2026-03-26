@@ -7,6 +7,7 @@
 #include "Nalta/Graphics/RenderResources/DepthBufferHandle.h"
 #include "Nalta/Graphics/Surface/RenderSurfaceHandle.h"
 #include "Nalta/Platform/WindowHandle.h"
+#include "Nalta/Input/PlayerInput.h"
 
 #include <atomic>
 #include <memory>
@@ -61,6 +62,8 @@ namespace Nalta
 		std::atomic<bool> myRestart{ false };
 		Graphics::RenderSurfaceHandle myMainSurface;
 		Graphics::DepthBufferHandle myMainDepthBuffer;
+		
+		PlayerInput myPlayerInput;
 
 		static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{ 2 };
 		FrameQueue<RenderFrame> myRenderQueue{ MAX_FRAMES_IN_FLIGHT };

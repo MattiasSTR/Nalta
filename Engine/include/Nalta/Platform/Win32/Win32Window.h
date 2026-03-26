@@ -9,7 +9,7 @@ namespace Nalta
     class Win32Window final : public IWindow
     {
     public:
-        explicit Win32Window(const WindowDesc& aDesc);
+        explicit Win32Window(const WindowDesc& aDesc, void* aCreateParams);
         ~Win32Window() override;
 
         void Show() override;

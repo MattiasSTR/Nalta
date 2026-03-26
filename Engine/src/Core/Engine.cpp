@@ -9,6 +9,7 @@
 #include "Nalta/Graphics/Commands/IRenderContext.h"
 #include "Nalta/Graphics/Surface/IRenderSurface.h"
 #include "Nalta/Graphics/Surface/RenderSurfaceDesc.h"
+#include "Nalta/Input/InputSystem.h"
 #include "Nalta/Platform/IWindow.h"
 #include "Nalta/Platform/PlatformSystemFactory.h"
 
@@ -81,6 +82,10 @@ namespace Nalta
 			myMainWindow = myPlatformSystem->CreatePlatformWindow(*myConfig.mainWindowDesc);
 			myMainWindow->Show();
 			NL_INFO(GCoreLogger, "Main window created");
+			
+			auto& inputSystem{ myPlatformSystem->GetInputSystem() };
+			myPlayerInput.AssignKeyboard(inputSystem.GetKeyboard());
+			myPlayerInput.AssignMouse(inputSystem.GetMouse());
 
 			Graphics::RenderSurfaceDesc surfaceDesc;
 			surfaceDesc.window      = myMainWindow;
@@ -227,9 +232,13 @@ namespace Nalta
 		constexpr double fixedDelta{ 1.0 / 50.0 };
 		Timer timer{ fixedDelta };
 		
+		UpdateContext updateContext;
+		updateContext.playerInput = &myPlayerInput;
+		
 		const bool canRender{ myConfig.ShouldRunRenderThread() };
 		while (!myStop)
 		{
+			myPlatformSystem->TickInput();
 			timer.Update();
 			
 			while (timer.ShouldFixedUpdate())
@@ -240,7 +249,6 @@ namespace Nalta
 			
 			if (myGame)
 			{
-				UpdateContext updateContext;
 				updateContext.deltaTime = static_cast<float>(timer.GetDeltaTime());
 				myGame->Update(updateContext);
 			}

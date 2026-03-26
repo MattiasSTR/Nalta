@@ -19,13 +19,14 @@ namespace Nalta
         WINDOWPLACEMENT savedPlacement{};
     };
     
-    Win32Window::Win32Window(const WindowDesc& aDesc)
+    Win32Window::Win32Window(const WindowDesc& aDesc, void* aCreateParams)
         : myImpl(std::make_unique<Impl>()),
         myWidth(aDesc.width),
         myHeight(aDesc.height),
         myIsMainWindow(aDesc.isMainWindow)
     {
         NL_SCOPE_CORE("Win32Window");
+        
         DWORD style{ WS_OVERLAPPEDWINDOW };
         if (!aDesc.resizable)
         {
@@ -47,7 +48,7 @@ namespace Nalta
             rect.bottom - rect.top,
             nullptr, nullptr,
             GetModuleHandleW(nullptr),
-            this
+            aCreateParams
         );
         
         if (myImpl->hwnd == nullptr)
