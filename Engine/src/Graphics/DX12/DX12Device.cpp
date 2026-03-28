@@ -590,8 +590,24 @@ namespace Nalta::Graphics
             rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
         }
         
+        const auto ToD3D12Compare = [](const DepthCompare aFunc) -> D3D12_COMPARISON_FUNC
+        {
+            switch (aFunc)
+            {
+                case DepthCompare::Less:         return D3D12_COMPARISON_FUNC_LESS;
+                case DepthCompare::LessEqual:    return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                case DepthCompare::Greater:      return D3D12_COMPARISON_FUNC_GREATER;
+                case DepthCompare::GreaterEqual: return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+                case DepthCompare::Equal:        return D3D12_COMPARISON_FUNC_EQUAL;
+                case DepthCompare::Always:       return D3D12_COMPARISON_FUNC_ALWAYS;
+                default:                          return D3D12_COMPARISON_FUNC_GREATER;
+            }
+        };
+
         psoDesc.DepthStencilState.DepthEnable    = aDesc.depth.depthEnabled ? TRUE : FALSE;
         psoDesc.DepthStencilState.DepthWriteMask = aDesc.depth.depthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+        psoDesc.DepthStencilState.DepthFunc      = ToD3D12Compare(aDesc.depth.compareFunc);
+        psoDesc.DSVFormat                        = aDesc.depth.depthEnabled ? DXGI_FORMAT_D32_FLOAT : DXGI_FORMAT_UNKNOWN;
         
         const auto reflectedLayout{ ReflectInputLayout(myImpl->dxcUtils.Get(), *aDesc.shader) };
         psoDesc.InputLayout =
@@ -603,7 +619,7 @@ namespace Nalta::Graphics
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets      = 1;
         psoDesc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
-        psoDesc.DSVFormat             = DXGI_FORMAT_UNKNOWN;
+        psoDesc.DSVFormat             = aDesc.depth.depthEnabled ? DXGI_FORMAT_D32_FLOAT : DXGI_FORMAT_UNKNOWN;
         psoDesc.SampleMask            = UINT_MAX;
         psoDesc.SampleDesc            = { 1, 0 };
         

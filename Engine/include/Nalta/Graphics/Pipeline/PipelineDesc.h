@@ -17,6 +17,16 @@ namespace Nalta::Graphics
         Solid,
         Wireframe
     };
+    
+    enum class DepthCompare : uint8_t
+    {
+        Less,
+        LessEqual,
+        Greater,        // reversed-Z
+        GreaterEqual,   // reversed-Z
+        Equal,
+        Always
+    };
 
     struct RasterizerDesc
     {
@@ -34,6 +44,7 @@ namespace Nalta::Graphics
     {
         bool depthEnabled{ false };
         bool depthWrite{ false };
+        DepthCompare compareFunc { DepthCompare::Greater }; // reversed-Z default
     };
 
     struct PipelineDesc

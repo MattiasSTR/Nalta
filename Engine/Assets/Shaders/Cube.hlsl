@@ -1,5 +1,6 @@
 struct TransformData
 {
+    float4x4 model;
     float4x4 viewProjection;
 };
 
@@ -20,7 +21,8 @@ struct VSOutput
 VSOutput VSMain(VSInput aInput)
 {
     VSOutput output;
-    output.position = mul(float4(aInput.position, 1.0f), gTransform.viewProjection);
+    const float4 worldPos = mul(float4(aInput.position, 1.0f), gTransform.model);
+    output.position = mul(worldPos, gTransform.viewProjection);
     output.color    = aInput.color;
     return output;
 }

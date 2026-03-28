@@ -160,6 +160,8 @@ namespace Nalta::Graphics
         };
 
         std::vector<LPCWSTR> args;
+        
+        args.push_back(L"-Zpr"); // Pack matrices in row-major order
 
         const std::wstring fileName{ aDesc.filePath.wstring() };
         args.push_back(fileName.c_str());
@@ -177,6 +179,7 @@ namespace Nalta::Graphics
 
 #ifndef N_SHIPPING
         args.push_back(L"-Zi");
+        args.push_back(L"-Qembed_debug");
         args.push_back(L"-Od");
 #else
         args.push_back(L"-O3");

@@ -18,6 +18,7 @@ namespace Nalta::Graphics
         ~DX12DepthBuffer() override;
 
         void Resize(uint32_t aWidth, uint32_t aHeight) override;
+        void Clear() override;
 
         [[nodiscard]] uint32_t GetWidth() const override;
         [[nodiscard]] uint32_t GetHeight() const override;

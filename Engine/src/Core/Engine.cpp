@@ -7,6 +7,7 @@
 #include "Nalta/Core/UpdateContext.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
 #include "Nalta/Graphics/Commands/IRenderContext.h"
+#include "Nalta/Graphics/RenderResources/IDepthBuffer.h"
 #include "Nalta/Graphics/Surface/IRenderSurface.h"
 #include "Nalta/Graphics/Surface/RenderSurfaceDesc.h"
 #include "Nalta/Input/InputSystem.h"
@@ -259,6 +260,8 @@ namespace Nalta
 				if (myGame)
 				{
 					RenderFrameContext frameContext{ frame };
+					frameContext.width = myMainWindow->GetWidth();
+					frameContext.height = myMainWindow->GetHeight();
 					myGame->BuildRenderFrame(frameContext);
 				}
 				myRenderQueue.Push(std::move(frame));
@@ -292,6 +295,7 @@ namespace Nalta
 			myGraphicsSystem->BeginFrame();
 			myMainSurface->SetAsRenderTarget(myMainDepthBuffer);
 			myMainSurface->Clear(clearColor);
+			myMainDepthBuffer->Clear();
 			myGraphicsSystem->GetRenderContext()->Execute(frame);
 			myGraphicsSystem->EndFrame();
 		}

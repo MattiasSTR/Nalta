@@ -7,5 +7,7 @@ namespace Nalta
     struct RenderFrameContext
     {
         RenderFrame& frame;
+        uint32_t width { 0 };
+        uint32_t height{ 0 };
     };
 }

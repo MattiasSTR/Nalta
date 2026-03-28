@@ -13,7 +13,7 @@ namespace Nalta
         PlayerInput() = default;
 
         void AssignKeyboard(IKeyboardDevice* aKeyboard);
-        void AssignMouse   (IMouseDevice*    aMouse);
+        void AssignMouse(IMouseDevice* aMouse);
 
         // Keyboard
         [[nodiscard]] bool IsKeyDown(Key aKey) const;
@@ -32,6 +32,6 @@ namespace Nalta
 
     private:
         IKeyboardDevice* myKeyboard{ nullptr };
-        IMouseDevice*    myMouse   { nullptr };
+        IMouseDevice* myMouse{ nullptr };
     };
 }

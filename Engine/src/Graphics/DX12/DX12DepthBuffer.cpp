@@ -143,7 +143,17 @@ namespace Nalta::Graphics
 
         NL_TRACE(GCoreLogger, "resized to {}x{}", aWidth, aHeight);
     }
-    
+
+    void DX12DepthBuffer::Clear()
+    {
+        myDevice->GetCommandList()->ClearDepthStencilView(
+            myImpl->dsvHandle,
+            D3D12_CLEAR_FLAG_DEPTH,
+            DEPTH_CLEAR,
+            0,
+            0, nullptr);
+    }
+
     uint32_t DX12DepthBuffer::GetWidth() const { return myWidth; }
     uint32_t DX12DepthBuffer::GetHeight() const { return myHeight; }
     bool DX12DepthBuffer::IsValid() const { return myImpl->resource != nullptr; }
