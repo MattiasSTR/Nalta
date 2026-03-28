@@ -20,6 +20,7 @@ namespace Nalta
 		class IRenderSurface;
 	}
 	
+	class AssetManager;
 	class Logger;
 	class IPlatformSystem;
 	class GraphicsSystem;
@@ -50,8 +51,10 @@ namespace Nalta
 		EngineConfig myConfig;
 		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
-		WindowHandle myMainWindow;
 		std::unique_ptr<GraphicsSystem> myGraphicsSystem;
+		std::unique_ptr<AssetManager> myAssetManager;
+		
+		WindowHandle myMainWindow;
 		
 		std::unique_ptr<IGame> myGame;
 		

@@ -106,6 +106,11 @@ namespace Nalta
         NL_TRACE(GCoreLogger, "uploads flushed");
     }
 
+    void GraphicsSystem::WaitForGPU() const
+    {
+        myDevice->SignalAndWait();
+    }
+
     RenderSurfaceHandle GraphicsSystem::CreateSurface(const RenderSurfaceDesc& aDesc)
     {
         NL_SCOPE_CORE("GraphicsSystem");

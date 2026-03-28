@@ -41,6 +41,7 @@ namespace Nalta
         void EndFrame() const;
         
         void FlushUploads() const;
+        void WaitForGPU() const;
 
         [[nodiscard]] Graphics::RenderSurfaceHandle CreateSurface(const Graphics::RenderSurfaceDesc& aDesc);
         void DestroySurface(Graphics::RenderSurfaceHandle aHandle);

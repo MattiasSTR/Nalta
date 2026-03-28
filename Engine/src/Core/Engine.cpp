@@ -1,6 +1,7 @@
 #include "npch.h"
 #include "Nalta/Core/Engine.h"
 
+#include "Nalta/Assets/AssetManager.h"
 #include "Nalta/Core/InitContext.h"
 #include "Nalta/Core/RenderFrameContext.h"
 #include "Nalta/Core/Timer.h"
@@ -101,6 +102,10 @@ namespace Nalta
 			myMainDepthBuffer = myGraphicsSystem->CreateDepthBuffer(depthDesc);
 			myGraphicsSystem->SetSurfaceDepthBuffer(myMainSurface, myMainDepthBuffer);
 			NL_INFO(GCoreLogger, "Main depth buffer created");
+			
+			myAssetManager = std::make_unique<AssetManager>();
+			myAssetManager->Initialize(myGraphicsSystem.get(), myPlatformSystem.get());
+			NL_INFO(GCoreLogger, "AssetManager initialized");
 		}
 		else
 		{
@@ -113,6 +118,7 @@ namespace Nalta
 
 			InitContext initContext;
 			initContext.graphicsSystem = myGraphicsSystem.get();
+			initContext.assetManager = myAssetManager.get();
 			myGame->Initialize(initContext);
 			
 			if (myGraphicsSystem != nullptr)
@@ -133,6 +139,13 @@ namespace Nalta
 			myGame->Shutdown();
 			myGame.reset();
 			NL_INFO(GCoreLogger, "Game shutdown");
+		}
+		
+		if (myAssetManager)
+		{
+			myAssetManager->Shutdown();
+			myAssetManager.reset();
+			NL_INFO(GCoreLogger, "AssetManager shutdown");
 		}
 		
 		if (myGraphicsSystem)

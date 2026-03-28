@@ -1,0 +1,108 @@
+﻿#pragma once
+#include "Nalta/Core/Assert.h"
+#include "Nalta/Assets/AssetHandle.h"
+#include "Nalta/Assets/AssetPath.h"
+#include "Nalta/Assets/AssetRequest.h"
+#include "Nalta/Assets/Importers/ImporterRegistry.h"
+#include "Processors/MeshProcessor.h"
+
+#include <memory>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <queue>
+#include <unordered_map>
+
+namespace Nalta
+{
+    class GraphicsSystem;
+    class IPlatformSystem;
+
+    class AssetManager
+    {
+    public:
+        AssetManager();
+        ~AssetManager();
+
+        void Initialize(GraphicsSystem* aGraphicsSystem, IPlatformSystem* aPlatformSystem);
+        void Shutdown();
+
+        template<typename T>
+        [[nodiscard]] AssetRequest Request(const AssetPath& aPath)
+        {
+            std::shared_ptr<Asset> asset{ RequestInternal<T>(aPath) };
+            return AssetRequest(asset);
+        }
+
+        template<typename T>
+        [[nodiscard]] AssetHandle<T> RequestSync(const AssetPath& aPath)
+        {
+            AssetRequest request{ Request<T>(aPath) };
+            while (!request.IsComplete())
+            {
+                std::this_thread::yield();
+            }
+            return request.GetHandle<T>();
+        }
+
+        [[nodiscard]] bool IsLoaded(const AssetPath& aPath) const;
+        [[nodiscard]] ImporterRegistry& GetImporterRegistry() { return myImporterRegistry; }
+
+    private:
+        struct LoadRequest
+        {
+            std::shared_ptr<Asset> asset;
+            AssetPath path;
+        };
+
+        template<typename T>
+        std::shared_ptr<Asset> RequestInternal(const AssetPath& aPath)
+        {
+            N_CORE_ASSERT(!aPath.IsEmpty(), "empty asset path");
+
+            {
+                std::lock_guard lock{ myAssetsMutex };
+                const auto it{ myAssets.find(aPath.GetHash()) };
+                if (it != myAssets.end())
+                {
+                    return it->second;
+                }
+            }
+
+            // Create asset and queue for loading
+            auto asset{ std::make_shared<T>(aPath) };
+            asset->SetState(AssetState::Requested);
+
+            {
+                std::lock_guard lock{ myAssetsMutex };
+                myAssets[aPath.GetHash()] = asset;
+            }
+
+            {
+                std::lock_guard lock{ myQueueMutex };
+                myLoadQueue.push({ asset, aPath });
+            }
+            myQueueCV.notify_one();
+
+            NL_TRACE(GCoreLogger, "requested '{}'", aPath.GetPath());
+            return asset;
+        }
+        
+        void AssetThreadLoop();
+        void ProcessLoadRequest(const LoadRequest& aRequest) const;
+
+        GraphicsSystem* myGraphicsSystem{ nullptr };
+        ImporterRegistry myImporterRegistry;
+        MeshProcessor myMeshProcessor;
+
+        mutable std::mutex myAssetsMutex;
+        std::unordered_map<uint64_t, std::shared_ptr<Asset>> myAssets;
+
+        std::mutex myQueueMutex;
+        std::condition_variable myQueueCV;
+        std::queue<LoadRequest> myLoadQueue;
+
+        std::thread myAssetThread;
+        std::atomic<bool> myStop{ false };
+    };
+}

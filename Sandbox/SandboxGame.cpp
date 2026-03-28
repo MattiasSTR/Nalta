@@ -1,6 +1,8 @@
 #include "SandboxGame.h"
 
 #include <array>
+#include <Nalta/Assets/AssetManager.h>
+#include <Nalta/Assets/Mesh/MeshAsset.h>
 #include <Nalta/Core/Assert.h>
 #include <Nalta/Core/InitContext.h>
 #include <Nalta/Core/Math.h>
@@ -16,9 +18,9 @@
 
 void SandboxGame::Initialize(const Nalta::InitContext& aContext)
 {
-    // Shader
+    // Mesh shader
     Nalta::Graphics::ShaderDesc shaderDesc;
-    shaderDesc.filePath = Nalta::Paths::EngineAssetDir() / "Shaders" / "Cube.hlsl";
+    shaderDesc.filePath = Nalta::Paths::EngineAssetDir() / "Shaders" / "Mesh.hlsl";
     shaderDesc.stages =
     {
         { Nalta::Graphics::ShaderStage::Vertex, "VSMain" },
@@ -26,68 +28,17 @@ void SandboxGame::Initialize(const Nalta::InitContext& aContext)
     };
 
     auto shader{ aContext.graphicsSystem->GetShaderCompiler()->Compile(shaderDesc) };
-    N_ASSERT(shader, "SandboxGame: failed to compile cube shader");
+    N_ASSERT(shader, "SandboxGame: failed to compile mesh shader");
 
     Nalta::Graphics::PipelineDesc pipelineDesc;
-    pipelineDesc.shader = shader;
-    //pipelineDesc.rasterizer.cullMode = Nalta::Graphics::CullMode::None;
+    pipelineDesc.shader             = shader;
     pipelineDesc.depth.depthEnabled = true;
-    pipelineDesc.depth.depthWrite = true;
+    pipelineDesc.depth.depthWrite   = true;
 
-    myCubePipeline = aContext.graphicsSystem->CreatePipeline(pipelineDesc);
-    N_ASSERT(myCubePipeline.IsValid(), "SandboxGame: failed to create cube pipeline");
+    myMeshPipeline = aContext.graphicsSystem->CreatePipeline(pipelineDesc);
+    N_ASSERT(myMeshPipeline.IsValid(), "SandboxGame: failed to create mesh pipeline");
 
-    // Cube vertices — 8 corners
-    struct Vertex
-    {
-        interop::float3 position;
-        interop::float3 color;
-    };
-
-    static_assert(sizeof(Vertex) == 24, "Vertex must be 24 bytes");
-
-    const std::array<Vertex, 8> vertices
-    {
-        Vertex{ float3{-0.5f,  0.5f,  0.5f}, float3{1.0f, 0.0f, 0.0f} }, // 0 top    left  front  red
-        Vertex{ float3{ 0.5f,  0.5f,  0.5f}, float3{0.0f, 1.0f, 0.0f} }, // 1 top    right front  green
-        Vertex{ float3{ 0.5f, -0.5f,  0.5f}, float3{0.0f, 0.0f, 1.0f} }, // 2 bottom right front  blue
-        Vertex{ float3{-0.5f, -0.5f,  0.5f}, float3{1.0f, 1.0f, 0.0f} }, // 3 bottom left  front  yellow
-        Vertex{ float3{-0.5f,  0.5f, -0.5f}, float3{1.0f, 0.0f, 1.0f} }, // 4 top    left  back   magenta
-        Vertex{ float3{ 0.5f,  0.5f, -0.5f}, float3{0.0f, 1.0f, 1.0f} }, // 5 top    right back   cyan
-        Vertex{ float3{ 0.5f, -0.5f, -0.5f}, float3{1.0f, 0.5f, 0.0f} }, // 6 bottom right back   orange
-        Vertex{ float3{-0.5f, -0.5f, -0.5f}, float3{0.5f, 0.0f, 1.0f} }, // 7 bottom left  back   purple
-    };
-
-    // 6 faces x 2 triangles x 3 indices = 36 indices
-    constexpr std::array<uint32_t, 36> indices
-    {
-        // Front
-        0, 2, 1,  0, 3, 2,
-        // Back
-        5, 7, 4,  5, 6, 7,
-        // Left
-        4, 3, 0,  4, 7, 3,
-        // Right
-        1, 6, 5,  1, 2, 6,
-        // Top
-        4, 1, 5,  4, 0, 1,
-        // Bottom
-        3, 6, 2,  3, 7, 6
-    };
-
-    Nalta::Graphics::VertexBufferDesc vbDesc;
-    vbDesc.stride = sizeof(Vertex);
-    vbDesc.count  = static_cast<uint32_t>(vertices.size());
-    myCubeVB = aContext.graphicsSystem->CreateVertexBuffer(vbDesc, std::as_bytes(std::span(vertices)));
-    N_ASSERT(myCubeVB.IsValid(), "SandboxGame: failed to create cube vertex buffer");
-
-    Nalta::Graphics::IndexBufferDesc ibDesc;
-    ibDesc.count  = static_cast<uint32_t>(indices.size());
-    ibDesc.format = Nalta::Graphics::IndexFormat::Uint32;
-    myCubeIB = aContext.graphicsSystem->CreateIndexBuffer(ibDesc, std::as_bytes(std::span(indices)));
-    N_ASSERT(myCubeIB.IsValid(), "SandboxGame: failed to create cube index buffer");
-
-    // Transform constant buffer — model + viewProjection
+    // Transform constant buffer
     struct TransformData
     {
         interop::float4x4 model;
@@ -98,14 +49,16 @@ void SandboxGame::Initialize(const Nalta::InitContext& aContext)
     cbDesc.size = sizeof(TransformData);
     myTransformCB = aContext.graphicsSystem->CreateConstantBuffer(cbDesc);
     N_ASSERT(myTransformCB.IsValid(), "SandboxGame: failed to create transform buffer");
+
+    // Request mesh asset
+    myMeshRequest = aContext.assetManager->Request<Nalta::MeshAsset>(Nalta::AssetPath(Nalta::Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
 }
 
 void SandboxGame::Shutdown()
 {
-    myCubePipeline = Nalta::Graphics::PipelineHandle{};
-    myCubeVB       = Nalta::Graphics::VertexBufferHandle{};
-    myCubeIB       = Nalta::Graphics::IndexBufferHandle{};
+    myMeshPipeline = Nalta::Graphics::PipelineHandle{};
     myTransformCB  = Nalta::Graphics::ConstantBufferHandle{};
+    myMeshRequest  = Nalta::AssetRequest{};
 }
 
 void SandboxGame::Update(const Nalta::UpdateContext& aContext)
@@ -143,6 +96,12 @@ void SandboxGame::Update(const Nalta::UpdateContext& aContext)
 
 void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
 {
+    const auto mesh{ myMeshRequest.GetHandle<Nalta::MeshAsset>().Get() };
+    if (!mesh || !mesh->IsReady())
+    {
+        return;
+    }
+    
     const float aspectRatio{ static_cast<float>(aContext.width) / static_cast<float>(aContext.height) };
     const float4x4 model{ float4x4::rotation_y(myTime) };
     const float3 target{ myPosition + float3(
@@ -170,9 +129,9 @@ void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
     const TransformData data{ model, viewProj };
 
     aContext.frame.UpdateConstantBuffer(myTransformCB, &data, sizeof(data));
-    aContext.frame.SetPipeline(myCubePipeline);
+    aContext.frame.SetPipeline(myMeshPipeline);
     aContext.frame.SetConstantBuffer(myTransformCB, 0);
-    aContext.frame.SetVertexBuffer(myCubeVB);
-    aContext.frame.SetIndexBuffer(myCubeIB);
-    aContext.frame.DrawIndexed(myCubeIB->GetIndexCount());
+    aContext.frame.SetVertexBuffer(mesh->GetVertexBuffer());
+    aContext.frame.SetIndexBuffer(mesh->GetIndexBuffer());
+    aContext.frame.DrawIndexed(mesh->GetIndexCount());
 }
