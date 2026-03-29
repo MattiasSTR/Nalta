@@ -1,8 +1,8 @@
 #include "SandboxGame.h"
 
-#include <array>
 #include <Nalta/Assets/AssetManager.h>
 #include <Nalta/Assets/Mesh/MeshAsset.h>
+#include <Nalta/Assets/Pipeline/PipelineAsset.h>
 #include <Nalta/Core/Assert.h>
 #include <Nalta/Core/InitContext.h>
 #include <Nalta/Core/Math.h>
@@ -11,54 +11,30 @@
 #include <Nalta/Core/UpdateContext.h>
 #include <Nalta/Graphics/GraphicsSystem.h>
 #include <Nalta/Graphics/Commands/RenderFrame.h>
-#include <Nalta/Graphics/Pipeline/PipelineDesc.h>
-#include <Nalta/Graphics/Shader/ShaderCompiler.h>
-#include <Nalta/Graphics/Shader/ShaderDesc.h>
 #include <Nalta/Input/PlayerInput.h>
 
 void SandboxGame::Initialize(const Nalta::InitContext& aContext)
 {
-    // Mesh shader
-    Nalta::Graphics::ShaderDesc shaderDesc;
-    shaderDesc.filePath = Nalta::Paths::EngineAssetDir() / "Shaders" / "Mesh.hlsl";
-    shaderDesc.stages =
-    {
-        { Nalta::Graphics::ShaderStage::Vertex, "VSMain" },
-        { Nalta::Graphics::ShaderStage::Pixel,  "PSMain" }
-    };
-
-    auto shader{ aContext.graphicsSystem->GetShaderCompiler()->Compile(shaderDesc) };
-    N_ASSERT(shader, "SandboxGame: failed to compile mesh shader");
-
-    Nalta::Graphics::PipelineDesc pipelineDesc;
-    pipelineDesc.shader             = shader;
-    pipelineDesc.depth.depthEnabled = true;
-    pipelineDesc.depth.depthWrite   = true;
-
-    myMeshPipeline = aContext.graphicsSystem->CreatePipeline(pipelineDesc);
-    N_ASSERT(myMeshPipeline.IsValid(), "SandboxGame: failed to create mesh pipeline");
-
     // Transform constant buffer
     struct TransformData
     {
         interop::float4x4 model;
         interop::float4x4 viewProjection;
     };
-
+    
     Nalta::Graphics::ConstantBufferDesc cbDesc;
     cbDesc.size = sizeof(TransformData);
     myTransformCB = aContext.graphicsSystem->CreateConstantBuffer(cbDesc);
     N_ASSERT(myTransformCB.IsValid(), "SandboxGame: failed to create transform buffer");
-
-    // Request mesh asset
+    
+    myPipelineRequest = aContext.assetManager->Request<Nalta::PipelineAsset>(Nalta::AssetPath(Nalta::Paths::EngineAssetDir() / "Pipelines" / "Mesh.pipeline"));
     myMeshRequest = aContext.assetManager->Request<Nalta::MeshAsset>(Nalta::AssetPath(Nalta::Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
 }
 
 void SandboxGame::Shutdown()
 {
-    myMeshPipeline = Nalta::Graphics::PipelineHandle{};
-    myTransformCB  = Nalta::Graphics::ConstantBufferHandle{};
     myMeshRequest  = Nalta::AssetRequest{};
+    myPipelineRequest  = Nalta::AssetRequest{};
 }
 
 void SandboxGame::Update(const Nalta::UpdateContext& aContext)
@@ -102,6 +78,12 @@ void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
         return;
     }
     
+    const auto pipeline{ myPipelineRequest.GetHandle<Nalta::PipelineAsset>().Get() };
+    if (!pipeline || !pipeline->IsReady())
+    {
+        return;
+    }
+    
     const float aspectRatio{ static_cast<float>(aContext.width) / static_cast<float>(aContext.height) };
     const float4x4 model{ float4x4::rotation_y(myTime) };
     const float3 target{ myPosition + float3(
@@ -129,7 +111,7 @@ void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
     const TransformData data{ model, viewProj };
 
     aContext.frame.UpdateConstantBuffer(myTransformCB, &data, sizeof(data));
-    aContext.frame.SetPipeline(myMeshPipeline);
+    aContext.frame.SetPipeline(pipeline->GetPipelineHandle());
     aContext.frame.SetConstantBuffer(myTransformCB, 0);
     aContext.frame.SetVertexBuffer(mesh->GetVertexBuffer());
     aContext.frame.SetIndexBuffer(mesh->GetIndexBuffer());

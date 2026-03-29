@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include "Nalta/Assets/AssetPath.h"
+#include "Nalta/Graphics/Shader/ShaderStage.h"
+
 #include <vector>
 #include <string>
 #include <cstdint>
@@ -59,6 +61,37 @@ namespace Nalta
         [[nodiscard]] bool IsValid() const override
         {
             return !vertices.empty() && !indices.empty();
+        }
+    };
+    
+    struct RawShaderStageData
+    {
+        Graphics::ShaderStage stage{};
+        std::vector<uint8_t> bytecode;
+        std::vector<uint8_t> reflection;
+    };
+    
+    struct RawPipelineData : RawAssetData
+    {
+        // Shader source - compiled during import
+        std::string shaderPath;
+        std::string vertexEntry{ "VSMain" };
+        std::string pixelEntry { "PSMain" };
+
+        // Compiled bytecode per stage — filled by importer
+        std::vector<RawShaderStageData> stages;
+
+        // Pipeline state
+        std::string cullMode{ "Back" };
+        std::string fillMode{ "Solid" };
+        bool depthEnabled{ false };
+        bool depthWrite  { false };
+        std::string depthCompare{ "Greater" };
+        bool blendEnabled{ false };
+
+        [[nodiscard]] bool IsValid() const override
+        {
+            return !stages.empty();
         }
     };
 }

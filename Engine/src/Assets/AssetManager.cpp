@@ -4,9 +4,12 @@
 #include "Nalta/Core/BinaryIO.h"
 #include "Nalta/Assets/Importers/IAssetImporter.h"
 #include "Nalta/Assets/Importers/ObjImporter.h"
+#include "Nalta/Assets/Importers/PipelineImporter.h"
 #include "Nalta/Assets/Processors/MeshProcessor.h"
+#include "Nalta/Assets/Processors/PipelineProcessor.h"
 #include "Nalta/Assets/Processors/RawAssetData.h"
 #include "Nalta/Assets/Serializers/MeshSerializer.h"
+#include "Nalta/Assets/Serializers/PipelineSerializer.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
 #include "Nalta/Platform/IPlatformSystem.h"
 
@@ -42,11 +45,15 @@ namespace Nalta
         });
         
         myRegistry.Initialize(Paths::CookedDir() / "AssetRegistry.json");
+        
         myImporterRegistry.Register(std::make_unique<ObjImporter>());
+        myImporterRegistry.Register(std::make_unique<PipelineImporter>(myGraphicsSystem->GetShaderCompiler()));
         
         mySerializerRegistry.Register(std::make_unique<MeshSerializer>());
+        mySerializerRegistry.Register(std::make_unique<PipelineSerializer>());
         
         myProcessorRegistry.Register(std::make_unique<MeshProcessor>());
+        myProcessorRegistry.Register(std::make_unique<PipelineProcessor>());
 
         NL_INFO(GCoreLogger, "initialized");
     }

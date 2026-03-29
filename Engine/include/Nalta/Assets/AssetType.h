@@ -9,6 +9,7 @@ namespace Nalta
         Mesh,
         Texture,
         Material,
+        Pipeline,
     };
     
     inline const char* AssetTypeToString(const AssetType aType)
@@ -18,6 +19,7 @@ namespace Nalta
             case AssetType::Mesh:     return "Mesh";
             case AssetType::Texture:  return "Texture";
             case AssetType::Material: return "Material";
+            case AssetType::Pipeline: return "Pipeline";
             default:                  return "Unknown";
         }
     }

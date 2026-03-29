@@ -1,0 +1,13 @@
+{
+    "shader": "../Shaders/Mesh.hlsl",
+    "vertexEntry": "VSMain",
+    "pixelEntry": "PSMain",
+    "cull": "Back",
+    "fill": "Solid",
+    "depth":
+    {
+        "enabled": true,
+        "write": true,
+        "compare": "Greater"
+    }
+}

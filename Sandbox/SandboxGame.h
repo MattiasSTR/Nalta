@@ -2,9 +2,6 @@
 #include <Nalta/Assets/AssetRequest.h>
 #include <Nalta/Core/IGame.h>
 #include <Nalta/Graphics/Buffers/ConstantBufferHandle.h>
-#include <Nalta/Graphics/Buffers/IndexBufferHandle.h>
-#include <Nalta/Graphics/Pipeline/PipelineHandle.h>
-#include <Nalta/Graphics/Buffers/VertexBufferHandle.h>
 #include <Nalta/Core/Math.h>
 
 class SandboxGame final : public Nalta::IGame
@@ -16,9 +13,9 @@ public:
     void BuildRenderFrame(Nalta::RenderFrameContext& aContext) override;
 
 private:
-    Nalta::Graphics::PipelineHandle myMeshPipeline;
     Nalta::Graphics::ConstantBufferHandle myTransformCB;
     Nalta::AssetRequest myMeshRequest;
+    Nalta::AssetRequest myPipelineRequest;
 
     float3 myPosition{ 0.0f, 0.0f, -3.0f };
     float1  myYaw    { 0.0f };
