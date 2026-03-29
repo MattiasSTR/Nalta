@@ -7,3 +7,6 @@
 [submodule "ThirdParty/hlslpp"]
 	path = ThirdParty/hlslpp
 	url = https://github.com/redorav/hlslpp
+[submodule "ThirdParty/nlohmann"]
+	path = ThirdParty/nlohmann
+	url = https://github.com/nlohmann/json

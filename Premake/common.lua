@@ -17,6 +17,7 @@ local root_dir_escaped = dirs.root:gsub("\\", "/"):gsub("/$", "")
 ThirdPartyIncludes = {}
 ThirdPartyIncludes.spdlog = dirs.thirdparty .. "/spdlog/include"
 ThirdPartyIncludes.hlslpp = dirs.thirdparty .. "/hlslpp/include"
+ThirdPartyIncludes.nlohmann = dirs.thirdparty .. "/nlohmann/include"
 
 -- Ensure directories exist
 os.mkdir(dirs.build)

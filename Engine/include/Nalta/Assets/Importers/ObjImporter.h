@@ -7,7 +7,7 @@ namespace Nalta
     {
     public:
         [[nodiscard]] bool CanImport(const std::string& aExtension) const override;
-        [[nodiscard]] std::unique_ptr<RawMeshData> Import(const AssetPath& aPath) const override;
+        [[nodiscard]] std::unique_ptr<RawAssetData> Import(const AssetPath& aPath) const override;
         [[nodiscard]] std::string GetName() const override { return "ObjImporter"; }
     };
 }

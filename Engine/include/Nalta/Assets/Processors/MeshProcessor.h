@@ -1,23 +1,12 @@
 ﻿#pragma once
-#include <memory>
+#include "Nalta/Assets/Processors/IAssetProcessor.h"
 
 namespace Nalta
 {
-    struct RawMeshData;
-    class MeshAsset;
-    class GraphicsSystem;
-
-    class MeshProcessor
+    class MeshProcessor final : public IAssetProcessor
     {
     public:
-        MeshProcessor() = default;
-        explicit MeshProcessor(GraphicsSystem* aGraphicsSystem);
-
-        // Fills in the MeshAsset GPU resources from RawMeshData
-        // Returns false on failure
-        bool Process(const RawMeshData& aRawData, MeshAsset& aOutMesh) const;
-
-    private:
-        GraphicsSystem* myGraphicsSystem{ nullptr };
+        [[nodiscard]] bool Process(const RawAssetData& aData,Asset& aOutAsset, GraphicsSystem& aGraphicsSystem) const override;
+        [[nodiscard]] AssetType GetAssetType() const override { return AssetType::Mesh; }
     };
 }

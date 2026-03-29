@@ -35,12 +35,18 @@ namespace Nalta
         std::string roughnessPath;
         std::string metallicPath;
     };
+    
+    struct RawAssetData
+    {
+        AssetPath sourcePath;
+        virtual ~RawAssetData() = default;
+        [[nodiscard]] virtual bool IsValid() const { return true; }
+    };
 
     // Intermediate representation - file-type agnostic
     // All importers produce this, all processors consume it
-    struct RawMeshData
+    struct RawMeshData : RawAssetData
     {
-        AssetPath sourcePath;
         std::vector<RawVertex> vertices;
         std::vector<uint32_t> indices;
         std::vector<RawSubmesh> submeshes;
@@ -50,7 +56,7 @@ namespace Nalta
         float boundsMin[3]{ 0.0f, 0.0f, 0.0f };
         float boundsMax[3]{ 0.0f, 0.0f, 0.0f };
 
-        [[nodiscard]] bool IsValid() const
+        [[nodiscard]] bool IsValid() const override
         {
             return !vertices.empty() && !indices.empty();
         }

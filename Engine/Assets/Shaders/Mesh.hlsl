@@ -8,16 +8,17 @@ ConstantBuffer<TransformData> gTransform : register(b0);
 
 struct VSInput
 {
-    float3 position : POSITION;
-    float3 normal   : NORMAL;
-    float2 texCoord : TEXCOORD0;
+    float3 position  : POSITION;
+    float3 normal    : NORMAL;
+    float4 tangent   : TANGENT;
+    float2 texCoord  : TEXCOORD0;
 };
 
 struct VSOutput
 {
-    float4 position : SV_Position;
-    float3 normal   : NORMAL;
-    float2 texCoord : TEXCOORD0;
+    float4 position  : SV_Position;
+    float3 normal    : NORMAL;
+    float2 texCoord  : TEXCOORD0;
 };
 
 VSOutput VSMain(VSInput aInput)
@@ -27,6 +28,10 @@ VSOutput VSMain(VSInput aInput)
     output.position = mul(worldPos, gTransform.viewProjection);
     output.normal   = mul(float4(aInput.normal, 0.0f), gTransform.model).xyz;
     output.texCoord = aInput.texCoord;
+
+    // Tangent space for normal mapping - reconstruct bitangent in shader
+    // float3 bitangent = cross(aInput.normal, aInput.tangent.xyz) * aInput.tangent.w;
+
     return output;
 }
 

@@ -1,10 +1,12 @@
 ﻿#pragma once
+#include "AssetRegistry.h"
 #include "Nalta/Core/Assert.h"
 #include "Nalta/Assets/AssetHandle.h"
 #include "Nalta/Assets/AssetPath.h"
 #include "Nalta/Assets/AssetRequest.h"
 #include "Nalta/Assets/Importers/ImporterRegistry.h"
-#include "Processors/MeshProcessor.h"
+#include "Processors/ProcessorRegistry.h"
+#include "Serializers/SerializerRegistry.h"
 
 #include <memory>
 #include <thread>
@@ -46,7 +48,6 @@ namespace Nalta
         }
 
         [[nodiscard]] bool IsLoaded(const AssetPath& aPath) const;
-        [[nodiscard]] ImporterRegistry& GetImporterRegistry() { return myImporterRegistry; }
 
     private:
         struct LoadRequest
@@ -89,11 +90,14 @@ namespace Nalta
         }
         
         void AssetThreadLoop();
-        void ProcessLoadRequest(const LoadRequest& aRequest) const;
+        void ProcessLoadRequest(const LoadRequest& aRequest);
+        bool LoadFromCooked(const LoadRequest& aRequest, const std::filesystem::path& aCookedPath) const;
 
         GraphicsSystem* myGraphicsSystem{ nullptr };
         ImporterRegistry myImporterRegistry;
-        MeshProcessor myMeshProcessor;
+        SerializerRegistry mySerializerRegistry;
+        AssetRegistry myRegistry;
+        ProcessorRegistry myProcessorRegistry;
 
         mutable std::mutex myAssetsMutex;
         std::unordered_map<uint64_t, std::shared_ptr<Asset>> myAssets;

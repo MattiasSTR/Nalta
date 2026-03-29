@@ -12,18 +12,25 @@ namespace Nalta
     {
         interop::float3 position;
         interop::float3 normal;
+        interop::float4 tangent; // xyz tangent, w = bitangent sign
         interop::float2 texCoord;
     };
     
     struct MeshBounds
     {
-        float3 min{ 0.0f, 0.0f, 0.0f };
-        float3 max{ 0.0f, 0.0f, 0.0f };
+        float min[3]{ 0.0f, 0.0f, 0.0f };
+        float max[3]{ 0.0f, 0.0f, 0.0f };
 
-        [[nodiscard]] float3 GetCenter() const { return (min + max) * 0.5f; }
-        [[nodiscard]] float3 GetExtents() const { return (max - min) * 0.5f; }
+        [[nodiscard]] float3 GetCenter() const
+        {
+            return (float3(min[0], min[1], min[2]) + float3(max[0], max[1], max[2])) * 0.5f;
+        }
+        [[nodiscard]] float3 GetExtents() const
+        {
+            return (float3(max[0], max[1], max[2]) - float3(min[0], min[1], min[2])) * 0.5f;
+        }
     };
-
+    
     struct MeshSubmesh
     {
         std::string name;
@@ -50,6 +57,7 @@ namespace Nalta
 
     private:
         friend class MeshProcessor;
+        friend class AssetManager;
 
         Graphics::VertexBufferHandle myVertexBuffer;
         Graphics::IndexBufferHandle myIndexBuffer;

@@ -21,7 +21,8 @@ project "Engine"
 
     includedirs { 
         "include", 
-        ThirdPartyIncludes.spdlog
+        ThirdPartyIncludes.spdlog,
+        ThirdPartyIncludes.nlohmann
     }
 
     -- links { 

@@ -4,7 +4,7 @@
 
 namespace Nalta
 {
-    struct RawMeshData;
+    struct RawAssetData;
     class AssetPath;
 
     class IAssetImporter
@@ -17,7 +17,7 @@ namespace Nalta
 
         // Import the file at the given path into raw mesh data
         // Returns nullptr on failure
-        [[nodiscard]] virtual std::unique_ptr<RawMeshData> Import(const AssetPath& aPath) const = 0;
+        [[nodiscard]] virtual std::unique_ptr<RawAssetData> Import(const AssetPath& aPath) const = 0;
 
         [[nodiscard]] virtual std::string GetName() const = 0;
     };

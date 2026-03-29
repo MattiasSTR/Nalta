@@ -9,9 +9,9 @@ namespace Nalta
     {
     public:
         AssetPath() = default;
-        explicit AssetPath(const char* aPath) : myID(aPath) {}
-        explicit AssetPath(const std::string& aPath) : myID(aPath) {}
-        explicit AssetPath(const std::filesystem::path& aPath) : myID(aPath.string()) {}
+        explicit AssetPath(const char* aPath) : myID(Normalize(aPath)) {}
+        explicit AssetPath(const std::string& aPath) : myID(Normalize(aPath)) {}
+        explicit AssetPath(const std::filesystem::path& aPath) : myID(Normalize(aPath.string())) {}
 
         [[nodiscard]] StringID GetID() const { return myID; }
         [[nodiscard]] const std::string& GetPath() const { return myID.GetString(); }
@@ -24,6 +24,12 @@ namespace Nalta
         bool operator!=(const AssetPath& aOther) const { return myID != aOther.myID; }
 
     private:
+        static std::string Normalize(std::string aPath)
+        {
+            std::ranges::replace(aPath, '\\', '/');
+            return aPath;
+        }
+        
         StringID myID;
     };
 }

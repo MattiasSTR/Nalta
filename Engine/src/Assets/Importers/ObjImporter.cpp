@@ -114,6 +114,105 @@ namespace Nalta
                 }
             }
         }
+        
+        void ComputeTangents(RawMeshData& aData)
+        {
+            const size_t vertexCount{ aData.vertices.size() };
+            
+            std::vector<std::array<float, 3>> tan1(vertexCount, { 0.0f, 0.0f, 0.0f });
+            std::vector<std::array<float, 3>> tan2(vertexCount, { 0.0f, 0.0f, 0.0f });
+        
+            // Accumulate per-triangle tangents
+            for (size_t i{ 0 }; i < aData.indices.size(); i += 3)
+            {
+                const uint32_t i0{ aData.indices[i + 0] };
+                const uint32_t i1{ aData.indices[i + 1] };
+                const uint32_t i2{ aData.indices[i + 2] };
+        
+                const RawVertex& v0{ aData.vertices[i0] };
+                const RawVertex& v1{ aData.vertices[i1] };
+                const RawVertex& v2{ aData.vertices[i2] };
+        
+                const float x1{ v1.position[0] - v0.position[0] };
+                const float x2{ v2.position[0] - v0.position[0] };
+                const float y1{ v1.position[1] - v0.position[1] };
+                const float y2{ v2.position[1] - v0.position[1] };
+                const float z1{ v1.position[2] - v0.position[2] };
+                const float z2{ v2.position[2] - v0.position[2] };
+        
+                const float s1{ v1.texCoord[0] - v0.texCoord[0] };
+                const float s2{ v2.texCoord[0] - v0.texCoord[0] };
+                const float t1{ v1.texCoord[1] - v0.texCoord[1] };
+                const float t2{ v2.texCoord[1] - v0.texCoord[1] };
+        
+                const float denom{ s1 * t2 - s2 * t1 };
+                if (std::abs(denom) < 0.0001f) continue;
+        
+                const float r{ 1.0f / denom };
+        
+                const float tx{ (t2 * x1 - t1 * x2) * r };
+                const float ty{ (t2 * y1 - t1 * y2) * r };
+                const float tz{ (t2 * z1 - t1 * z2) * r };
+        
+                const float bx{ (s1 * x2 - s2 * x1) * r };
+                const float by{ (s1 * y2 - s2 * y1) * r };
+                const float bz{ (s1 * z2 - s2 * z1) * r };
+        
+                for (const uint32_t idx : { i0, i1, i2 })
+                {
+                    tan1[idx][0] += tx;
+                    tan1[idx][1] += ty;
+                    tan1[idx][2] += tz;
+                    tan2[idx][0] += bx;
+                    tan2[idx][1] += by;
+                    tan2[idx][2] += bz;
+                }
+            }
+        
+            // Orthogonalize and compute handedness
+            for (size_t i{ 0 }; i < vertexCount; ++i)
+            {
+                const float* n{ aData.vertices[i].normal };
+                const float* t{ tan1[i].data() };
+                const float* b{ tan2[i].data() };
+        
+                // Gram-Schmidt orthogonalize
+                const float dot{ n[0] * t[0] + n[1] * t[1] + n[2] * t[2] };
+        
+                float tangent[3]
+                {
+                    t[0] - n[0] * dot,
+                    t[1] - n[1] * dot,
+                    t[2] - n[2] * dot
+                };
+        
+                // Normalize
+                const float len{ std::sqrt(
+                    tangent[0] * tangent[0] +
+                    tangent[1] * tangent[1] +
+                    tangent[2] * tangent[2]) };
+        
+                if (len > 0.0001f)
+                {
+                    tangent[0] /= len;
+                    tangent[1] /= len;
+                    tangent[2] /= len;
+                }
+        
+                // Handedness - cross(n, t) dot b
+                // w = 1 if right-handed, -1 if left-handed
+                const float cx{ n[1] * tangent[2] - n[2] * tangent[1] };
+                const float cy{ n[2] * tangent[0] - n[0] * tangent[2] };
+                const float cz{ n[0] * tangent[1] - n[1] * tangent[0] };
+        
+                const float handedness{(cx * b[0] + cy * b[1] + cz * b[2]) < 0.0f ? -1.0f : 1.0f };
+        
+                aData.vertices[i].tangent[0] = tangent[0];
+                aData.vertices[i].tangent[1] = tangent[1];
+                aData.vertices[i].tangent[2] = tangent[2];
+                aData.vertices[i].tangent[3] = handedness;
+            }
+        }
     }
     
     bool ObjImporter::CanImport(const std::string& aExtension) const
@@ -121,7 +220,7 @@ namespace Nalta
         return aExtension == ".obj" || aExtension == ".OBJ";
     }
     
-    std::unique_ptr<RawMeshData> ObjImporter::Import(const AssetPath& aPath) const
+    std::unique_ptr<RawAssetData> ObjImporter::Import(const AssetPath& aPath) const
     {
         NL_SCOPE_CORE("ObjImporter");
         NL_TRACE(GCoreLogger, "importing '{}'", aPath.GetPath());
@@ -148,7 +247,7 @@ namespace Nalta
         std::unordered_map<ObjVertex, uint32_t, ObjVertexHash> vertexMap;
         
         std::string currentGroup{ "default" };
-        uint32_t    groupIndexStart{ 0 };
+        uint32_t groupIndexStart{ 0 };
 
         std::string line;
         while (std::getline(file, line))
@@ -303,11 +402,11 @@ namespace Nalta
         // If no normals in file compute flat normals
         if (normArray.empty())
         {
-            NL_TRACE(GCoreLogger, "no normals in '{}' — computing flat normals",
-                aPath.GetPath());
+            NL_TRACE(GCoreLogger, "no normals in '{}' — computing flat normals", aPath.GetPath());
             ComputeFlatNormals(*result);
         }
 
+        ComputeTangents(*result);
         ComputeBounds(*result);
 
         NL_INFO(GCoreLogger, "imported '{}' ({} vertices, {} indices, {} submeshes)",
