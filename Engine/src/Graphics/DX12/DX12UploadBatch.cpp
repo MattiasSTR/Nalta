@@ -63,23 +63,16 @@ namespace Nalta::Graphics
 
     void DX12UploadBatch::QueueTextureUpload(std::span<const std::byte> aData, DX12Texture* aTarget, const TextureDesc& aDesc)
     {
-        NL_SCOPE_CORE("DX12UploadBatch");
-        
-        N_CORE_ASSERT(!aData.empty(), "empty texture data");
-        N_CORE_ASSERT(aTarget, "null texture target");
-
         PendingTextureUpload upload;
         upload.data.assign(aData.begin(), aData.end());
         upload.target = aTarget;
         upload.desc   = aDesc;
         myPendingTextureUploads.push_back(std::move(upload));
-
-        NL_TRACE(GCoreLogger, "queued texture upload ({}x{}, {} bytes)", aDesc.width, aDesc.height, aData.size());
     }
 
     void DX12UploadBatch::Flush()
     {
-        if (myPendingUploads.empty())
+        if (myPendingUploads.empty() && myPendingTextureUploads.empty())
         {
             return;
         }
@@ -178,9 +171,9 @@ namespace Nalta::Graphics
         for (auto& upload : myPendingTextureUploads)
         {
             const auto dxgiFormat{ ToDXGIFormat(upload.desc.format) };
-            const uint32_t width { upload.desc.width };
+            const uint32_t width{ upload.desc.width };
             const uint32_t height{ upload.desc.height };
-            const uint32_t mips  { upload.desc.mipLevels };
+            const uint32_t mips{ upload.desc.mipLevels };
         
             // Get layout for all mips to know upload buffer size
             std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(mips);
@@ -252,14 +245,14 @@ namespace Nalta::Graphics
             {
                 const auto& layout{ layouts[mip] };
                 const uint64_t dstRowPitch{ layout.Footprint.RowPitch };
-                const uint64_t srcRowPitch{ rowSizes[mip] };
+                const uint64_t srcRowPitch{ upload.desc.mips[mip].rowPitch };
                 uint8_t* dst{ mapped + layout.Offset };
-        
+
                 for (uint32_t row{ 0 }; row < numRows[mip]; ++row)
                 {
                     memcpy(dst + row * dstRowPitch, srcData + srcOffset + row * srcRowPitch, srcRowPitch);
                 }
-        
+
                 srcOffset += srcRowPitch * numRows[mip];
             }
         
@@ -294,15 +287,25 @@ namespace Nalta::Graphics
         
                 cmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
             }
-        
-            upload.target->MarkReady();
+            
             myImpl->stagingBuffers.push_back(std::move(stagingBuffer));
         }
 
         myCopyQueue->End();
         myCopyQueue->ExecuteAndWait();
+        
+        for (auto& upload : myPendingTextureUploads)
+        {
+            upload.target->MarkReady();
+        }
+        
+        // for (auto& upload : myPendingUploads)
+        // {
+        //     upload.target->MarkReady();
+        // }
 
         myPendingUploads.clear();
+        myPendingTextureUploads.clear();
         NL_TRACE(GCoreLogger, "flushed");
     }
 

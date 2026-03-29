@@ -96,8 +96,7 @@ namespace Nalta::Graphics
                 {
                     N_CORE_ASSERT(aCmd.texture.IsValid(), "invalid texture handle");
                     const auto* tex{ static_cast<const DX12Texture*>(aCmd.texture.Get()) };
-                    N_CORE_ASSERT(tex->IsReady(), "texture not ready");
-
+                    
                     const D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{myDevice->GetSRVGPUHandle(tex->GetSRVIndex()) };
 
                     cmdList->SetGraphicsRootDescriptorTable(aCmd.rootParameterIndex, gpuHandle);

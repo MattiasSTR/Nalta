@@ -19,11 +19,18 @@ namespace Nalta::Graphics
         BC6H_UF16,          // HDR
     };
 
+    struct TextureMipDesc
+    {
+        uint32_t rowPitch{ 0 };
+        uint32_t slicePitch{ 0 };
+    };
+    
     struct TextureDesc
     {
         uint32_t width{ 0 };
         uint32_t height{ 0 };
         uint32_t mipLevels{ 1 };
         TextureFormat format{ TextureFormat::RGBA8_UNORM };
+        std::vector<TextureMipDesc> mips;
     };
 }

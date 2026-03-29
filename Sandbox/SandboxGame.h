@@ -17,8 +17,8 @@ private:
     Nalta::Graphics::ConstantBufferHandle myTransformCB;
     Nalta::AssetRequest myMeshRequest;
     Nalta::AssetRequest myPipelineRequest;
-    Nalta::Graphics::TextureHandle myTestTexture;
-
+    Nalta::AssetRequest myTextureRequest;
+    
     float3 myPosition{ 0.0f, 0.0f, -3.0f };
     float1  myYaw    { 0.0f };
     float1  myPitch  { 0.0f };

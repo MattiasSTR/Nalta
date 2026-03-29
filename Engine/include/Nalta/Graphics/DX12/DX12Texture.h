@@ -30,7 +30,7 @@ namespace Nalta::Graphics
         [[nodiscard]] uint64_t GetGPUAddress() const override;
         [[nodiscard]] uint32_t GetSizeInBytes() const override;
 
-        // Takes ownership of the resource — keeps it alive for the texture lifetime
+        // Takes ownership of the resource - keeps it alive for the texture lifetime
         void OwnResource(Microsoft::WRL::ComPtr<ID3D12Resource> aResource);
         void MarkReady() { myReady.store(true); }
         [[nodiscard]] ID3D12Resource* GetResource() const { return myResource; }

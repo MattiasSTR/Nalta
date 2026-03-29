@@ -10,3 +10,6 @@
 [submodule "ThirdParty/nlohmann"]
 	path = ThirdParty/nlohmann
 	url = https://github.com/nlohmann/json
+[submodule "ThirdParty/DirectXTex"]
+	path = ThirdParty/DirectXTex
+	url = https://github.com/microsoft/DirectXTex

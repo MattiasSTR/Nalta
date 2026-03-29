@@ -31,6 +31,10 @@ group ""
 --     dofile("Premake/glfw.lua")
 -- group ""
 
+group "ThirdParty"
+    dofile("premake/directxtex.lua")
+group ""
+
 group "Applications"
     include "Sandbox"
 group ""

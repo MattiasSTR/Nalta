@@ -25,6 +25,7 @@ namespace Nalta::Graphics
 
         void QueueUpload(std::span<const std::byte> aData, IDX12GPUResource* aTarget);
         void QueueTextureUpload(std::span<const std::byte> aData, DX12Texture* aTarget, const TextureDesc& aDesc);
+        
         void Flush();
 
         [[nodiscard]] bool HasPendingUploads() const;

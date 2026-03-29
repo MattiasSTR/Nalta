@@ -22,13 +22,14 @@ project "Engine"
     includedirs { 
         "include", 
         ThirdPartyIncludes.spdlog,
-        ThirdPartyIncludes.nlohmann
+        ThirdPartyIncludes.nlohmann,
+        ThirdPartyIncludes.directxtex,
     }
 
-    -- links { 
-    --     "GLFW"
-    -- }
+    links { 
+        "DirectXTex",
+    }
 
-    
+    dependson { "DirectXTex" }
 
     apply_common_settings()

@@ -1,15 +1,20 @@
 ﻿#include "npch.h"
 #include "Nalta/Assets/AssetManager.h"
 #include "Nalta/Assets/Asset.h"
+#include "Nalta/Assets/Importers/DDSImporter.h"
 #include "Nalta/Core/BinaryIO.h"
 #include "Nalta/Assets/Importers/IAssetImporter.h"
 #include "Nalta/Assets/Importers/ObjImporter.h"
 #include "Nalta/Assets/Importers/PipelineImporter.h"
+#include "Nalta/Assets/Importers/TextureDescriptorImporter.h"
+#include "Nalta/Assets/Importers/TextureImporter.h"
 #include "Nalta/Assets/Processors/MeshProcessor.h"
 #include "Nalta/Assets/Processors/PipelineProcessor.h"
 #include "Nalta/Assets/Processors/RawAssetData.h"
+#include "Nalta/Assets/Processors/TextureProcessor.h"
 #include "Nalta/Assets/Serializers/MeshSerializer.h"
 #include "Nalta/Assets/Serializers/PipelineSerializer.h"
+#include "Nalta/Assets/Serializers/TextureSerializer.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
 #include "Nalta/Graphics/Shader/ShaderCompiler.h"
 #include "Nalta/Platform/IPlatformSystem.h"
@@ -60,12 +65,20 @@ namespace Nalta
         
         myImporterRegistry.Register(std::make_unique<ObjImporter>());
         myImporterRegistry.Register(std::make_unique<PipelineImporter>(myGraphicsSystem->GetShaderCompiler()));
+        myImporterRegistry.Register(std::make_unique<TextureDescriptorImporter>());
+        myImporterRegistry.Register(std::make_unique<TextureImporter>(".png"));
+        myImporterRegistry.Register(std::make_unique<TextureImporter>(".jpg"));
+        myImporterRegistry.Register(std::make_unique<TextureImporter>(".jpeg"));
+        myImporterRegistry.Register(std::make_unique<TextureImporter>(".tga"));
+        myImporterRegistry.Register(std::make_unique<DDSImporter>());
         
         mySerializerRegistry.Register(std::make_unique<MeshSerializer>());
         mySerializerRegistry.Register(std::make_unique<PipelineSerializer>());
+        mySerializerRegistry.Register(std::make_unique<TextureSerializer>());
         
         myProcessorRegistry.Register(std::make_unique<MeshProcessor>());
         myProcessorRegistry.Register(std::make_unique<PipelineProcessor>());
+        myProcessorRegistry.Register(std::make_unique<TextureProcessor>());
 
         NL_INFO(GCoreLogger, "initialized");
     }
@@ -279,6 +292,15 @@ namespace Nalta
                         std::string normalized{ shaderAbsPath.string() };
                         std::ranges::replace(normalized, '\\', '/');
                         entry.dependencies.push_back(normalized);
+                    }
+                }
+                
+                if (aRequest.asset->GetAssetType() == AssetType::Texture)
+                {
+                    const auto& texData{ static_cast<const RawTextureData&>(*rawData) };
+                    if (!texData.sourceImagePath.empty())
+                    {
+                        entry.dependencies.push_back(texData.sourceImagePath);
                     }
                 }
         

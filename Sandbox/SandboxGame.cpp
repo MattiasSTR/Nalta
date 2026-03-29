@@ -4,6 +4,7 @@
 #include <Nalta/Assets/AssetManager.h>
 #include <Nalta/Assets/Mesh/MeshAsset.h>
 #include <Nalta/Assets/Pipeline/PipelineAsset.h>
+#include <Nalta/Assets/Texture/TextureAsset.h>
 #include <Nalta/Core/Assert.h>
 #include <Nalta/Core/InitContext.h>
 #include <Nalta/Core/Math.h>
@@ -30,33 +31,14 @@ void SandboxGame::Initialize(const Nalta::InitContext& aContext)
     myPipelineRequest = aContext.assetManager->Request<Nalta::PipelineAsset>(Nalta::AssetPath(Nalta::Paths::EngineAssetDir() / "Pipelines" / "Mesh.pipeline"));
     myMeshRequest = aContext.assetManager->Request<Nalta::MeshAsset>(Nalta::AssetPath(Nalta::Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
     
-    // 4x4 checkerboard — white and red squares, RGBA8
-    constexpr uint32_t W{ 0xFFFFFFFF }; // white
-    constexpr uint32_t R{ 0xFF0000FF }; // red
-    constexpr std::array<uint32_t, 16> pixels
-    {
-        W, R, W, R,
-        R, W, R, W,
-        W, R, W, R,
-        R, W, R, W,
-    };
-
-    Nalta::Graphics::TextureDesc texDesc;
-    texDesc.width     = 4;
-    texDesc.height    = 4;
-    texDesc.mipLevels = 1;
-    texDesc.format    = Nalta::Graphics::TextureFormat::RGBA8_UNORM;
-
-    myTestTexture = aContext.graphicsSystem->CreateTexture(texDesc, std::as_bytes(std::span(pixels)));
-
-    N_ASSERT(myTestTexture.IsValid(), "failed to create test texture");
+    myTextureRequest = aContext.assetManager->Request<Nalta::TextureAsset>(Nalta::AssetPath(Nalta::Paths::EngineAssetDir() / "Textures" / "test.texture"));
 }
 
 void SandboxGame::Shutdown()
 {
     myMeshRequest  = Nalta::AssetRequest{};
     myPipelineRequest  = Nalta::AssetRequest{};
-    myTestTexture = Nalta::Graphics::TextureHandle{};
+    myTextureRequest = Nalta::AssetRequest{};
 }
 
 void SandboxGame::Update(const Nalta::UpdateContext& aContext)
@@ -106,6 +88,12 @@ void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
         return;
     }
     
+    const auto texture{ myTextureRequest.GetHandle<Nalta::TextureAsset>().Get() };
+    if (!texture || !texture->IsReady())
+    {
+        return;
+    }
+    
     const float aspectRatio{ static_cast<float>(aContext.width) / static_cast<float>(aContext.height) };
     const float4x4 model{ float4x4::rotation_y(myTime) };
     const float3 target{ myPosition + float3(
@@ -129,7 +117,7 @@ void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
     aContext.frame.UpdateConstantBuffer(myTransformCB, &data, sizeof(data));
     aContext.frame.SetPipeline(pipeline->GetPipelineHandle());
     aContext.frame.SetConstantBuffer(myTransformCB, 0);
-    aContext.frame.SetTexture(myTestTexture, 1); // root parameter 1 - after CBV at 0
+    aContext.frame.SetTexture(texture->GetTextureHandle(), 1);
     aContext.frame.SetVertexBuffer(mesh->GetVertexBuffer());
     aContext.frame.SetIndexBuffer(mesh->GetIndexBuffer());
     aContext.frame.DrawIndexed(mesh->GetIndexCount());

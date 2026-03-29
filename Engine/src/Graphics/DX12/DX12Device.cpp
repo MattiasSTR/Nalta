@@ -745,7 +745,7 @@ namespace Nalta::Graphics
         
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets      = 1;
-        psoDesc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
+        psoDesc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
         psoDesc.DSVFormat             = aDesc.depth.depthEnabled ? DXGI_FORMAT_D32_FLOAT : DXGI_FORMAT_UNKNOWN;
         psoDesc.SampleMask            = UINT_MAX;
         psoDesc.SampleDesc            = { 1, 0 };

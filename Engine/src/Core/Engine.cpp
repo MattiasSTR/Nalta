@@ -294,7 +294,7 @@ namespace Nalta
 		NL_SCOPE_CORE("RenderLoop");
 		NL_INFO(GCoreLogger, "Render loop started");
 		
-		constexpr float clearColor[]{ 0.1f, 0.1f, 0.1f, 1.0f };
+		constexpr float clearColor[]{ 0.01f, 0.01f, 0.01f, 1.0f };
 		
 		RenderFrame frame;
 		

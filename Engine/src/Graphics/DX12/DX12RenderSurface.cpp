@@ -16,7 +16,12 @@ namespace Nalta::Graphics
 {
     namespace
     {
-        constexpr DXGI_FORMAT BACKBUFFER_FORMAT{ DXGI_FORMAT_R8G8B8A8_UNORM };
+        // Swap chain format - must be UNORM
+        constexpr DXGI_FORMAT SWAPCHAIN_FORMAT{ DXGI_FORMAT_R8G8B8A8_UNORM };
+
+        // RTV format - sRGB for correct gamma output
+        constexpr DXGI_FORMAT RTV_FORMAT{ DXGI_FORMAT_R8G8B8A8_UNORM_SRGB };
+        
         constexpr uint32_t MAX_BACKBUFFERS{ 3 };
     }
     
@@ -67,7 +72,7 @@ namespace Nalta::Graphics
         DXGI_SWAP_CHAIN_DESC1 desc{};
         desc.Width       = myWidth;
         desc.Height      = myHeight;
-        desc.Format      = BACKBUFFER_FORMAT;
+        desc.Format      = SWAPCHAIN_FORMAT;
         desc.Stereo      = FALSE;
         desc.SampleDesc  = { 1, 0 };
         desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -125,7 +130,11 @@ namespace Nalta::Graphics
                 NL_FATAL(GCoreLogger, "failed to get backbuffer {}", i);
             }
 
-            myImpl->device->CreateRenderTargetView(myImpl->backbuffers[i].Get(), nullptr, handle);
+            D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+            rtvDesc.Format        = RTV_FORMAT;
+            rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+            myImpl->device->CreateRenderTargetView(myImpl->backbuffers[i].Get(), &rtvDesc, handle);
             myImpl->rtvHandles[i] = handle;
             handle.ptr += myImpl->rtvDescriptorSize;
             
@@ -163,7 +172,7 @@ namespace Nalta::Graphics
         if (FAILED(myImpl->swapChain->ResizeBuffers(
             myImpl->bufferCount,
             aWidth, aHeight,
-            BACKBUFFER_FORMAT,
+            SWAPCHAIN_FORMAT,
             DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING)))
         {
             NL_FATAL(GCoreLogger, "failed to resize swapchain");

@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "Nalta/Assets/AssetPath.h"
 #include "Nalta/Graphics/Shader/ShaderStage.h"
+#include "Nalta/Graphics/Texture/TextureDesc.h"
 
 #include <vector>
 #include <string>
@@ -93,6 +94,28 @@ namespace Nalta
         [[nodiscard]] bool IsValid() const override
         {
             return !stages.empty();
+        }
+    };
+    
+    struct RawTextureMip
+    {
+        uint32_t rowPitch{ 0 };
+        uint32_t slicePitch{ 0 };
+        std::vector<uint8_t> pixels;
+    };
+    
+    struct RawTextureData : RawAssetData
+    {
+        std::string sourceImagePath;
+        uint32_t width{ 0 };
+        uint32_t height{ 0 };
+        uint32_t mipLevels{ 1 };
+        Graphics::TextureFormat format{ Graphics::TextureFormat::RGBA8_UNORM };
+        std::vector<RawTextureMip> mips;
+
+        [[nodiscard]] bool IsValid() const override
+        {
+            return width > 0 && height > 0 && !mips.empty();
         }
     };
 }

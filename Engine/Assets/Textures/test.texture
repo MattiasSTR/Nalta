@@ -1,0 +1,6 @@
+{
+    "source": "test.tga",
+    "compression": "BC7",
+    "sRGB": true,
+    "generateMips": false
+}
