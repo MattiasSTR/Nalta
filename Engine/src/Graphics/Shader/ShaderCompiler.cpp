@@ -113,14 +113,26 @@ namespace Nalta::Graphics
     void ShaderCompiler::InvalidateCache(const std::filesystem::path& aPath)
     {
         NL_SCOPE_CORE("ShaderCompiler");
-        
-        const std::string pathStr{ aPath.string() };
+
+        // Normalize to canonical form for reliable comparison
+        std::error_code ec;
+        const auto canonical{ std::filesystem::weakly_canonical(aPath, ec) };
+        std::string normalized{ ec ? aPath.string() : canonical.string() };
+        std::ranges::replace(normalized, '\\', '/');
+
         std::erase_if(myCache, [&](const auto& aEntry)
         {
-            return aEntry.first.starts_with(pathStr);
+            // Also normalize the cache key for comparison
+            std::error_code keyEc;
+            const auto keyCacheFile{ aEntry.first.substr(0, aEntry.first.find('|')) };
+            const auto keyCanonical{ std::filesystem::weakly_canonical(keyCacheFile, keyEc) };
+            std::string keyNormalized{ keyEc ? keyCacheFile : keyCanonical.string() };
+            std::ranges::replace(keyNormalized, '\\', '/');
+
+            return keyNormalized == normalized;
         });
 
-        NL_TRACE(GCoreLogger, "invalidated cache for '{}'", pathStr);
+        NL_TRACE(GCoreLogger, "invalidated cache for '{}'", normalized);
     }
     
     std::shared_ptr<Shader> ShaderCompiler::CompileInternal(const ShaderDesc& aDesc) const
@@ -254,7 +266,11 @@ namespace Nalta::Graphics
 
     std::string ShaderCompiler::BuildCacheKey(const ShaderDesc& aDesc)
     {
-        std::string key{ aDesc.filePath.string() };
+        std::error_code ec;
+        const auto canonical{ std::filesystem::weakly_canonical(aDesc.filePath, ec) };
+        std::string key{ ec ? aDesc.filePath.string() : canonical.string() };
+        std::ranges::replace(key, '\\', '/');
+
         for (const auto& stage : aDesc.stages)
         {
             key += "|" + stage.entryPoint;

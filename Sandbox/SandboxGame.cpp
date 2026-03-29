@@ -13,15 +13,14 @@
 #include <Nalta/Graphics/Commands/RenderFrame.h>
 #include <Nalta/Input/PlayerInput.h>
 
+struct TransformData
+{
+    interop::float4x4 model;
+    interop::float4x4 viewProjection;
+};
+
 void SandboxGame::Initialize(const Nalta::InitContext& aContext)
 {
-    // Transform constant buffer
-    struct TransformData
-    {
-        interop::float4x4 model;
-        interop::float4x4 viewProjection;
-    };
-    
     Nalta::Graphics::ConstantBufferDesc cbDesc;
     cbDesc.size = sizeof(TransformData);
     myTransformCB = aContext.graphicsSystem->CreateConstantBuffer(cbDesc);
@@ -101,12 +100,6 @@ void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
 
     const projection proj{ f, zclip::zero, zdirection::reverse, zplane::finite };
     const float4x4 viewProj{ mul(view, float4x4::perspective(proj)) };
-    
-    struct TransformData
-    {
-        interop::float4x4 model;
-        interop::float4x4 viewProjection;
-    };
 
     const TransformData data{ model, viewProj };
 

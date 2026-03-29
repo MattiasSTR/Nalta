@@ -13,7 +13,7 @@
 #include "Nalta/Graphics/Surface/RenderSurfaceDesc.h"
 #include "Nalta/Input/InputSystem.h"
 #include "Nalta/Platform/IWindow.h"
-#include "Nalta/Platform/PlatformSystemFactory.h"
+#include "Nalta/Platform/PlatformFactory.h"
 
 #include <thread>
 

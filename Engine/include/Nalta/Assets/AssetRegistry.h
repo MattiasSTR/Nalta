@@ -13,6 +13,7 @@ namespace Nalta
         std::string cookedFile;   // filename only, e.g. "a3f8c2d1.nasset"
         std::string assetType;    // "Mesh", "Texture" etc.
         std::filesystem::file_time_type lastModified;
+        std::vector<std::string> dependencies; // absolute paths this asset depends on
     };
 
     class AssetRegistry
@@ -32,6 +33,8 @@ namespace Nalta
 
         // Remove entry
         void Unregister(const std::string& aSourcePath);
+        
+        [[nodiscard]] std::vector<std::string> FindDependents(const std::string& aSourcePath) const;
 
         // Check if source file has changed since last cook
         [[nodiscard]] bool NeedsRecook(const std::string& aSourcePath) const;

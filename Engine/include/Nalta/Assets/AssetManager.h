@@ -14,9 +14,11 @@
 #include <mutex>
 #include <queue>
 #include <unordered_map>
+#include <chrono>
 
 namespace Nalta
 {
+    class IFileWatcher;
     class GraphicsSystem;
     class IPlatformSystem;
 
@@ -54,6 +56,8 @@ namespace Nalta
         {
             std::shared_ptr<Asset> asset;
             AssetPath path;
+            bool isReload{ false }; // keep old state on failure
+            bool wasReady{ false };
         };
 
         template<typename T>
@@ -92,8 +96,12 @@ namespace Nalta
         void AssetThreadLoop();
         void ProcessLoadRequest(const LoadRequest& aRequest);
         bool LoadFromCooked(const LoadRequest& aRequest, const std::filesystem::path& aCookedPath) const;
+        void OnFileChanged(const std::filesystem::path& aPath);
+        void ReloadAsset(const std::string& aSourcePath);
+        void QueueReload(const std::string& aSourcePath);
 
         GraphicsSystem* myGraphicsSystem{ nullptr };
+        std::unique_ptr<IFileWatcher> myFileWatcher;
         ImporterRegistry myImporterRegistry;
         SerializerRegistry mySerializerRegistry;
         AssetRegistry myRegistry;
@@ -108,5 +116,14 @@ namespace Nalta
 
         std::thread myAssetThread;
         std::atomic<bool> myStop{ false };
+        
+        struct DelayedReload
+        {
+            std::string sourcePath;
+            std::chrono::steady_clock::time_point fireAt;
+        };
+
+        std::vector<DelayedReload> myDelayedReloads;
+        std::mutex myDelayedReloadsMutex;
     };
 }

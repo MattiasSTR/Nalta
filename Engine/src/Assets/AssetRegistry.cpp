@@ -40,7 +40,22 @@ namespace Nalta
     {
         myEntries.erase(aSourcePath);
     }
-    
+
+    std::vector<std::string> AssetRegistry::FindDependents(const std::string& aSourcePath) const
+    {
+        std::vector<std::string> dependents;
+        for (const auto& [path, entry] : myEntries)
+        {
+            for (const auto& dep : entry.dependencies)
+            {
+                NL_TRACE(GCoreLogger, "comparing dep '{}' vs '{}'", dep, aSourcePath);
+                if (dep == aSourcePath)
+                    dependents.push_back(path);
+            }
+        }
+        return dependents;
+    }
+
     bool AssetRegistry::NeedsRecook(const std::string& aSourcePath) const
     {
         const auto* entry{ Lookup(aSourcePath) };
@@ -77,6 +92,13 @@ namespace Nalta
             // Store last modified as duration since epoch
             const auto duration{ entry.lastModified.time_since_epoch() };
             entryJson["lastModified"] = duration.count();
+            
+            json depsArray = json::array();
+            for (const auto& dep : entry.dependencies)
+            {
+                depsArray.push_back(Paths::ToRelative(dep).string());
+            }
+            entryJson["dependencies"] = depsArray;
 
             entriesArray.push_back(entryJson);
         }
@@ -128,6 +150,19 @@ namespace Nalta
 
                 const auto count{ entryJson["lastModified"].get<int64_t>() };
                 entry.lastModified = std::filesystem::file_time_type(std::filesystem::file_time_type::duration(count));
+                
+                if (entryJson.contains("dependencies"))
+                {
+                    for (const auto& dep : entryJson["dependencies"])
+                    {
+                        auto absPath{ Paths::ToAbsolute(dep.get<std::string>()) };
+                        std::error_code ec;
+                        auto canonical{ std::filesystem::weakly_canonical(absPath, ec) };
+                        std::string normalized{ ec ? absPath.string() : canonical.string() };
+                        std::ranges::replace(normalized, '\\', '/');
+                        entry.dependencies.push_back(normalized);
+                    }
+                }
 
                 myEntries[entry.sourcePath] = entry;
             }

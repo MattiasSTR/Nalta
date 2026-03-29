@@ -76,9 +76,13 @@ namespace Nalta
         // Resolve shader path relative to pipeline file
         const auto pipelineDir{ std::filesystem::path(aPath.GetPath()).parent_path() };
         const auto shaderPath { pipelineDir / result->shaderPath };
+        
+        N_CORE_ASSERT(myShaderCompiler, "null shader compiler");
+        
+        // Always invalidate before compiling — ensures hot reload picks up changes
+        myShaderCompiler->InvalidateCache(shaderPath);
 
         // Compile shader
-        N_CORE_ASSERT(myShaderCompiler, "null shader compiler");
 
         Graphics::ShaderDesc shaderDesc;
         shaderDesc.filePath = shaderPath;
