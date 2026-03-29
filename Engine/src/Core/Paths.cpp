@@ -9,6 +9,22 @@
 
 namespace Nalta
 {
+    std::filesystem::path Paths::ToRelative(const std::filesystem::path& aAbsolute)
+    {
+        const auto relative{ std::filesystem::relative(aAbsolute, RootDir()) };
+        std::string str{ relative.string() };
+        std::ranges::replace(str, '\\', '/');
+        return str;
+    }
+
+    std::filesystem::path Paths::ToAbsolute(const std::filesystem::path& aRelative)
+    {
+        const auto absolute{ RootDir() / aRelative };
+        std::string str{ absolute.string() };
+        std::ranges::replace(str, '\\', '/');
+        return str;
+    }
+
     std::filesystem::path Paths::RootDir()
     {
         return { N_ROOT_DIR };

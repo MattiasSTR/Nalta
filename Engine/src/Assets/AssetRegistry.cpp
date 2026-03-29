@@ -70,7 +70,7 @@ namespace Nalta
         for (const auto& entry : myEntries | std::views::values)
         {
             json entryJson;
-            entryJson["sourcePath"] = entry.sourcePath;
+            entryJson["sourcePath"] = Paths::ToRelative(entry.sourcePath).string();
             entryJson["cookedFile"] = entry.cookedFile;
             entryJson["assetType"]  = entry.assetType;
 
@@ -122,7 +122,7 @@ namespace Nalta
             for (const auto& entryJson : root["entries"])
             {
                 AssetRegistryEntry entry;
-                entry.sourcePath = entryJson["sourcePath"].get<std::string>();
+                entry.sourcePath = Paths::ToAbsolute(std::filesystem::path(entryJson["sourcePath"].get<std::string>())).string();
                 entry.cookedFile = entryJson["cookedFile"].get<std::string>();
                 entry.assetType  = entryJson["assetType"].get<std::string>();
 
