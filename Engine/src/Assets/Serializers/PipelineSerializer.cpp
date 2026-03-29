@@ -20,6 +20,14 @@ namespace Nalta
         aWriter.Write(data.depthEnabled);
         aWriter.Write(data.depthWrite);
         aWriter.Write(data.blendEnabled);
+        
+        // Defines
+        aWriter.Write(static_cast<uint32_t>(data.defines.size()));
+        for (const auto& [key, value] : data.defines)
+        {
+            aWriter.WriteString(key);
+            aWriter.WriteString(value);
+        }
 
         // Compiled shader stages
         aWriter.Write(static_cast<uint32_t>(data.stages.size()));
@@ -51,6 +59,14 @@ namespace Nalta
         data->depthEnabled = aReader.Read<bool>();
         data->depthWrite   = aReader.Read<bool>();
         data->blendEnabled = aReader.Read<bool>();
+        
+        const uint32_t defineCount{ aReader.Read<uint32_t>() };
+        for (uint32_t i{ 0 }; i < defineCount; ++i)
+        {
+            const std::string key{ aReader.ReadString() };
+            const std::string value{ aReader.ReadString() };
+            data->defines[key] = value;
+        }
 
         const uint32_t stageCount{ aReader.Read<uint32_t>() };
         data->stages.resize(stageCount);

@@ -58,6 +58,14 @@ namespace Nalta
             result->depthWrite   = depth.value("write",   false);
             result->depthCompare = depth.value("compare", DepthCompareToString(Graphics::DepthCompare::Greater));
         }
+        
+        if (root.contains("defines"))
+        {
+            for (const auto& [key, value] : root["defines"].items())
+            {
+                result->defines[key] = value.get<std::string>();
+            }
+        }
 
         if (result->shaderPath.empty())
         {
@@ -74,6 +82,7 @@ namespace Nalta
 
         Graphics::ShaderDesc shaderDesc;
         shaderDesc.filePath = shaderPath;
+        shaderDesc.defines = result->defines;
         shaderDesc.stages   =
         {
             { Graphics::ShaderStage::Vertex, result->vertexEntry },

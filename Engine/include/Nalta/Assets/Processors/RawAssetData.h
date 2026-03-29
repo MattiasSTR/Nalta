@@ -77,6 +77,7 @@ namespace Nalta
         std::string shaderPath;
         std::string vertexEntry{ "VSMain" };
         std::string pixelEntry { "PSMain" };
+        std::unordered_map<std::string, std::string> defines;
 
         // Compiled bytecode per stage — filled by importer
         std::vector<RawShaderStageData> stages;
