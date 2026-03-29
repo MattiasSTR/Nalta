@@ -9,6 +9,7 @@
 #include "Nalta/Graphics/DX12/DX12IndexBuffer.h"
 #include "Nalta/Graphics/DX12/DX12RenderContext.h"
 #include "Nalta/Graphics/DX12/DX12RenderSurface.h"
+#include "Nalta/Graphics/DX12/DX12Texture.h"
 #include "Nalta/Graphics/DX12/DX12UploadBatch.h"
 #include "Nalta/Graphics/DX12/DX12Util.h"
 #include "Nalta/Graphics/DX12/DX12VertexBuffer.h"
@@ -170,9 +171,47 @@ namespace Nalta::Graphics
                 }
             }
             
+            auto MakeSampler = [](
+                const D3D12_FILTER             aFilter,
+                const D3D12_TEXTURE_ADDRESS_MODE aAddress,
+                const uint32_t                 aRegister,
+                const D3D12_COMPARISON_FUNC    aCompare = D3D12_COMPARISON_FUNC_NEVER,
+                const D3D12_STATIC_BORDER_COLOR aBorder = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK)
+                -> D3D12_STATIC_SAMPLER_DESC
+            {
+                return
+                {
+                    .Filter           = aFilter,
+                    .AddressU         = aAddress,
+                    .AddressV         = aAddress,
+                    .AddressW         = aAddress,
+                    .MipLODBias       = 0.0f,
+                    .MaxAnisotropy    = aFilter == D3D12_FILTER_ANISOTROPIC ? 16u : 1u,
+                    .ComparisonFunc   = aCompare,
+                    .BorderColor      = aBorder,
+                    .MinLOD           = 0.0f,
+                    .MaxLOD           = D3D12_FLOAT32_MAX,
+                    .ShaderRegister   = aRegister,
+                    .RegisterSpace    = 0,
+                    .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
+                };
+            };
+
+            std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers
+            {
+                MakeSampler(D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP,  0), // s0 linear wrap
+                MakeSampler(D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 1), // s1 linear clamp
+                MakeSampler(D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_WRAP,  2), // s2 point wrap
+                MakeSampler(D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 3), // s3 point clamp
+                MakeSampler(D3D12_FILTER_ANISOTROPIC, D3D12_TEXTURE_ADDRESS_MODE_WRAP,  4), // s4 anisotropic wrap
+                MakeSampler(D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
+                            D3D12_TEXTURE_ADDRESS_MODE_BORDER, 5,
+                            D3D12_COMPARISON_FUNC_LESS_EQUAL,
+                            D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE), // s5 comparison (shadows)
+            };
+            
             std::vector<D3D12_ROOT_PARAMETER1>     rootParams;
             std::vector<D3D12_DESCRIPTOR_RANGE1>   descriptorRanges;
-            std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers;
             
             descriptorRanges.reserve(bindings.size());
             
@@ -180,18 +219,23 @@ namespace Nalta::Graphics
             {
                 if (binding.type == D3D_SIT_SAMPLER)
                 {
-                    D3D12_STATIC_SAMPLER_DESC sampler{};
-                    sampler.Filter           = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                    sampler.AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-                    sampler.AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-                    sampler.AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-                    sampler.ShaderRegister   = binding.bindPoint;
-                    sampler.RegisterSpace    = binding.space;
-                    sampler.ShaderVisibility = binding.visibility;
-                    staticSamplers.push_back(sampler);
                     continue;
                 }
-            
+                
+                // if (binding.type == D3D_SIT_SAMPLER)
+                // {
+                //     D3D12_STATIC_SAMPLER_DESC sampler{};
+                //     sampler.Filter           = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                //     sampler.AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                //     sampler.AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                //     sampler.AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                //     sampler.ShaderRegister   = binding.bindPoint;
+                //     sampler.RegisterSpace    = binding.space;
+                //     sampler.ShaderVisibility = binding.visibility;
+                //     staticSamplers.push_back(sampler);
+                //     continue;
+                // }
+                
                 if (binding.type == D3D_SIT_CBUFFER)
                 {
                     D3D12_ROOT_PARAMETER1 param{};
@@ -368,6 +412,11 @@ namespace Nalta::Graphics
         std::vector<uint64_t> frameFenceValues;
         uint32_t frameIndex{ 0 };
         uint32_t framesInFlight{ 2 };
+        
+        ComPtr<ID3D12DescriptorHeap> srvHeap;
+        uint32_t srvDescriptorSize{ 0 };
+        uint32_t srvNextIndex{ 0 };
+        static constexpr uint32_t SRV_HEAP_CAPACITY{ 1024 };
 
 #ifndef N_SHIPPING
         ComPtr<ID3D12Debug6> debugController;
@@ -413,6 +462,7 @@ namespace Nalta::Graphics
         CreateCommandAllocators();
         CreateCommandList();
         CreateFence();
+        CreateSRVHeap();
         
         myImpl->copyQueue.Initialize(myImpl->device.Get());
         myImpl->uploadBatch.Initialize(myImpl->device.Get(), &myImpl->copyQueue);
@@ -451,6 +501,7 @@ namespace Nalta::Graphics
         myImpl->commandAllocators.clear();
         myImpl->commandQueue.Reset();
         myImpl->fence.Reset();
+        myImpl->srvHeap.Reset();
         myImpl->dxcUtils.Reset();
         myImpl->adapter.Reset();
         myImpl->factory.Reset();
@@ -541,6 +592,82 @@ namespace Nalta::Graphics
     {
         N_CORE_ASSERT(aDesc.size > 0, "constant buffer size must be > 0");
         return std::make_unique<DX12ConstantBuffer>(aDesc.size, this);
+    }
+
+    std::unique_ptr<ITexture> DX12Device::CreateTexture(const TextureDesc& aDesc, std::span<const std::byte> aData)
+    {
+        NL_SCOPE_CORE("DX12Device");
+    
+        // Allocate SRV slot
+        const uint32_t srvIndex{ AllocateSRVIndex() };
+    
+        // Create texture object
+        auto texture{ std::make_unique<DX12Texture>(aDesc.width, aDesc.height, aDesc.mipLevels, aDesc.format, srvIndex) };
+    
+        // Create GPU resource
+        const D3D12_RESOURCE_DESC resourceDesc
+        {
+            .Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+            .Alignment        = 0,
+            .Width            = aDesc.width,
+            .Height           = aDesc.height,
+            .DepthOrArraySize = 1,
+            .MipLevels        = static_cast<UINT16>(aDesc.mipLevels),
+            .Format           = ToDXGIFormat(aDesc.format),
+            .SampleDesc       = { 1, 0 },
+            .Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN,
+            .Flags            = D3D12_RESOURCE_FLAG_NONE
+        };
+
+        constexpr D3D12_HEAP_PROPERTIES heapProps
+        {
+            .Type                 = D3D12_HEAP_TYPE_DEFAULT,
+            .CPUPageProperty      = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+            .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+            .CreationNodeMask     = 1,
+            .VisibleNodeMask      = 1
+        };
+    
+        ComPtr<ID3D12Resource> resource;
+        if (FAILED(myImpl->device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &resourceDesc,
+            D3D12_RESOURCE_STATE_COMMON,
+            nullptr,
+            IID_PPV_ARGS(&resource))))
+        {
+            NL_ERROR(GCoreLogger, "failed to create texture resource");
+            return nullptr;
+        }
+    
+        DX12_SET_NAME(resource.Get(), "Texture2D");
+        texture->SetResource(resource.Get());
+    
+        // Create SRV
+        const D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc
+        {
+            .Format                  = ToDXGIFormat(aDesc.format),
+            .ViewDimension           = D3D12_SRV_DIMENSION_TEXTURE2D,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Texture2D =
+            {
+                .MostDetailedMip = 0,
+                .MipLevels       = aDesc.mipLevels,
+                .PlaneSlice      = 0,
+                .ResourceMinLODClamp = 0.0f
+            }
+        };
+    
+   
+        texture->OwnResource(std::move(resource));
+        
+        myImpl->device->CreateShaderResourceView(texture->GetResource(), &srvDesc, GetSRVCPUHandle(srvIndex));
+        
+        myImpl->uploadBatch.QueueTextureUpload(aData, texture.get(), aDesc);
+    
+        NL_TRACE(GCoreLogger, "texture created ({}x{}, {} mips)", aDesc.width, aDesc.height, aDesc.mipLevels);
+        return texture;
     }
 
     std::unique_ptr<IRenderSurface> DX12Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
@@ -725,6 +852,31 @@ namespace Nalta::Graphics
     uint64_t DX12Device::GetCompletedValue() const
     {
         return myImpl->fence->GetCompletedValue();
+    }
+
+    uint32_t DX12Device::AllocateSRVIndex() const
+    {
+        N_CORE_ASSERT(myImpl->srvNextIndex < Impl::SRV_HEAP_CAPACITY, "SRV heap capacity exceeded");
+        return myImpl->srvNextIndex++;
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE DX12Device::GetSRVCPUHandle(const uint32_t aIndex) const
+    {
+        D3D12_CPU_DESCRIPTOR_HANDLE handle{ myImpl->srvHeap->GetCPUDescriptorHandleForHeapStart() };
+        handle.ptr += static_cast<SIZE_T>(aIndex) * myImpl->srvDescriptorSize;
+        return handle;
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE DX12Device::GetSRVGPUHandle(const uint32_t aIndex) const
+    {
+        D3D12_GPU_DESCRIPTOR_HANDLE handle{ myImpl->srvHeap->GetGPUDescriptorHandleForHeapStart() };
+        handle.ptr += static_cast<UINT64>(aIndex) * myImpl->srvDescriptorSize;
+        return handle;
+    }
+
+    ID3D12DescriptorHeap* DX12Device::GetSRVHeap() const
+    {
+        return myImpl->srvHeap.Get();
     }
 
     void DX12Device::InitDebugLayer() const
@@ -912,5 +1064,24 @@ namespace Nalta::Graphics
 
         NL_TRACE(GCoreLogger, "fence created");
         DX12_SET_NAME(myImpl->fence.Get(), "Main Fence");
+    }
+
+    void DX12Device::CreateSRVHeap() const
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC desc{};
+        desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        desc.NumDescriptors = Impl::SRV_HEAP_CAPACITY;
+        desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        desc.NodeMask       = 0;
+
+        if (FAILED(myImpl->device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&myImpl->srvHeap))))
+        {
+            NL_FATAL(GCoreLogger, "failed to create SRV descriptor heap");
+        }
+
+        myImpl->srvDescriptorSize = myImpl->device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+        DX12_SET_NAME(myImpl->srvHeap.Get(), "SRV Descriptor Heap");
+        NL_TRACE(GCoreLogger, "SRV heap created ({} slots)", Impl::SRV_HEAP_CAPACITY);
     }
 }

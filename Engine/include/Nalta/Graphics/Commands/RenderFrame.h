@@ -7,6 +7,11 @@ namespace Nalta
     struct RenderFrame
     {
         std::vector<Graphics::RenderCommand> commands;
+        
+        void SetTexture(const Graphics::TextureHandle aTexture, const uint32_t aRootParameterIndex)
+        {
+            commands.push_back(Graphics::SetTextureCmd{ aTexture, aRootParameterIndex });
+        }
 
         void SetPipeline(const Graphics::PipelineHandle aPipeline)
         {

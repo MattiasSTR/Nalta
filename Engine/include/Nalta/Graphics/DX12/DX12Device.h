@@ -7,6 +7,9 @@ struct IDXGIFactory7;
 struct ID3D12Device10;
 struct ID3D12CommandQueue;
 struct ID3D12GraphicsCommandList7;
+struct ID3D12DescriptorHeap;
+struct D3D12_CPU_DESCRIPTOR_HANDLE;
+struct D3D12_GPU_DESCRIPTOR_HANDLE;
 
 namespace Nalta::Graphics
 {
@@ -32,6 +35,8 @@ namespace Nalta::Graphics
         [[nodiscard]] std::unique_ptr<IIndexBuffer> CreateIndexBuffer(const IndexBufferDesc& aDesc, std::span<const std::byte> aData) override;
         [[nodiscard]] std::unique_ptr<IConstantBuffer> CreateConstantBuffer(const ConstantBufferDesc& aDesc) override;
         
+        [[nodiscard]] std::unique_ptr<ITexture> CreateTexture(const TextureDesc& aDesc, std::span<const std::byte> aData) override;
+        
         [[nodiscard]] std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) override;
         [[nodiscard]] std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) override;
         
@@ -50,9 +55,14 @@ namespace Nalta::Graphics
         [[nodiscard]] IDXGIFactory7* GetFactory() const;
         [[nodiscard]] ID3D12Device10* GetDevice() const;
         [[nodiscard]] ID3D12CommandQueue* GetCommandQueue() const;
-        [[nodiscard]] ID3D12GraphicsCommandList7* GetCommandList()  const;
-        [[nodiscard]] uint64_t GetFenceValue()     const;
+        [[nodiscard]] ID3D12GraphicsCommandList7* GetCommandList() const;
+        [[nodiscard]] uint64_t GetFenceValue() const;
         [[nodiscard]] uint64_t GetCompletedValue() const;
+        
+        [[nodiscard]] uint32_t AllocateSRVIndex() const;
+        [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetSRVCPUHandle(uint32_t aIndex) const;
+        [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE GetSRVGPUHandle(uint32_t aIndex) const;
+        [[nodiscard]] ID3D12DescriptorHeap* GetSRVHeap() const;
         
     private:
         void InitDebugLayer() const;
@@ -62,6 +72,7 @@ namespace Nalta::Graphics
         void CreateCommandAllocators() const;
         void CreateCommandList() const;
         void CreateFence() const;
+        void CreateSRVHeap() const;
 
         struct Impl;
         std::unique_ptr<Impl> myImpl;

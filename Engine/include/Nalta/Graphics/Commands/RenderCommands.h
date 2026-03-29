@@ -3,6 +3,7 @@
 #include "Nalta/Graphics/Pipeline/PipelineHandle.h"
 #include "Nalta/Graphics/Buffers/VertexBufferHandle.h"
 #include "Nalta/Graphics/Buffers/ConstantBufferHandle.h"
+#include "Nalta/Graphics/Texture/TextureHandle.h"
 
 #include <cstdint>
 #include <variant>
@@ -27,31 +28,37 @@ namespace Nalta::Graphics
 
     struct UpdateConstantBufferCmd
     {
-        ConstantBufferHandle        buffer;
-        std::vector<std::byte>      data;
+        ConstantBufferHandle buffer;
+        std::vector<std::byte> data;
     };
 
     struct SetConstantBufferCmd
     {
         ConstantBufferHandle buffer;
-        uint32_t             rootParameterIndex{ 0 };
+        uint32_t rootParameterIndex{ 0 };
     };
 
     struct DrawCmd
     {
-        uint32_t vertexCount   { 0 };
-        uint32_t instanceCount { 1 };
-        uint32_t vertexOffset  { 0 };
+        uint32_t vertexCount{ 0 };
+        uint32_t instanceCount{ 1 };
+        uint32_t vertexOffset{ 0 };
         uint32_t instanceOffset{ 0 };
     };
 
     struct DrawIndexedCmd
     {
-        uint32_t indexCount    { 0 };
+        uint32_t indexCount{ 0 };
         uint32_t instanceCount { 1 };
         uint32_t indexOffset   { 0 };
         int32_t  vertexOffset  { 0 };
         uint32_t instanceOffset{ 0 };
+    };
+    
+    struct SetTextureCmd
+    {
+        TextureHandle texture;
+        uint32_t rootParameterIndex{ 0 };
     };
 
     using RenderCommand = std::variant<
@@ -60,6 +67,7 @@ namespace Nalta::Graphics
         SetIndexBufferCmd,
         UpdateConstantBufferCmd,
         SetConstantBufferCmd,
+        SetTextureCmd,
         DrawCmd,
         DrawIndexedCmd
     >;

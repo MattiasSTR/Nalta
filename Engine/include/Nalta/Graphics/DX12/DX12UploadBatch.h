@@ -1,4 +1,6 @@
 ﻿#pragma once
+#include "Nalta/Graphics/Texture/TextureDesc.h"
+
 #include <cstdint>
 #include <memory>
 #include <span>
@@ -8,6 +10,7 @@ struct ID3D12Device10;
 
 namespace Nalta::Graphics
 {
+    class DX12Texture;
     class DX12CopyQueue;
     class IDX12GPUResource;
 
@@ -21,6 +24,7 @@ namespace Nalta::Graphics
         void Shutdown();
 
         void QueueUpload(std::span<const std::byte> aData, IDX12GPUResource* aTarget);
+        void QueueTextureUpload(std::span<const std::byte> aData, DX12Texture* aTarget, const TextureDesc& aDesc);
         void Flush();
 
         [[nodiscard]] bool HasPendingUploads() const;
@@ -31,11 +35,19 @@ namespace Nalta::Graphics
             std::vector<std::byte> data;
             IDX12GPUResource* target{ nullptr };
         };
+        
+        struct PendingTextureUpload
+        {
+            std::vector<std::byte> data;
+            DX12Texture* target{ nullptr };
+            TextureDesc desc;
+        };
 
         struct Impl;
         std::unique_ptr<Impl> myImpl;
 
         std::vector<PendingUpload> myPendingUploads;
+        std::vector<PendingTextureUpload> myPendingTextureUploads;
         ID3D12Device10* myDevice{ nullptr };
         DX12CopyQueue* myCopyQueue{ nullptr };
     };

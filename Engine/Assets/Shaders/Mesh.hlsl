@@ -5,6 +5,8 @@ struct TransformData
 };
 
 ConstantBuffer<TransformData> gTransform : register(b0);
+Texture2D    gAlbedo  : register(t0);
+SamplerState gSampler : register(s0);
 
 struct VSInput
 {
@@ -38,8 +40,9 @@ VSOutput VSMain(VSInput aInput)
 float4 PSMain(VSOutput aInput) : SV_Target
 {
     float3 lightDir = normalize(float3(0.5f, 1.0f, 0.3f));
-    float3 normal = normalize(aInput.normal);
-    float diffuse = max(dot(normal, lightDir), 0.0f);
-    float3 color = diffuse * float3(1.0f, 1.0f, 1.0f) + float3(0.1f, 0.1f, 0.1f);
+    float3 normal   = normalize(aInput.normal);
+    float  diffuse  = max(dot(normal, lightDir), 0.0f);
+    float4 albedo   = gAlbedo.Sample(gSampler, aInput.texCoord);
+    float3 color    = albedo.rgb * diffuse + float3(0.05f, 0.05f, 0.05f);
     return float4(color, 1.0f);
 }

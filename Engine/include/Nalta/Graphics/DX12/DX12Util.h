@@ -7,3 +7,11 @@
     #define DX12_SET_NAME(aObject, aName) ((void)0)
     #define DX12_SET_NAME_W(aObject, aName) ((void)0)
 #endif
+
+#include "Nalta/Graphics/Texture/TextureDesc.h"
+#include <dxgiformat.h>
+
+namespace Nalta::Graphics
+{
+    DXGI_FORMAT ToDXGIFormat(TextureFormat aFormat);
+}

@@ -12,6 +12,8 @@
 #include "Nalta/Platform/WindowHandle.h"
 #include "RenderResources/DepthBufferDesc.h"
 #include "RenderResources/DepthBufferHandle.h"
+#include "Texture/TextureDesc.h"
+#include "Texture/TextureHandle.h"
 
 #include <memory>
 #include <vector>
@@ -62,6 +64,9 @@ namespace Nalta
         
         [[nodiscard]] Graphics::DepthBufferHandle CreateDepthBuffer(const Graphics::DepthBufferDesc& aDesc);
         void DestroyDepthBuffer(Graphics::DepthBufferHandle aHandle);
+        
+        [[nodiscard]] Graphics::TextureHandle CreateTexture(const Graphics::TextureDesc& aDesc, std::span<const std::byte> aData);
+        void DestroyTexture(Graphics::TextureHandle aHandle);
 
         [[nodiscard]] Graphics::IDevice* GetDevice() const { return myDevice.get(); }
         [[nodiscard]] Graphics::IRenderContext* GetRenderContext() const { return myRenderContext.get(); }
@@ -77,6 +82,7 @@ namespace Nalta
         std::vector<std::unique_ptr<Graphics::IIndexBuffer>> myIndexBuffers;
         std::vector<std::unique_ptr<Graphics::IConstantBuffer>> myConstantBuffers;
         std::vector<std::unique_ptr<Graphics::IDepthBuffer>> myDepthBuffers;
+        std::vector<std::unique_ptr<Graphics::ITexture>> myTextures;
         
         struct SurfaceEntry
         {

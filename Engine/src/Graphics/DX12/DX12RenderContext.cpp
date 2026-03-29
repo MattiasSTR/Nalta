@@ -6,6 +6,7 @@
 #include "Nalta/Graphics/DX12/DX12Device.h"
 #include "Nalta/Graphics/DX12/DX12IndexBuffer.h"
 #include "Nalta/Graphics/DX12/DX12Pipeline.h"
+#include "Nalta/Graphics/DX12/DX12Texture.h"
 #include "Nalta/Graphics/DX12/DX12VertexBuffer.h"
 
 #include <d3d12.h>
@@ -42,6 +43,8 @@ namespace Nalta::Graphics
                     cmdList->SetGraphicsRootSignature(pipeline->GetRootSignature());
                     cmdList->SetPipelineState(pipeline->GetPipelineState());
                     cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                    ID3D12DescriptorHeap* heaps[]{ myDevice->GetSRVHeap() };
+                    cmdList->SetDescriptorHeaps(1, heaps);
                 }
                 else if constexpr (std::is_same_v<T, SetVertexBufferCmd>)
                 {
@@ -88,6 +91,16 @@ namespace Nalta::Graphics
                     cmdList->SetGraphicsRootConstantBufferView(
                         aCmd.rootParameterIndex,
                         cb->GetGPUAddress());
+                }
+                else if constexpr (std::is_same_v<T, SetTextureCmd>)
+                {
+                    N_CORE_ASSERT(aCmd.texture.IsValid(), "invalid texture handle");
+                    const auto* tex{ static_cast<const DX12Texture*>(aCmd.texture.Get()) };
+                    N_CORE_ASSERT(tex->IsReady(), "texture not ready");
+
+                    const D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{myDevice->GetSRVGPUHandle(tex->GetSRVIndex()) };
+
+                    cmdList->SetGraphicsRootDescriptorTable(aCmd.rootParameterIndex, gpuHandle);
                 }
                 else if constexpr (std::is_same_v<T, DrawCmd>)
                 {

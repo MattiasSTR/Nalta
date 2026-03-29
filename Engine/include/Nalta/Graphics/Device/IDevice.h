@@ -9,6 +9,8 @@
 #include "Nalta/Graphics/RenderResources/DepthBufferDesc.h"
 #include "Nalta/Graphics/Surface/IRenderSurface.h"
 #include "Nalta/Graphics/Surface/RenderSurfaceDesc.h"
+#include "Nalta/Graphics/Texture/ITexture.h"
+#include "Nalta/Graphics/Texture/TextureDesc.h"
 
 #include <memory>
 #include <span>
@@ -33,6 +35,8 @@ namespace Nalta
             [[nodiscard]] virtual std::unique_ptr<IVertexBuffer> CreateVertexBuffer(const VertexBufferDesc& aDesc, std::span<const std::byte> aData) = 0;
             [[nodiscard]] virtual std::unique_ptr<IIndexBuffer> CreateIndexBuffer(const IndexBufferDesc& aDesc, std::span<const std::byte> aData) = 0;
             [[nodiscard]] virtual std::unique_ptr<IConstantBuffer> CreateConstantBuffer(const ConstantBufferDesc& aDesc) = 0;
+            
+            [[nodiscard]] virtual std::unique_ptr<ITexture> CreateTexture(const TextureDesc& aDesc, std::span<const std::byte> aData) = 0;
             
             [[nodiscard]] virtual std::unique_ptr<IRenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc) = 0;
             [[nodiscard]] virtual std::unique_ptr<IPipeline> CreatePipeline(const PipelineDesc& aDesc) = 0;

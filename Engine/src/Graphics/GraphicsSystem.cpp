@@ -6,6 +6,7 @@
 #include "Nalta/Graphics/Buffers/IVertexBuffer.h"
 #include "Nalta/Graphics/Buffers/IConstantBuffer.h"
 #include "Nalta/Graphics/Surface/IRenderSurface.h"
+#include "Nalta/Graphics/Texture/ITexture.h"
 #include "Nalta/Graphics/RenderResources/IDepthBuffer.h"
 #include "Nalta/Graphics/Shader/ShaderCompiler.h"
 #include "Nalta/Platform/IWindow.h"
@@ -47,6 +48,7 @@ namespace Nalta
         }
         
         myDepthBuffers.clear();
+        myTextures.clear();
         myConstantBuffers.clear();
         myVertexBuffers.clear();
         myIndexBuffers.clear();
@@ -305,5 +307,40 @@ namespace Nalta
         });
 
         NL_INFO(GCoreLogger, "depth buffer destroyed");
+    }
+
+    TextureHandle GraphicsSystem::CreateTexture(const TextureDesc& aDesc, const std::span<const std::byte> aData)
+    {
+        NL_SCOPE_CORE("GraphicsSystem");
+
+        N_CORE_ASSERT(aDesc.width  > 0, "texture width must be > 0");
+        N_CORE_ASSERT(aDesc.height > 0, "texture height must be > 0");
+        N_CORE_ASSERT(!aData.empty(),   "texture data must not be empty");
+
+        auto texture{ myDevice->CreateTexture(aDesc, aData) };
+        if (!texture)
+        {
+            NL_ERROR(GCoreLogger, "failed to create texture");
+            return TextureHandle{};
+        }
+
+        const TextureHandle handle{ texture.get() };
+        myTextures.push_back(std::move(texture));
+
+        NL_INFO(GCoreLogger, "texture created ({}x{}, {} mips)", aDesc.width, aDesc.height, aDesc.mipLevels);
+        return handle;
+    }
+
+    void GraphicsSystem::DestroyTexture(const TextureHandle aHandle)
+    {
+        NL_SCOPE_CORE("GraphicsSystem");
+
+        myDevice->SignalAndWait(); // wait for GPU before releasing
+        std::erase_if(myTextures, [&](const std::unique_ptr<ITexture>& t)
+        {
+            return t.get() == aHandle.Get();
+        });
+
+        NL_INFO(GCoreLogger, "texture destroyed");
     }
 }
