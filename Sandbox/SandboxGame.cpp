@@ -1,10 +1,6 @@
 #include "SandboxGame.h"
 
-#include <array>
 #include <Nalta/Assets/AssetManager.h>
-#include <Nalta/Assets/Mesh/MeshAsset.h>
-#include <Nalta/Assets/Pipeline/PipelineAsset.h>
-#include <Nalta/Assets/Texture/TextureAsset.h>
 #include <Nalta/Core/Assert.h>
 #include <Nalta/Core/InitContext.h>
 #include <Nalta/Core/Math.h>
@@ -15,33 +11,32 @@
 #include <Nalta/Graphics/Commands/RenderFrame.h>
 #include <Nalta/Input/PlayerInput.h>
 
+using namespace Nalta;
+
 struct TransformData
 {
     interop::float4x4 model;
     interop::float4x4 viewProjection;
 };
 
-void SandboxGame::Initialize(const Nalta::InitContext& aContext)
+void SandboxGame::Initialize(const InitContext& aContext)
 {
-    Nalta::Graphics::ConstantBufferDesc cbDesc;
+    Graphics::ConstantBufferDesc cbDesc;
     cbDesc.size = sizeof(TransformData);
     myTransformCB = aContext.graphicsSystem->CreateConstantBuffer(cbDesc);
     N_ASSERT(myTransformCB.IsValid(), "SandboxGame: failed to create transform buffer");
     
-    myPipelineRequest = aContext.assetManager->Request<Nalta::PipelineAsset>(Nalta::AssetPath(Nalta::Paths::EngineAssetDir() / "Pipelines" / "Mesh.pipeline"));
-    myMeshRequest = aContext.assetManager->Request<Nalta::MeshAsset>(Nalta::AssetPath(Nalta::Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
-    
-    myTextureRequest = aContext.assetManager->Request<Nalta::TextureAsset>(Nalta::AssetPath(Nalta::Paths::EngineAssetDir() / "Textures" / "test.texture"));
+    myMeshHandle = aContext.assetManager->RequestMesh(AssetPath(Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
+    myPipelineHandle = aContext.assetManager->RequestPipeline(AssetPath(Paths::EngineAssetDir() / "Pipelines" / "Mesh.pipeline"));
+    myTextureHandle = aContext.assetManager->RequestTexture(AssetPath(Paths::EngineAssetDir() / "Textures" / "test.texture"));
 }
 
 void SandboxGame::Shutdown()
 {
-    myMeshRequest  = Nalta::AssetRequest{};
-    myPipelineRequest  = Nalta::AssetRequest{};
-    myTextureRequest = Nalta::AssetRequest{};
+    
 }
 
-void SandboxGame::Update(const Nalta::UpdateContext& aContext)
+void SandboxGame::Update(const UpdateContext& aContext)
 {
     myTime += aContext.deltaTime;
 
@@ -50,11 +45,11 @@ void SandboxGame::Update(const Nalta::UpdateContext& aContext)
     constexpr float sensitivity{ 0.005f };
 
     // Mouse look
-    if (input->IsMouseButtonDown(Nalta::MouseButton::Right))
+    if (input->IsMouseButtonDown(MouseButton::Right))
     {
         myYaw   += input->GetMouseDeltaX() * sensitivity;
         myPitch += input->GetMouseDeltaY() * sensitivity;
-        myPitch  = clamp(myPitch, -Nalta::HALF_PI + 0.01f, Nalta::HALF_PI - 0.01f);
+        myPitch  = clamp(myPitch, -HALF_PI + 0.01f, HALF_PI - 0.01f);
     }
     
     // Build forward and right vectors from yaw
@@ -66,30 +61,22 @@ void SandboxGame::Update(const Nalta::UpdateContext& aContext)
     };
     const float3 right  { cos(myYaw), 0.0f, -sin(myYaw) };
 
-    if (input->IsKeyDown(Nalta::Key::W)) myPosition = myPosition + forward * speed;
-    if (input->IsKeyDown(Nalta::Key::S)) myPosition = myPosition - forward * speed;
-    if (input->IsKeyDown(Nalta::Key::A)) myPosition = myPosition - right   * speed;
-    if (input->IsKeyDown(Nalta::Key::D)) myPosition = myPosition + right   * speed;
-    if (input->IsKeyDown(Nalta::Key::E)) myPosition.y += speed;
-    if (input->IsKeyDown(Nalta::Key::Q)) myPosition.y -= speed;
+    if (input->IsKeyDown(Key::W)) myPosition = myPosition + forward * speed;
+    if (input->IsKeyDown(Key::S)) myPosition = myPosition - forward * speed;
+    if (input->IsKeyDown(Key::A)) myPosition = myPosition - right   * speed;
+    if (input->IsKeyDown(Key::D)) myPosition = myPosition + right   * speed;
+    if (input->IsKeyDown(Key::E)) myPosition.y += speed;
+    if (input->IsKeyDown(Key::Q)) myPosition.y -= speed;
 }
 
-void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
+void SandboxGame::BuildRenderFrame(RenderFrameContext& aContext)
 {
-    const auto mesh{ myMeshRequest.GetHandle<Nalta::MeshAsset>().Get() };
-    if (!mesh || !mesh->IsReady())
-    {
-        return;
-    }
+    const auto* mesh{ aContext.assetManager->GetMesh(myMeshHandle) };
+    const auto* pipeline{ aContext.assetManager->GetPipeline(myPipelineHandle) };
+    const auto* texture{ aContext.assetManager->GetTexture(myTextureHandle) };
     
-    const auto pipeline{ myPipelineRequest.GetHandle<Nalta::PipelineAsset>().Get() };
-    if (!pipeline || !pipeline->IsReady())
-    {
-        return;
-    }
-    
-    const auto texture{ myTextureRequest.GetHandle<Nalta::TextureAsset>().Get() };
-    if (!texture || !texture->IsReady())
+    // This is still here because I don't have a realiable way yet to determine root parameter indices
+    if (!pipeline)
     {
         return;
     }
@@ -104,7 +91,7 @@ void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
     const float4x4 view{ float4x4::look_at(myPosition, target, float3(0.0f, 1.0f, 0.0f)) };
     
     const frustum f{ frustum::field_of_view_y(
-        Nalta::Deg2Rad(75.0f),
+        Deg2Rad(75.0f),
         aspectRatio,
         0.1f,
         1000.0f) };
@@ -115,10 +102,10 @@ void SandboxGame::BuildRenderFrame(Nalta::RenderFrameContext& aContext)
     const TransformData data{ model, viewProj };
 
     aContext.frame.UpdateConstantBuffer(myTransformCB, &data, sizeof(data));
-    aContext.frame.SetPipeline(pipeline->GetPipelineHandle());
+    aContext.frame.SetPipeline(pipeline->gpuHandle);
     aContext.frame.SetConstantBuffer(myTransformCB, 0);
-    aContext.frame.SetTexture(texture->GetTextureHandle(), 1);
-    aContext.frame.SetVertexBuffer(mesh->GetVertexBuffer());
-    aContext.frame.SetIndexBuffer(mesh->GetIndexBuffer());
+    aContext.frame.SetTexture(texture->gpuHandle, 1);
+    aContext.frame.SetVertexBuffer(mesh->vb);
+    aContext.frame.SetIndexBuffer(mesh->ib);
     aContext.frame.DrawIndexed(mesh->GetIndexCount());
 }

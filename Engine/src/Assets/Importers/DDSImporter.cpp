@@ -1,6 +1,6 @@
 #include "npch.h"
 #include "Nalta/Assets/Importers/DDSImporter.h"
-#include "Nalta/Assets/Processors/RawAssetData.h"
+#include "Nalta/Assets/RawAssetData.h"
 #include "Nalta/Graphics/Texture/TextureDesc.h"
 
 #include <DirectXTex.h>

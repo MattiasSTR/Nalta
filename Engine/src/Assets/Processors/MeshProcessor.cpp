@@ -1,19 +1,17 @@
 ﻿#include "npch.h"
 #include "Nalta/Assets/Processors/MeshProcessor.h"
-#include "Nalta/Assets/Processors/RawAssetData.h"
-#include "Nalta/Assets/Mesh/MeshAsset.h"
+
+#include "Nalta/Assets/RawAssetData.h"
+#include "Nalta/Assets/Mesh.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
-#include "Nalta/Graphics/Buffers/VertexBufferDesc.h"
 #include "Nalta/Graphics/Buffers/IndexBufferDesc.h"
+#include "Nalta/Graphics/Buffers/VertexBufferDesc.h"
 
 namespace Nalta
 {
-    bool MeshProcessor::Process(const RawAssetData& aBaseData, Asset& aOutAsset, GraphicsSystem& aGraphicsSystem) const
+    bool MeshProcessor::Process(const RawMeshData& aRawData, Mesh& outMesh, GraphicsSystem& aGraphicsSystem)
     {
         NL_SCOPE_CORE("MeshProcessor");
-
-        const auto& aRawData{ static_cast<const RawMeshData&>(aBaseData) };
-        auto& meshAsset{ static_cast<MeshAsset&>(aOutAsset) };
 
         if (!aRawData.IsValid())
         {
@@ -39,9 +37,9 @@ namespace Nalta
         vbDesc.stride = sizeof(MeshVertex);
         vbDesc.count  = static_cast<uint32_t>(gpuVertices.size());
 
-        meshAsset.myVertexBuffer = aGraphicsSystem.CreateVertexBuffer(vbDesc, std::as_bytes(std::span(gpuVertices)));
+        outMesh.vb = aGraphicsSystem.CreateVertexBuffer(vbDesc, std::as_bytes(std::span(gpuVertices)));
 
-        if (!meshAsset.myVertexBuffer.IsValid())
+        if (!outMesh.vb.IsValid())
         {
             NL_ERROR(GCoreLogger, "failed to create vertex buffer");
             return false;
@@ -51,18 +49,18 @@ namespace Nalta
         ibDesc.count  = static_cast<uint32_t>(aRawData.indices.size());
         ibDesc.format = Graphics::IndexFormat::Uint32;
 
-        meshAsset.myIndexBuffer = aGraphicsSystem.CreateIndexBuffer(ibDesc, std::as_bytes(std::span(aRawData.indices)));
+        outMesh.ib = aGraphicsSystem.CreateIndexBuffer(ibDesc, std::as_bytes(std::span(aRawData.indices)));
 
-        if (!meshAsset.myIndexBuffer.IsValid())
+        if (!outMesh.ib.IsValid())
         {
             NL_ERROR(GCoreLogger, "failed to create index buffer");
             return false;
         }
 
-        meshAsset.mySubmeshes.reserve(aRawData.submeshes.size());
+        outMesh.submeshes.reserve(aRawData.submeshes.size());
         for (const auto& rawSubmesh : aRawData.submeshes)
         {
-            meshAsset.mySubmeshes.push_back(
+            outMesh.submeshes.push_back(
             {
                 .name          = rawSubmesh.name,
                 .indexOffset   = rawSubmesh.indexOffset,
@@ -73,12 +71,12 @@ namespace Nalta
             });
         }
 
-        meshAsset.myBounds.min[0] = aRawData.boundsMin[0];
-        meshAsset.myBounds.min[1] = aRawData.boundsMin[1];
-        meshAsset.myBounds.min[2] = aRawData.boundsMin[2];
-        meshAsset.myBounds.max[0] = aRawData.boundsMax[0];
-        meshAsset.myBounds.max[1] = aRawData.boundsMax[1];
-        meshAsset.myBounds.max[2] = aRawData.boundsMax[2];
+        outMesh.bounds.min[0] = aRawData.boundsMin[0];
+        outMesh.bounds.min[1] = aRawData.boundsMin[1];
+        outMesh.bounds.min[2] = aRawData.boundsMin[2];
+        outMesh.bounds.max[0] = aRawData.boundsMax[0];
+        outMesh.bounds.max[1] = aRawData.boundsMax[1];
+        outMesh.bounds.max[2] = aRawData.boundsMax[2];
 
         NL_INFO(GCoreLogger, "processed mesh '{}' ({} vertices, {} indices, {} submeshes)",
             aRawData.sourcePath.IsEmpty() ? "cooked" : aRawData.sourcePath.GetPath(),

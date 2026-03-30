@@ -1,13 +1,14 @@
 ﻿#pragma once
-#include "Nalta/Assets/Processors/IAssetProcessor.h"
 
 namespace Nalta
 {
-    class PipelineProcessor final : public IAssetProcessor
+    struct RawPipelineData; 
+    struct Pipeline; 
+    class GraphicsSystem;
+    
+    class PipelineProcessor
     {
     public:
-        [[nodiscard]] bool Process(const RawAssetData& aData, Asset& aOutAsset, GraphicsSystem& aGraphicsSystem) const override;
-
-        [[nodiscard]] AssetType GetAssetType() const override { return AssetType::Pipeline; }
+        [[nodiscard]] static bool Process(const RawPipelineData& aRawData, Pipeline& outPipeline, GraphicsSystem& aGraphicsSystem);
     };
 }

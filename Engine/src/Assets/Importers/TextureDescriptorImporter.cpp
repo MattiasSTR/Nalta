@@ -1,7 +1,7 @@
 #include "npch.h"
 #include "Nalta/Assets/Importers/TextureDescriptorImporter.h"
 #include "Nalta/Assets/Importers/TextureImporter.h"
-#include "Nalta/Assets/Processors/RawAssetData.h"
+#include "Nalta/Assets/RawAssetData.h"
 #include "Nalta/Graphics/Texture/TextureDesc.h"
 
 #include <dxgiformat.h>

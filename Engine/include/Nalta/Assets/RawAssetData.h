@@ -9,6 +9,13 @@
 
 namespace Nalta
 {
+    struct RawAssetData
+    {
+        AssetPath sourcePath;
+        virtual ~RawAssetData() = default;
+        [[nodiscard]] virtual bool IsValid() const { return true; }
+    };
+    
     struct RawVertex
     {
         float position[3];
@@ -39,13 +46,6 @@ namespace Nalta
         std::string metallicPath;
     };
     
-    struct RawAssetData
-    {
-        AssetPath sourcePath;
-        virtual ~RawAssetData() = default;
-        [[nodiscard]] virtual bool IsValid() const { return true; }
-    };
-
     // Intermediate representation - file-type agnostic
     // All importers produce this, all processors consume it
     struct RawMeshData : RawAssetData

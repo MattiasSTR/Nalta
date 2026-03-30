@@ -1,23 +1,20 @@
 ﻿#include "npch.h"
 #include "Nalta/Assets/Processors/PipelineProcessor.h"
-#include "Nalta/Assets/Processors/RawAssetData.h"
-#include "Nalta/Assets/Pipeline/PipelineAsset.h"
+#include "Nalta/Assets/RawAssetData.h"
+#include "Nalta/Assets/Pipeline.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
 #include "Nalta/Graphics/Pipeline/PipelineDesc.h"
 #include "Nalta/Graphics/Shader/Shader.h"
 
 namespace Nalta
 {
-    bool PipelineProcessor::Process(const RawAssetData& aBaseData, Asset& aOutAsset, GraphicsSystem& aGraphicsSystem) const
+    bool PipelineProcessor::Process(const RawPipelineData& aRawData, Pipeline& outPipeline, GraphicsSystem& aGraphicsSystem)
     {
         NL_SCOPE_CORE("PipelineProcessor");
 
-        const auto& data{ static_cast<const RawPipelineData&>(aBaseData) };
-        auto& pipeline{ static_cast<PipelineAsset&>(aOutAsset) };
-
         // Reconstruct Shader from bytecode
         auto shader{ std::make_shared<Graphics::Shader>() };
-        for (const auto& stageData : data.stages)
+        for (const auto& stageData : aRawData.stages)
         {
             Graphics::ShaderBytecode bytecode;
             bytecode.code       = stageData.bytecode;
@@ -28,22 +25,22 @@ namespace Nalta
         // Build PipelineDesc
         Graphics::PipelineDesc pipelineDesc;
         pipelineDesc.shader              = shader;
-        pipelineDesc.rasterizer.cullMode = Graphics::CullModeFromString(data.cullMode);
-        pipelineDesc.rasterizer.fillMode = Graphics::FillModeFromString(data.fillMode);
-        pipelineDesc.depth.depthEnabled  = data.depthEnabled;
-        pipelineDesc.depth.depthWrite    = data.depthWrite;
-        pipelineDesc.depth.compareFunc   = Graphics::DepthCompareFromString(data.depthCompare);
-        pipelineDesc.blend.blendEnabled  = data.blendEnabled;
+        pipelineDesc.rasterizer.cullMode = Graphics::CullModeFromString(aRawData.cullMode);
+        pipelineDesc.rasterizer.fillMode = Graphics::FillModeFromString(aRawData.fillMode);
+        pipelineDesc.depth.depthEnabled  = aRawData.depthEnabled;
+        pipelineDesc.depth.depthWrite    = aRawData.depthWrite;
+        pipelineDesc.depth.compareFunc   = Graphics::DepthCompareFromString(aRawData.depthCompare);
+        pipelineDesc.blend.blendEnabled  = aRawData.blendEnabled;
 
-        pipeline.myPipelineHandle = aGraphicsSystem.CreatePipeline(pipelineDesc);
+        outPipeline.gpuHandle = aGraphicsSystem.CreatePipeline(pipelineDesc);
 
-        if (!pipeline.myPipelineHandle.IsValid())
+        if (!outPipeline.gpuHandle.IsValid())
         {
-            NL_ERROR(GCoreLogger, "failed to create pipeline for '{}'", data.sourcePath.GetPath());
+            NL_ERROR(GCoreLogger, "failed to create pipeline for '{}'", aRawData.sourcePath.IsEmpty() ? "cooked" : aRawData.sourcePath.GetPath());
             return false;
         }
 
-        NL_INFO(GCoreLogger, "created pipeline for '{}'", data.sourcePath.GetPath());
+        NL_INFO(GCoreLogger, "created pipeline for '{}'", aRawData.sourcePath.IsEmpty() ? "cooked" : aRawData.sourcePath.GetPath());
         return true;
     }
 }

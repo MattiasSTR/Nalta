@@ -1,37 +1,36 @@
 ﻿#include "npch.h"
 #include "Nalta/Assets/Serializers/PipelineSerializer.h"
-#include "Nalta/Assets/Processors/RawAssetData.h"
+#include "Nalta/Assets/RawAssetData.h"
 #include "Nalta/Core/BinaryIO.h"
 
 namespace Nalta
 {
-    void PipelineSerializer::Write(const RawAssetData& aBaseData, BinaryWriter& aWriter) const
+    void PipelineSerializer::Write(const RawPipelineData& aRawData, BinaryWriter& aWriter)
     {
         NL_SCOPE_CORE("PipelineSerializer");
-        const auto& data{ static_cast<const RawPipelineData&>(aBaseData) };
 
         // Pipeline state strings
-        aWriter.WriteString(data.shaderPath);
-        aWriter.WriteString(data.vertexEntry);
-        aWriter.WriteString(data.pixelEntry);
-        aWriter.WriteString(data.cullMode);
-        aWriter.WriteString(data.fillMode);
-        aWriter.WriteString(data.depthCompare);
-        aWriter.Write(data.depthEnabled);
-        aWriter.Write(data.depthWrite);
-        aWriter.Write(data.blendEnabled);
+        aWriter.WriteString(aRawData.shaderPath);
+        aWriter.WriteString(aRawData.vertexEntry);
+        aWriter.WriteString(aRawData.pixelEntry);
+        aWriter.WriteString(aRawData.cullMode);
+        aWriter.WriteString(aRawData.fillMode);
+        aWriter.WriteString(aRawData.depthCompare);
+        aWriter.Write(aRawData.depthEnabled);
+        aWriter.Write(aRawData.depthWrite);
+        aWriter.Write(aRawData.blendEnabled);
         
         // Defines
-        aWriter.Write(static_cast<uint32_t>(data.defines.size()));
-        for (const auto& [key, value] : data.defines)
+        aWriter.Write(static_cast<uint32_t>(aRawData.defines.size()));
+        for (const auto& [key, value] : aRawData.defines)
         {
             aWriter.WriteString(key);
             aWriter.WriteString(value);
         }
 
         // Compiled shader stages
-        aWriter.Write(static_cast<uint32_t>(data.stages.size()));
-        for (const auto& stage : data.stages)
+        aWriter.Write(static_cast<uint32_t>(aRawData.stages.size()));
+        for (const auto& stage : aRawData.stages)
         {
             aWriter.Write(static_cast<uint8_t>(stage.stage));
 
@@ -42,35 +41,35 @@ namespace Nalta
             aWriter.WriteBytes(std::span(stage.reflection));
         }
 
-        NL_TRACE(GCoreLogger, "wrote {} stages", data.stages.size());
+        NL_TRACE(GCoreLogger, "wrote {} stages", aRawData.stages.size());
     }
 
-    std::unique_ptr<RawAssetData> PipelineSerializer::Read(BinaryReader& aReader) const
+    RawPipelineData PipelineSerializer::Read(BinaryReader& aReader)
     {
         NL_SCOPE_CORE("PipelineSerializer");
-        auto data{ std::make_unique<RawPipelineData>() };
+        RawPipelineData data{};
 
-        data->shaderPath   = aReader.ReadString();
-        data->vertexEntry  = aReader.ReadString();
-        data->pixelEntry   = aReader.ReadString();
-        data->cullMode     = aReader.ReadString();
-        data->fillMode     = aReader.ReadString();
-        data->depthCompare = aReader.ReadString();
-        data->depthEnabled = aReader.Read<bool>();
-        data->depthWrite   = aReader.Read<bool>();
-        data->blendEnabled = aReader.Read<bool>();
+        data.shaderPath = aReader.ReadString();
+        data.vertexEntry = aReader.ReadString();
+        data.pixelEntry = aReader.ReadString();
+        data.cullMode = aReader.ReadString();
+        data.fillMode = aReader.ReadString();
+        data.depthCompare = aReader.ReadString();
+        data.depthEnabled = aReader.Read<bool>();
+        data.depthWrite = aReader.Read<bool>();
+        data.blendEnabled = aReader.Read<bool>();
         
         const uint32_t defineCount{ aReader.Read<uint32_t>() };
         for (uint32_t i{ 0 }; i < defineCount; ++i)
         {
             const std::string key{ aReader.ReadString() };
             const std::string value{ aReader.ReadString() };
-            data->defines[key] = value;
+            data.defines[key] = value;
         }
 
         const uint32_t stageCount{ aReader.Read<uint32_t>() };
-        data->stages.resize(stageCount);
-        for (auto& stage : data->stages)
+        data.stages.resize(stageCount);
+        for (auto& stage : data.stages)
         {
             stage.stage = static_cast<Graphics::ShaderStage>(aReader.Read<uint8_t>());
 
@@ -83,7 +82,7 @@ namespace Nalta
             aReader.ReadBytes(std::span(stage.reflection));
         }
 
-        NL_TRACE(GCoreLogger, "read {} stages", data->stages.size());
+        NL_TRACE(GCoreLogger, "read {} stages", data.stages.size());
         return data;
     }
 }

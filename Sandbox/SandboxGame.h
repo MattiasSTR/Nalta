@@ -1,5 +1,5 @@
 #pragma once
-#include <Nalta/Assets/AssetRequest.h>
+#include <Nalta/Assets/AssetHandle.h>
 #include <Nalta/Core/IGame.h>
 #include <Nalta/Graphics/Buffers/ConstantBufferHandle.h>
 #include <Nalta/Core/Math.h>
@@ -15,9 +15,9 @@ public:
 
 private:
     Nalta::Graphics::ConstantBufferHandle myTransformCB;
-    Nalta::AssetRequest myMeshRequest;
-    Nalta::AssetRequest myPipelineRequest;
-    Nalta::AssetRequest myTextureRequest;
+    Nalta::MeshHandle myMeshHandle;
+    Nalta::PipelineHandle myPipelineHandle;
+    Nalta::TextureHandle myTextureHandle;
     
     float3 myPosition{ 0.0f, 0.0f, -3.0f };
     float1  myYaw    { 0.0f };

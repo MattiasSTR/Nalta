@@ -1,13 +1,14 @@
 ﻿#pragma once
-#include "Nalta/Assets/Processors/IAssetProcessor.h"
 
 namespace Nalta
 {
-    class TextureProcessor final : public IAssetProcessor
+    struct RawTextureData; 
+    struct Texture; 
+    class GraphicsSystem;
+    
+    class TextureProcessor
     {
     public:
-        [[nodiscard]] bool Process(const RawAssetData& aData, Asset& aOutAsset, GraphicsSystem& aGraphicsSystem) const override;
-
-        [[nodiscard]] AssetType GetAssetType() const override { return AssetType::Texture; }
+        [[nodiscard]] static bool Process(const RawTextureData& aRawData, Texture& outTexture, GraphicsSystem& aGraphicsSystem);
     };
 }

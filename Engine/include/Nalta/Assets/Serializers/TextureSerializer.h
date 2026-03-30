@@ -1,14 +1,15 @@
 ﻿#pragma once
-#include "Nalta/Assets/Serializers/IAssetSerializer.h"
 
 namespace Nalta
 {
-    class TextureSerializer final : public IAssetSerializer
+    struct RawTextureData; 
+    class BinaryWriter; 
+    class BinaryReader;
+    
+    class TextureSerializer
     {
     public:
-        void Write(const RawAssetData& aData, BinaryWriter& aWriter) const override;
-        [[nodiscard]] std::unique_ptr<RawAssetData> Read(BinaryReader& aReader) const override;
-
-        [[nodiscard]] AssetType GetAssetType() const override { return AssetType::Texture; }
+        static void Write(const RawTextureData& aRawData, BinaryWriter& aWriter);
+        [[nodiscard]] static RawTextureData Read(BinaryReader& aReader);
     };
 }

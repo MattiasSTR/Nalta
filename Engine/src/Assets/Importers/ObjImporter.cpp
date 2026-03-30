@@ -1,6 +1,6 @@
 ﻿#include "npch.h"
 #include "Nalta/Assets/Importers/ObjImporter.h"
-#include "Nalta/Assets/Processors/RawAssetData.h"
+#include "Nalta/Assets/RawAssetData.h"
 #include "Nalta/Assets/AssetPath.h"
 
 #include <fstream>

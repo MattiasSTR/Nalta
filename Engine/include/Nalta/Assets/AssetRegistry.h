@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Nalta/Assets/AssetPath.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -26,18 +27,18 @@ namespace Nalta
         void Shutdown();
 
         // Find entry by source path - returns nullptr if not found
-        [[nodiscard]] const AssetRegistryEntry* Lookup(const std::string& aSourcePath) const;
+        [[nodiscard]] const AssetRegistryEntry* Lookup(const AssetPath& aPath) const;
 
         // Add or update entry
         void Register(const AssetRegistryEntry& aEntry);
 
         // Remove entry
-        void Unregister(const std::string& aSourcePath);
+        void Unregister(const AssetPath& aPath);
         
-        [[nodiscard]] std::vector<std::string> FindDependents(const std::string& aSourcePath) const;
+        [[nodiscard]] std::vector<std::string> FindDependents(const AssetPath& aPath) const;
 
         // Check if source file has changed since last cook
-        [[nodiscard]] bool NeedsRecook(const std::string& aSourcePath) const;
+        [[nodiscard]] bool NeedsRecook(const AssetPath& aPath) const;
 
         // Persist to disk
         void Save() const;

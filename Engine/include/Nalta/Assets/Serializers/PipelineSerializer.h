@@ -1,14 +1,15 @@
 ﻿#pragma once
-#include "Nalta/Assets/Serializers/IAssetSerializer.h"
 
 namespace Nalta
 {
-    class PipelineSerializer final : public IAssetSerializer
+    struct RawPipelineData; 
+    class BinaryWriter; 
+    class BinaryReader;
+    
+    class PipelineSerializer
     {
     public:
-        void Write(const RawAssetData& aData, BinaryWriter& aWriter) const override;
-        [[nodiscard]] std::unique_ptr<RawAssetData> Read(BinaryReader& aReader) const override;
-
-        [[nodiscard]] AssetType GetAssetType() const override { return AssetType::Pipeline; }
+        static void Write(const RawPipelineData& aRawData, BinaryWriter& aWriter);
+        [[nodiscard]] static RawPipelineData Read(BinaryReader& aReader);
     };
 }

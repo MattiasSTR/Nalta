@@ -275,6 +275,7 @@ namespace Nalta
 					RenderFrameContext frameContext{ frame };
 					frameContext.width = myMainWindow->GetWidth();
 					frameContext.height = myMainWindow->GetHeight();
+					frameContext.assetManager = myAssetManager.get();
 					myGame->BuildRenderFrame(frameContext);
 				}
 				myRenderQueue.Push(std::move(frame));

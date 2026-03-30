@@ -1,27 +1,26 @@
 ﻿#include "npch.h"
 #include "Nalta/Assets/Serializers/MeshSerializer.h"
 
-#include "Nalta/Assets/Processors/RawAssetData.h"
+#include "Nalta/Assets/RawAssetData.h"
 #include "Nalta/Core/BinaryIO.h"
 
 namespace Nalta
 {
-    void MeshSerializer::Write(const RawAssetData& aBaseData, BinaryWriter& aWriter) const
+    void MeshSerializer::Write(const RawMeshData& aRawData, BinaryWriter& aWriter)
     {
         NL_SCOPE_CORE("MeshSerializer");
-        const auto& data{ static_cast<const RawMeshData&>(aBaseData) };
 
         // Bounds
-        aWriter.Write(data.boundsMin[0]);
-        aWriter.Write(data.boundsMin[1]);
-        aWriter.Write(data.boundsMin[2]);
-        aWriter.Write(data.boundsMax[0]);
-        aWriter.Write(data.boundsMax[1]);
-        aWriter.Write(data.boundsMax[2]);
+        aWriter.Write(aRawData.boundsMin[0]);
+        aWriter.Write(aRawData.boundsMin[1]);
+        aWriter.Write(aRawData.boundsMin[2]);
+        aWriter.Write(aRawData.boundsMax[0]);
+        aWriter.Write(aRawData.boundsMax[1]);
+        aWriter.Write(aRawData.boundsMax[2]);
 
         // Submeshes
-        aWriter.Write(static_cast<uint32_t>(data.submeshes.size()));
-        for (const auto& submesh : data.submeshes)
+        aWriter.Write(static_cast<uint32_t>(aRawData.submeshes.size()));
+        for (const auto& submesh : aRawData.submeshes)
         {
             aWriter.WriteString(submesh.name);
             aWriter.Write(submesh.vertexOffset);
@@ -32,16 +31,16 @@ namespace Nalta
         }
 
         // Vertices
-        aWriter.Write(static_cast<uint32_t>(data.vertices.size()));
-        aWriter.WriteBytes(std::span(reinterpret_cast<const uint8_t*>(data.vertices.data()), data.vertices.size() * sizeof(RawVertex)));
+        aWriter.Write(static_cast<uint32_t>(aRawData.vertices.size()));
+        aWriter.WriteBytes(std::span(reinterpret_cast<const uint8_t*>(aRawData.vertices.data()), aRawData.vertices.size() * sizeof(RawVertex)));
 
         // Indices
-        aWriter.Write(static_cast<uint32_t>(data.indices.size()));
-        aWriter.WriteBytes(std::span(reinterpret_cast<const uint8_t*>(data.indices.data()), data.indices.size() * sizeof(uint32_t)));
+        aWriter.Write(static_cast<uint32_t>(aRawData.indices.size()));
+        aWriter.WriteBytes(std::span(reinterpret_cast<const uint8_t*>(aRawData.indices.data()), aRawData.indices.size() * sizeof(uint32_t)));
 
         // Materials
-        aWriter.Write(static_cast<uint32_t>(data.materials.size()));
-        for (const auto& mat : data.materials)
+        aWriter.Write(static_cast<uint32_t>(aRawData.materials.size()));
+        for (const auto& mat : aRawData.materials)
         {
             aWriter.WriteString(mat.name);
             aWriter.WriteBytes(std::span(reinterpret_cast<const uint8_t*>(mat.baseColor), sizeof(mat.baseColor)));
@@ -53,26 +52,26 @@ namespace Nalta
             aWriter.WriteString(mat.metallicPath);
         }
 
-        NL_TRACE(GCoreLogger, "wrote {} vertices, {} indices", data.vertices.size(), data.indices.size());
+        NL_TRACE(GCoreLogger, "wrote {} vertices, {} indices", aRawData.vertices.size(), aRawData.indices.size());
     }
 
-    std::unique_ptr<RawAssetData> MeshSerializer::Read(BinaryReader& aReader) const
+    RawMeshData MeshSerializer::Read(BinaryReader& aReader)
     {
         NL_SCOPE_CORE("MeshSerializer");
-        auto data{ std::make_unique<RawMeshData>() };
+        RawMeshData data{};
 
         // Bounds
-        data->boundsMin[0] = aReader.Read<float>();
-        data->boundsMin[1] = aReader.Read<float>();
-        data->boundsMin[2] = aReader.Read<float>();
-        data->boundsMax[0] = aReader.Read<float>();
-        data->boundsMax[1] = aReader.Read<float>();
-        data->boundsMax[2] = aReader.Read<float>();
+        data.boundsMin[0] = aReader.Read<float>();
+        data.boundsMin[1] = aReader.Read<float>();
+        data.boundsMin[2] = aReader.Read<float>();
+        data.boundsMax[0] = aReader.Read<float>();
+        data.boundsMax[1] = aReader.Read<float>();
+        data.boundsMax[2] = aReader.Read<float>();
 
         // Submeshes
         const uint32_t submeshCount{ aReader.Read<uint32_t>() };
-        data->submeshes.resize(submeshCount);
-        for (auto& submesh : data->submeshes)
+        data.submeshes.resize(submeshCount);
+        for (auto& submesh : data.submeshes)
         {
             submesh.name         = aReader.ReadString();
             submesh.vertexOffset = aReader.Read<uint32_t>();
@@ -84,18 +83,18 @@ namespace Nalta
 
         // Vertices
         const uint32_t vertexCount{ aReader.Read<uint32_t>() };
-        data->vertices.resize(vertexCount);
-        aReader.ReadBytes(std::span(reinterpret_cast<uint8_t*>(data->vertices.data()), vertexCount * sizeof(RawVertex)));
+        data.vertices.resize(vertexCount);
+        aReader.ReadBytes(std::span(reinterpret_cast<uint8_t*>(data.vertices.data()), vertexCount * sizeof(RawVertex)));
 
         // Indices
         const uint32_t indexCount{ aReader.Read<uint32_t>() };
-        data->indices.resize(indexCount);
-        aReader.ReadBytes(std::span(reinterpret_cast<uint8_t*>(data->indices.data()), indexCount * sizeof(uint32_t)));
+        data.indices.resize(indexCount);
+        aReader.ReadBytes(std::span(reinterpret_cast<uint8_t*>(data.indices.data()), indexCount * sizeof(uint32_t)));
 
         // Materials
         const uint32_t materialCount{ aReader.Read<uint32_t>() };
-        data->materials.resize(materialCount);
-        for (auto& mat : data->materials)
+        data.materials.resize(materialCount);
+        for (auto& mat : data.materials)
         {
             mat.name = aReader.ReadString();
             aReader.ReadBytes(std::span(reinterpret_cast<uint8_t*>(mat.baseColor), sizeof(mat.baseColor)));
@@ -107,7 +106,7 @@ namespace Nalta
             mat.metallicPath  = aReader.ReadString();
         }
 
-        NL_TRACE(GCoreLogger, "read {} vertices, {} indices", data->vertices.size(), data->indices.size());
+        NL_TRACE(GCoreLogger, "read {} vertices, {} indices", data.vertices.size(), data.indices.size());
         return data;
     }
 }

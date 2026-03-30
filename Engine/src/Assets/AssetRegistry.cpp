@@ -25,9 +25,9 @@ namespace Nalta
         NL_INFO(GCoreLogger, "shutdown");
     }
     
-    const AssetRegistryEntry* AssetRegistry::Lookup(const std::string& aSourcePath) const
+    const AssetRegistryEntry* AssetRegistry::Lookup(const AssetPath& aPath) const
     {
-        const auto it{ myEntries.find(aSourcePath) };
+        const auto it{ myEntries.find(aPath.GetPath()) };
         return it != myEntries.end() ? &it->second : nullptr;
     }
 
@@ -36,42 +36,61 @@ namespace Nalta
         myEntries[aEntry.sourcePath] = aEntry;
     }
 
-    void AssetRegistry::Unregister(const std::string& aSourcePath)
+    void AssetRegistry::Unregister(const AssetPath& aPath)
     {
-        myEntries.erase(aSourcePath);
+        myEntries.erase(aPath.GetPath());
     }
 
-    std::vector<std::string> AssetRegistry::FindDependents(const std::string& aSourcePath) const
+    std::vector<std::string> AssetRegistry::FindDependents(const AssetPath& aPath) const
     {
         std::vector<std::string> dependents;
         for (const auto& [path, entry] : myEntries)
         {
             for (const auto& dep : entry.dependencies)
             {
-                NL_TRACE(GCoreLogger, "comparing dep '{}' vs '{}'", dep, aSourcePath);
-                if (dep == aSourcePath)
+                NL_TRACE(GCoreLogger, "comparing dep '{}' vs '{}'", dep, aPath.GetPath());
+                if (dep == aPath.GetPath())
+                {
                     dependents.push_back(path);
+                }
             }
         }
         return dependents;
     }
 
-    bool AssetRegistry::NeedsRecook(const std::string& aSourcePath) const
+    bool AssetRegistry::NeedsRecook(const AssetPath& aPath) const
     {
-        const auto* entry{ Lookup(aSourcePath) };
+        const auto* entry{ Lookup(aPath) };
         if (entry == nullptr) // not in registry — needs cook
         {
             return true;
         } 
 
-        const std::filesystem::path sourcePath{ aSourcePath };
-        if (!std::filesystem::exists(sourcePath)) // source gone — use cooked
+        const std::filesystem::path sourcePath{ aPath.GetPath() };
+        if (!std::filesystem::exists(sourcePath))
         {
             return false;
         }
 
-        const auto currentModified{ std::filesystem::last_write_time(sourcePath) };
-        return currentModified > entry->lastModified;
+        if (std::filesystem::last_write_time(sourcePath) > entry->lastModified)
+        {
+            return true;
+        }
+
+        for (const auto& dep : entry->dependencies)
+        {
+            const std::filesystem::path depPath{ dep };
+            if (!std::filesystem::exists(depPath))
+            {
+                continue;
+            }
+            if (std::filesystem::last_write_time(depPath) > entry->lastModified)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
     
     void AssetRegistry::Save() const

@@ -1,6 +1,6 @@
 ﻿#include "npch.h"
 #include "Nalta/Assets/Importers/PipelineImporter.h"
-#include "Nalta/Assets/Processors/RawAssetData.h"
+#include "Nalta/Assets/RawAssetData.h"
 #include "Nalta/Graphics/Pipeline/PipelineDesc.h"
 #include "Nalta/Graphics/Shader/ShaderCompiler.h"
 #include "Nalta/Graphics/Shader/ShaderDesc.h"
