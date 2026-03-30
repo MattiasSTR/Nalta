@@ -1,9 +1,9 @@
 #pragma once
 
 #include "EngineConfig.h"
-#include "FrameQueue.h"
+#include "TripleBuffer.h"
+#include "SceneView.h"
 #include "Nalta/Core/IGame.h"
-#include "Nalta/Graphics/Commands/RenderFrame.h"
 #include "Nalta/Graphics/RenderResources/DepthBufferHandle.h"
 #include "Nalta/Graphics/Surface/RenderSurfaceHandle.h"
 #include "Nalta/Platform/WindowHandle.h"
@@ -17,6 +17,7 @@ namespace Nalta
 {
 	namespace Graphics
 	{
+		class SceneRenderer;
 		class IRenderSurface;
 	}
 	
@@ -53,6 +54,7 @@ namespace Nalta
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
 		std::unique_ptr<GraphicsSystem> myGraphicsSystem;
 		std::unique_ptr<AssetManager> myAssetManager;
+		std::unique_ptr<Graphics::SceneRenderer> mySceneRenderer;
 		
 		WindowHandle myMainWindow;
 		
@@ -68,8 +70,7 @@ namespace Nalta
 		
 		PlayerInput myPlayerInput;
 
-		static constexpr uint32_t MAX_FRAMES_IN_FLIGHT{ 2 };
-		FrameQueue<RenderFrame> myRenderQueue{ MAX_FRAMES_IN_FLIGHT };
+		TripleBuffer<SceneView> mySceneBuffer;
 		
 		std::unique_ptr<Logger> myCoreLogger;
 		std::unique_ptr<Logger> myGameLogger;

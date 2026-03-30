@@ -3,10 +3,11 @@
 
 #include "Nalta/Assets/AssetManager.h"
 #include "Nalta/Core/InitContext.h"
-#include "Nalta/Core/RenderFrameContext.h"
+#include "Nalta/Core/SceneViewContext.h"
 #include "Nalta/Core/Timer.h"
 #include "Nalta/Core/UpdateContext.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
+#include "Nalta/Graphics/SceneRenderer.h"
 #include "Nalta/Graphics/Commands/IRenderContext.h"
 #include "Nalta/Graphics/RenderResources/IDepthBuffer.h"
 #include "Nalta/Graphics/Surface/IRenderSurface.h"
@@ -106,6 +107,10 @@ namespace Nalta
 			myAssetManager = std::make_unique<AssetManager>();
 			myAssetManager->Initialize(myGraphicsSystem.get(), myPlatformSystem.get());
 			NL_INFO(GCoreLogger, "AssetManager initialized");
+			
+			mySceneRenderer = std::make_unique<Graphics::SceneRenderer>();
+			mySceneRenderer->Initialize(myGraphicsSystem.get());
+			NL_INFO(GCoreLogger, "SceneRenderer initialized");
 		}
 		else
 		{
@@ -139,6 +144,12 @@ namespace Nalta
 			myGame->Shutdown();
 			myGame.reset();
 			NL_INFO(GCoreLogger, "Game shutdown");
+		}
+		
+		if (mySceneRenderer)
+		{
+			mySceneRenderer->Shutdown();
+			mySceneRenderer.reset();
 		}
 		
 		if (myAssetManager)
@@ -213,8 +224,6 @@ namespace Nalta
 				myStop = true;
 			}
 		}
-		
-		myRenderQueue.Stop();
 
 		if (myUpdateThread.joinable())
 		{
@@ -269,16 +278,19 @@ namespace Nalta
 			
 			if (canRender)
 			{
-				RenderFrame frame;
+				SceneView& view{ mySceneBuffer.GetWriteSlot() };
+				view.Reset();
+				
 				if (myGame)
 				{
-					RenderFrameContext frameContext{ frame };
-					frameContext.width = myMainWindow->GetWidth();
-					frameContext.height = myMainWindow->GetHeight();
-					frameContext.assetManager = myAssetManager.get();
-					myGame->BuildRenderFrame(frameContext);
+					SceneViewContext ctx;
+					ctx.view = &view;
+					ctx.width = myMainWindow->GetWidth();
+					ctx.height = myMainWindow->GetHeight();
+					myGame->BuildSceneView(ctx);
 				}
-				myRenderQueue.Push(std::move(frame));
+				
+				mySceneBuffer.Publish();
 			}
 		}
 		
@@ -301,17 +313,25 @@ namespace Nalta
 		
 		while (!myStop)
 		{
-			if (!myRenderQueue.Pop(frame))
+			if (mySceneBuffer.Consume())
 			{
-				break;
+				const SceneView& view{ mySceneBuffer.GetReadSlot() };
+				mySceneRenderer->BuildFrame(myAssetManager.get(), view, frame);
+				
+				myGraphicsSystem->BeginFrame();
+				
+				myMainSurface->SetAsRenderTarget(myMainDepthBuffer);
+				myMainSurface->Clear(clearColor);
+				myMainDepthBuffer->Clear();
+				
+				myGraphicsSystem->GetRenderContext()->Execute(frame);
+				
+				myGraphicsSystem->EndFrame();
 			}
-			
-			myGraphicsSystem->BeginFrame();
-			myMainSurface->SetAsRenderTarget(myMainDepthBuffer);
-			myMainSurface->Clear(clearColor);
-			myMainDepthBuffer->Clear();
-			myGraphicsSystem->GetRenderContext()->Execute(frame);
-			myGraphicsSystem->EndFrame();
+			else
+			{
+				std::this_thread::yield();
+			}
 		}
 		
 		NL_INFO(GCoreLogger, "Render loop stopped");

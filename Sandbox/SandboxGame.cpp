@@ -5,10 +5,9 @@
 #include <Nalta/Core/InitContext.h>
 #include <Nalta/Core/Math.h>
 #include <Nalta/Core/Paths.h>
-#include <Nalta/Core/RenderFrameContext.h>
+#include <Nalta/Core/SceneView.h>
+#include <Nalta/Core/SceneViewContext.h>
 #include <Nalta/Core/UpdateContext.h>
-#include <Nalta/Graphics/GraphicsSystem.h>
-#include <Nalta/Graphics/Commands/RenderFrame.h>
 #include <Nalta/Input/PlayerInput.h>
 
 using namespace Nalta;
@@ -21,11 +20,6 @@ struct TransformData
 
 void SandboxGame::Initialize(const InitContext& aContext)
 {
-    Graphics::ConstantBufferDesc cbDesc;
-    cbDesc.size = sizeof(TransformData);
-    myTransformCB = aContext.graphicsSystem->CreateConstantBuffer(cbDesc);
-    N_ASSERT(myTransformCB.IsValid(), "SandboxGame: failed to create transform buffer");
-    
     myMeshHandle = aContext.assetManager->RequestMesh(AssetPath(Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
     myPipelineHandle = aContext.assetManager->RequestPipeline(AssetPath(Paths::EngineAssetDir() / "Pipelines" / "Mesh.pipeline"));
     myTextureHandle = aContext.assetManager->RequestTexture(AssetPath(Paths::EngineAssetDir() / "Textures" / "test.texture"));
@@ -69,43 +63,32 @@ void SandboxGame::Update(const UpdateContext& aContext)
     if (input->IsKeyDown(Key::Q)) myPosition.y -= speed;
 }
 
-void SandboxGame::BuildRenderFrame(RenderFrameContext& aContext)
+void SandboxGame::BuildSceneView(SceneViewContext& aContext)
 {
-    const auto* mesh{ aContext.assetManager->GetMesh(myMeshHandle) };
-    const auto* pipeline{ aContext.assetManager->GetPipeline(myPipelineHandle) };
-    const auto* texture{ aContext.assetManager->GetTexture(myTextureHandle) };
-    
-    // This is still here because I don't have a realiable way yet to determine root parameter indices
-    if (!pipeline)
-    {
-        return;
-    }
-    
     const float aspectRatio{ static_cast<float>(aContext.width) / static_cast<float>(aContext.height) };
-    const float4x4 model{ float4x4::rotation_y(myTime) };
-    const float3 target{ myPosition + float3(
+    const float3 forward
+    {
         sin(myYaw) * cos(myPitch),
        -sin(myPitch),
-        cos(myYaw) * cos(myPitch)) };
-    
-    const float4x4 view{ float4x4::look_at(myPosition, target, float3(0.0f, 1.0f, 0.0f)) };
-    
-    const frustum f{ frustum::field_of_view_y(
-        Deg2Rad(75.0f),
-        aspectRatio,
-        0.1f,
-        1000.0f) };
+        cos(myYaw) * cos(myPitch)
+    };
+    const float3 target{ myPosition + forward };
 
+    const float4x4 view{ float4x4::look_at(myPosition, target, float3(0, 1, 0)) };
+    const frustum f{ frustum::field_of_view_y(Deg2Rad(75.f), aspectRatio, 0.1f, 1000.f) };
     const projection proj{ f, zclip::zero, zdirection::reverse, zplane::finite };
     const float4x4 viewProj{ mul(view, float4x4::perspective(proj)) };
 
-    const TransformData data{ model, viewProj };
+    aContext.view->camera.view = view;
+    aContext.view->camera.projection = float4x4::perspective(proj);
+    aContext.view->camera.viewProjection = viewProj;
+    aContext.view->camera.position = myPosition;
+    
+    MeshDrawEntry entry;
+    entry.mesh = myMeshHandle;
+    entry.pipeline = myPipelineHandle;
+    entry.albedo = myTextureHandle;
+    entry.transform = float4x4::rotation_y(myTime);
 
-    aContext.frame.UpdateConstantBuffer(myTransformCB, &data, sizeof(data));
-    aContext.frame.SetPipeline(pipeline->gpuHandle);
-    aContext.frame.SetConstantBuffer(myTransformCB, 0);
-    aContext.frame.SetTexture(texture->gpuHandle, 1);
-    aContext.frame.SetVertexBuffer(mesh->vb);
-    aContext.frame.SetIndexBuffer(mesh->ib);
-    aContext.frame.DrawIndexed(mesh->GetIndexCount());
+    aContext.view->meshes.push_back(entry);
 }
