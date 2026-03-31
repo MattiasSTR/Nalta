@@ -1,16 +1,20 @@
 ﻿#pragma once
-#include "Nalta/Assets/AssetHandle.h"
-#include "Nalta/Assets/AssetRegistry.h"
+#include "Nalta/Assets/AssetKeys.h"
 #include "Nalta/Assets/AssetPath.h"
+#include "Nalta/Assets/AssetRegistry.h"
 #include "Nalta/Assets/AssetState.h"
+#include "Nalta/Assets/Mesh.h"
+#include "Nalta/Assets/Pipeline.h"
+#include "Nalta/Assets/Texture.h"
 #include "Nalta/Assets/Importers/ImporterRegistry.h"
+#include "Nalta/Util/SlotMap.h"
 
-#include <thread>
 #include <atomic>
+#include <chrono>
 #include <mutex>
 #include <queue>
+#include <thread>
 #include <unordered_map>
-#include <chrono>
 
 namespace Nalta
 {
@@ -30,14 +34,14 @@ namespace Nalta
         void Shutdown();
 
         // Request an asset load - returns a handle immediately, load happens async
-        [[nodiscard]] MeshHandle RequestMesh(const AssetPath& aPath);
-        [[nodiscard]] TextureHandle RequestTexture(const AssetPath& aPath);
-        [[nodiscard]] PipelineHandle RequestPipeline(const AssetPath& aPath);
+        [[nodiscard]] MeshKey RequestMesh(const AssetPath& aPath);
+        [[nodiscard]] TextureKey RequestTexture(const AssetPath& aPath);
+        [[nodiscard]] PipelineKey RequestPipeline(const AssetPath& aPath);
 
         // Get loaded asset data - returns fallback if not ready yet
-        [[nodiscard]] const Mesh* GetMesh(MeshHandle aHandle) const;
-        [[nodiscard]] const Texture* GetTexture(TextureHandle aHandle) const;
-        [[nodiscard]] const Pipeline* GetPipeline(PipelineHandle aHandle) const;
+        [[nodiscard]] const Mesh* GetMesh(MeshKey aKey) const;
+        [[nodiscard]] const Texture* GetTexture(TextureKey aKey) const;
+        [[nodiscard]] const Pipeline* GetPipeline(PipelineKey aKey) const;
 
     private:
         enum class AssetType : uint8_t
@@ -63,9 +67,13 @@ namespace Nalta
         };
 
         // Internal request helpers
-        MeshHandle RequestMeshInternal(const AssetPath& aPath, bool aIsReload);
-        TextureHandle RequestTextureInternal(const AssetPath& aPath, bool aIsReload);
-        PipelineHandle RequestPipelineInternal(const AssetPath& aPath, bool aIsReload);
+        MeshKey RequestMeshInternal(const AssetPath& aPath, bool aIsReload);
+        TextureKey RequestTextureInternal(const AssetPath& aPath, bool aIsReload);
+        PipelineKey RequestPipelineInternal(const AssetPath& aPath, bool aIsReload);
+        
+        MeshKey GetMeshKey(uint64_t aHash) const;
+        TextureKey GetTextureKey(uint64_t aHash) const;
+        PipelineKey GetPipelineKey(uint64_t aHash) const;
 
         // Asset thread
         void AssetThreadLoop();
@@ -92,12 +100,12 @@ namespace Nalta
 
         // Utilities
         [[nodiscard]] static std::filesystem::path GetCookedPath(const AssetPath& aPath);
-        void SetMeshState(uint64_t aId, AssetState aState, bool aIsReload);
-        void SetTextureState(uint64_t aId, AssetState aState, bool aIsReload);
-        void SetPipelineState(uint64_t aId, AssetState aState, bool aIsReload);
+        void SetMeshState(MeshKey aKey, AssetState aState, bool aIsReload);
+        void SetTextureState(TextureKey aKey, AssetState aState, bool aIsReload);
+        void SetPipelineState(PipelineKey aKey, AssetState aState, bool aIsReload);
         void PromotePendingAssets();
         static void WriteCookedHeader(BinaryWriter& aWriter, AssetType aType);
-        bool ReadCookedHeader(BinaryReader& aReader, AssetType& aOutType) const;
+        static bool ReadCookedHeader(BinaryReader& aReader, AssetType& aOutType);
         void RegisterCookedEntry(const AssetPath& aPath, const std::filesystem::path& aCookedPath, AssetType aType, const std::vector<std::string>& aDependencies);
         
         // Fallbacks
@@ -111,9 +119,14 @@ namespace Nalta
         mutable std::mutex myTextureMutex;
         mutable std::mutex myPipelineMutex;
 
-        std::unordered_map<uint64_t, Mesh> myMeshes;
-        std::unordered_map<uint64_t, Texture> myTextures;
-        std::unordered_map<uint64_t, Pipeline> myPipelines;
+        SlotMap<MeshKey, Mesh> myMeshes;
+        std::unordered_map<uint64_t, MeshKey> myMeshIndex;
+        
+        SlotMap<TextureKey, Texture> myTextures;
+        std::unordered_map<uint64_t, TextureKey> myTextureIndex;
+        
+        SlotMap<PipelineKey, Pipeline> myPipelines;
+        std::unordered_map<uint64_t, PipelineKey> myPipelineIndex;
         
         // Fallbacks
         Mesh myFallbackMesh;

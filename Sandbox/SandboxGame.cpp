@@ -20,9 +20,9 @@ struct TransformData
 
 void SandboxGame::Initialize(const InitContext& aContext)
 {
-    myMeshHandle = aContext.assetManager->RequestMesh(AssetPath(Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
-    myPipelineHandle = aContext.assetManager->RequestPipeline(AssetPath(Paths::EngineAssetDir() / "Pipelines" / "Mesh.pipeline"));
-    myTextureHandle = aContext.assetManager->RequestTexture(AssetPath(Paths::EngineAssetDir() / "Textures" / "test.texture"));
+    myMeshKey = aContext.assetManager->RequestMesh(AssetPath(Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
+    myPipelineKey = aContext.assetManager->RequestPipeline(AssetPath(Paths::EngineAssetDir() / "Pipelines" / "Mesh.pipeline"));
+    myTextureKey = aContext.assetManager->RequestTexture(AssetPath(Paths::EngineAssetDir() / "Textures" / "test.texture"));
 }
 
 void SandboxGame::Shutdown()
@@ -85,9 +85,9 @@ void SandboxGame::BuildSceneView(SceneViewContext& aContext)
     aContext.view->camera.position = myPosition;
     
     MeshDrawEntry entry;
-    entry.mesh = myMeshHandle;
-    entry.pipeline = myPipelineHandle;
-    entry.albedo = myTextureHandle;
+    entry.mesh = myMeshKey;
+    entry.pipeline = myPipelineKey;
+    entry.albedo = myTextureKey;
     entry.transform = float4x4::rotation_y(myTime);
 
     aContext.view->meshes.push_back(entry);

@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "Nalta/Core/Math.h"
-#include "Nalta/Assets/AssetHandle.h"
+#include "Nalta/Assets/AssetKeys.h"
 
 #include <vector>
 
@@ -8,9 +8,9 @@ namespace Nalta
 {
     struct MeshDrawEntry
     {
-        MeshHandle mesh;
-        PipelineHandle pipeline;
-        TextureHandle albedo;
+        MeshKey mesh;
+        PipelineKey pipeline;
+        TextureKey albedo;
         float4x4 transform;
     };
 

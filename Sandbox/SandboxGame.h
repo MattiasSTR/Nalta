@@ -1,5 +1,5 @@
 #pragma once
-#include <Nalta/Assets/AssetHandle.h>
+#include <Nalta/Assets/AssetKeys.h>
 #include <Nalta/Core/IGame.h>
 #include <Nalta/Core/Math.h>
 
@@ -12,9 +12,9 @@ public:
     void BuildSceneView(Nalta::SceneViewContext& aContext) override;
 
 private:
-    Nalta::MeshHandle myMeshHandle;
-    Nalta::PipelineHandle myPipelineHandle;
-    Nalta::TextureHandle myTextureHandle;
+    Nalta::MeshKey myMeshKey;
+    Nalta::PipelineKey myPipelineKey;
+    Nalta::TextureKey myTextureKey;
     
     float3 myPosition{ 0.0f, 0.0f, -3.0f };
     float1 myYaw{ 0.0f };

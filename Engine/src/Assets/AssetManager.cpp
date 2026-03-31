@@ -96,164 +96,209 @@ namespace Nalta
         
         {
             std::lock_guard lock{ myMeshMutex };
-            myMeshes.clear();
+            myMeshes = {};
+            myMeshIndex.clear();
         }
         {
             std::lock_guard lock{ myTextureMutex };
-            myTextures.clear();
+            myTextures = {};
+            myTextureIndex.clear();
         }
         {
             std::lock_guard lock{ myPipelineMutex };
-            myPipelines.clear();
+            myPipelines = {};
+            myPipelineIndex.clear();
         }
 
         myRegistry.Shutdown();
         NL_INFO(GCoreLogger, "shutdown");
     }
     
-    MeshHandle AssetManager::RequestMesh(const AssetPath& aPath)
+    MeshKey AssetManager::RequestMesh(const AssetPath& aPath)
     {
         return RequestMeshInternal(aPath, false);
     }
 
-    TextureHandle AssetManager::RequestTexture(const AssetPath& aPath)
+    TextureKey AssetManager::RequestTexture(const AssetPath& aPath)
     {
         return RequestTextureInternal(aPath, false);
     }
 
-    PipelineHandle AssetManager::RequestPipeline(const AssetPath& aPath)
+    PipelineKey AssetManager::RequestPipeline(const AssetPath& aPath)
     {
         return RequestPipelineInternal(aPath, false);
     }
 
-    const Mesh* AssetManager::GetMesh(const MeshHandle aHandle) const
+    const Mesh* AssetManager::GetMesh(const MeshKey aKey) const
     {
-        if (aHandle.IsValid())
+        if (aKey.IsValid())
         {
             std::lock_guard lock{ myMeshMutex };
-            const auto it{ myMeshes.find(aHandle.id) };
-            if (it != myMeshes.end() && it->second.state == AssetState::Ready)
+            const Mesh* mesh{ myMeshes.Get(aKey) };
+            if ((mesh != nullptr) && mesh->state == AssetState::Ready)
             {
-                return &it->second;
+                return mesh;
             }
         }
         return &myFallbackMesh;
     }
 
-    const Texture* AssetManager::GetTexture(const TextureHandle aHandle) const
+    const Texture* AssetManager::GetTexture(const TextureKey aKey) const
     {
-        if (aHandle.IsValid())
+        if (aKey.IsValid())
         {
             std::lock_guard lock{ myTextureMutex };
-            const auto it{ myTextures.find(aHandle.id) };
-            if (it != myTextures.end() && it->second.state == AssetState::Ready)
+            const Texture* tex{ myTextures.Get(aKey) };
+            if ((tex != nullptr) && tex->state == AssetState::Ready)
             {
-                return &it->second;
+                return tex;
             }
         }
         return &myFallbackTexture;
     }
 
-    const Pipeline* AssetManager::GetPipeline(const PipelineHandle aHandle) const
+    const Pipeline* AssetManager::GetPipeline(const PipelineKey aKey) const
     {
-        if (aHandle.IsValid())
+        if (aKey.IsValid())
         {
             std::lock_guard lock{ myPipelineMutex };
-            const auto it{ myPipelines.find(aHandle.id) };
-            if (it != myPipelines.end() && it->second.state == AssetState::Ready)
+            const Pipeline* pipeline{ myPipelines.Get(aKey) };
+            if ((pipeline != nullptr) && pipeline->state == AssetState::Ready)
             {
-                return &it->second;
+                return pipeline;
             }
         }
         //return &myFallbackPipeline;
         return nullptr;
     }
 
-    MeshHandle AssetManager::RequestMeshInternal(const AssetPath& aPath, const bool aIsReload)
+    MeshKey AssetManager::RequestMeshInternal(const AssetPath& aPath, const bool aIsReload)
     {
         N_CORE_ASSERT(!aPath.IsEmpty(), "empty asset path");
-        const uint64_t id{ aPath.GetHash() };
+        const uint64_t hash{ aPath.GetHash() };
 
+        MeshKey key;
         {
             std::lock_guard lock{ myMeshMutex };
-            if (!aIsReload)
-            {
-                if (myMeshes.contains(id))
-                {
-                    return MeshHandle{ id };
-                }
-            }
 
-            if (!aIsReload)
+            if (const auto it{ myMeshIndex.find(hash) }; it != myMeshIndex.end())
             {
-                myMeshes[id].state = AssetState::Requested;
+                if (!aIsReload)
+                {
+                    return it->second;
+                }
+
+                key = it->second;
+                myMeshes.Get(key)->state = AssetState::Requested;
+            }
+            else
+            {
+                key = myMeshes.Insert(Mesh{ .state = AssetState::Requested });
+                myMeshIndex[hash] = key;
             }
         }
 
         {
             std::lock_guard lock{ myQueueMutex };
-            myLoadQueue.push({ id, aPath, AssetType::Mesh, aIsReload });
+            myLoadQueue.push({ hash, aPath, AssetType::Mesh, aIsReload });
         }
         myQueueCV.notify_one();
 
         NL_TRACE(GCoreLogger, "requested mesh '{}'", aPath.GetPath());
-        return MeshHandle{ id };
+        return key;
     }
 
-    TextureHandle AssetManager::RequestTextureInternal(const AssetPath& aPath, const bool aIsReload)
+    TextureKey AssetManager::RequestTextureInternal(const AssetPath& aPath, const bool aIsReload)
     {
         N_CORE_ASSERT(!aPath.IsEmpty(), "empty asset path");
-        const uint64_t id{ aPath.GetHash() };
+        const uint64_t hash{ aPath.GetHash() };
 
+        TextureKey key;
         {
             std::lock_guard lock{ myTextureMutex };
-            if (!aIsReload && myTextures.contains(id))
-            {
-                return TextureHandle{ id };
-            }
 
-            if (!aIsReload)
+            if (const auto it{ myTextureIndex.find(hash) }; it != myTextureIndex.end())
             {
-                myTextures[id].state = AssetState::Requested;
+                if (!aIsReload)
+                {
+                    return it->second;
+                }
+
+                key = it->second;
+                myTextures.Get(key)->state = AssetState::Requested;
+            }
+            else
+            {
+                key = myTextures.Insert(Texture{ .state = AssetState::Requested });
+                myTextureIndex[hash] = key;
             }
         }
 
         {
             std::lock_guard lock{ myQueueMutex };
-            myLoadQueue.push({ id, aPath, AssetType::Texture, aIsReload });
+            myLoadQueue.push({ hash, aPath, AssetType::Texture, aIsReload });
         }
         myQueueCV.notify_one();
 
-        NL_TRACE(GCoreLogger, "requested texture '{}'", aPath.GetPath());
-        return TextureHandle{ id };
+        NL_TRACE(GCoreLogger, "requested mesh '{}'", aPath.GetPath());
+        return key;
     }
 
-    PipelineHandle AssetManager::RequestPipelineInternal(const AssetPath& aPath, const bool aIsReload)
+    PipelineKey AssetManager::RequestPipelineInternal(const AssetPath& aPath, const bool aIsReload)
     {
         N_CORE_ASSERT(!aPath.IsEmpty(), "empty asset path");
-        const uint64_t id{ aPath.GetHash() };
+        const uint64_t hash{ aPath.GetHash() };
 
+        PipelineKey key;
         {
             std::lock_guard lock{ myPipelineMutex };
-            if (!aIsReload && myPipelines.contains(id))
-            {
-                return PipelineHandle{ id };
-            }
 
-            if (!aIsReload)
+            if (const auto it{ myPipelineIndex.find(hash) }; it != myPipelineIndex.end())
             {
-                myPipelines[id].state = AssetState::Requested;
+                if (!aIsReload)
+                {
+                    return it->second;
+                }
+
+                key = it->second;
+                myPipelines.Get(key)->state = AssetState::Requested;
+            }
+            else
+            {
+                key = myPipelines.Insert(Pipeline{ .state = AssetState::Requested });
+                myPipelineIndex[hash] = key;
             }
         }
 
         {
             std::lock_guard lock{ myQueueMutex };
-            myLoadQueue.push({ id, aPath, AssetType::Pipeline, aIsReload });
+            myLoadQueue.push({ hash, aPath, AssetType::Pipeline, aIsReload });
         }
         myQueueCV.notify_one();
 
-        NL_TRACE(GCoreLogger, "requested pipeline '{}'", aPath.GetPath());
-        return PipelineHandle{ id };
+        NL_TRACE(GCoreLogger, "requested mesh '{}'", aPath.GetPath());
+        return key;
+    }
+
+    MeshKey AssetManager::GetMeshKey(const uint64_t aHash) const
+    {
+        const auto it{ myMeshIndex.find(aHash) };
+        N_CORE_ASSERT(it != myMeshIndex.end(), "no mesh key for hash - asset was never requested");
+        return it->second;
+    }
+
+    TextureKey AssetManager::GetTextureKey(const uint64_t aHash) const
+    {
+        const auto it{ myTextureIndex.find(aHash) };
+        N_CORE_ASSERT(it != myTextureIndex.end(), "no texture key for hash - asset was never requested");
+        return it->second;
+    }
+
+    PipelineKey AssetManager::GetPipelineKey(const uint64_t aHash) const
+    {
+        const auto it{ myPipelineIndex.find(aHash) };
+        N_CORE_ASSERT(it != myPipelineIndex.end(), "no pipeline key for hash - asset was never requested");
+        return it->second;
     }
 
     void AssetManager::AssetThreadLoop()
@@ -338,18 +383,18 @@ namespace Nalta
                 // Restore ready state so the old GPU data keeps being used
                 switch (aRequest.type)
                 {
-                    case AssetType::Mesh: SetMeshState(aRequest.id, AssetState::Ready, aRequest.isReload); break;
-                    case AssetType::Texture: SetTextureState(aRequest.id, AssetState::Ready, aRequest.isReload); break;
-                    case AssetType::Pipeline: SetPipelineState(aRequest.id, AssetState::Ready, aRequest.isReload); break;
+                    case AssetType::Mesh: SetMeshState(GetMeshKey(aRequest.id), AssetState::Ready, aRequest.isReload); break;
+                    case AssetType::Texture: SetTextureState(GetTextureKey(aRequest.id), AssetState::Ready, aRequest.isReload); break;
+                    case AssetType::Pipeline: SetPipelineState(GetPipelineKey(aRequest.id), AssetState::Ready, aRequest.isReload); break;
                 }
             }
             else
             {
                 switch (aRequest.type)
                 {
-                    case AssetType::Mesh: SetMeshState(aRequest.id, AssetState::Failed, aRequest.isReload); break;
-                    case AssetType::Texture: SetTextureState(aRequest.id, AssetState::Failed, aRequest.isReload); break;
-                    case AssetType::Pipeline: SetPipelineState(aRequest.id, AssetState::Failed, aRequest.isReload); break;
+                    case AssetType::Mesh: SetMeshState(GetMeshKey(aRequest.id), AssetState::Failed, aRequest.isReload); break;
+                    case AssetType::Texture: SetTextureState(GetTextureKey(aRequest.id), AssetState::Failed, aRequest.isReload); break;
+                    case AssetType::Pipeline: SetPipelineState(GetPipelineKey(aRequest.id), AssetState::Failed, aRequest.isReload); break;
                 }
             }
         }
@@ -357,7 +402,7 @@ namespace Nalta
 
     bool AssetManager::LoadMesh(const LoadRequest& aRequest)
     {
-        SetMeshState(aRequest.id, AssetState::Loading, aRequest.isReload);
+        SetMeshState(GetMeshKey(aRequest.id), AssetState::Loading, aRequest.isReload);
 
         const auto cookedPath{ GetCookedPath(aRequest.path) };
 
@@ -386,7 +431,7 @@ namespace Nalta
 
     bool AssetManager::LoadTexture(const LoadRequest& aRequest)
     {
-        SetTextureState(aRequest.id, AssetState::Loading, aRequest.isReload);
+        SetTextureState(GetTextureKey(aRequest.id), AssetState::Loading, aRequest.isReload);
 
         const auto cookedPath{ GetCookedPath(aRequest.path) };
 
@@ -415,7 +460,7 @@ namespace Nalta
 
     bool AssetManager::LoadPipeline(const LoadRequest& aRequest)
     {
-        SetPipelineState(aRequest.id, AssetState::Loading, aRequest.isReload);
+        SetPipelineState(GetPipelineKey(aRequest.id), AssetState::Loading, aRequest.isReload);
 
         const auto cookedPath{ GetCookedPath(aRequest.path) };
 
@@ -451,7 +496,9 @@ namespace Nalta
             return false;
         }
 
-        SetMeshState(aRequest.id, AssetState::Processing, aRequest.isReload);
+        const MeshKey key{ GetMeshKey(aRequest.id) };
+        
+        SetMeshState(key, AssetState::Processing, aRequest.isReload);
         const auto rawBase{ importer->Import(aPath) };
         if (!rawBase || !rawBase->IsValid())
         {
@@ -461,10 +508,11 @@ namespace Nalta
 
         auto& raw{ static_cast<RawMeshData&>(*rawBase) };
 
-        SetMeshState(aRequest.id, AssetState::Uploading, aRequest.isReload);
+        SetMeshState(key, AssetState::Uploading, aRequest.isReload);
         {
             std::lock_guard lock{ myMeshMutex };
-            if (!MeshProcessor::Process(raw, myMeshes[aRequest.id], *myGraphicsSystem))
+            Mesh* mesh{ myMeshes.Get(key) };
+            if (!MeshProcessor::Process(raw, *mesh, *myGraphicsSystem))
             {
                 return false;
             }
@@ -495,8 +543,10 @@ namespace Nalta
             NL_ERROR(GCoreLogger, "no importer for '{}'", aPath.GetPath());
             return false;
         }
+        
+        const TextureKey key{ GetTextureKey(aRequest.id) };
 
-        SetTextureState(aRequest.id, AssetState::Processing, aRequest.isReload);
+        SetTextureState(key, AssetState::Processing, aRequest.isReload);
         const auto rawBase{ importer->Import(aPath) };
         if (!rawBase || !rawBase->IsValid())
         {
@@ -506,10 +556,11 @@ namespace Nalta
 
         auto& raw{ static_cast<RawTextureData&>(*rawBase) };
 
-        SetTextureState(aRequest.id, AssetState::Uploading, aRequest.isReload);
+        SetTextureState(key, AssetState::Uploading, aRequest.isReload);
         {
             std::lock_guard lock{ myTextureMutex };
-            if (!TextureProcessor::Process(raw, myTextures[aRequest.id], *myGraphicsSystem))
+            Texture* tex{ myTextures.Get(key) };
+            if (!TextureProcessor::Process(raw, *tex, *myGraphicsSystem))
             {
                 return false;
             }
@@ -546,8 +597,10 @@ namespace Nalta
             NL_ERROR(GCoreLogger, "no importer for '{}'", aPath.GetPath());
             return false;
         }
+        
+        const PipelineKey key{ GetPipelineKey(aRequest.id) };
 
-        SetPipelineState(aRequest.id, AssetState::Processing, aRequest.isReload);
+        SetPipelineState(key, AssetState::Processing, aRequest.isReload);
         const auto rawBase{ importer->Import(aPath) };
         if (!rawBase || !rawBase->IsValid())
         {
@@ -557,10 +610,11 @@ namespace Nalta
 
         auto& raw{ static_cast<RawPipelineData&>(*rawBase) };
 
-        SetPipelineState(aRequest.id, AssetState::Uploading, aRequest.isReload);
+        SetPipelineState(key, AssetState::Uploading, aRequest.isReload);
         {
             std::lock_guard lock{ myPipelineMutex };
-            if (!PipelineProcessor::Process(raw, myPipelines[aRequest.id], *myGraphicsSystem))
+            Pipeline* pipeline{ myPipelines.Get(key) };
+            if (!PipelineProcessor::Process(raw, *pipeline, *myGraphicsSystem))
             {
                 return false;
             }
@@ -614,10 +668,13 @@ namespace Nalta
             return false;
         }
 
-        SetMeshState(aRequest.id, AssetState::Uploading, aRequest.isReload);
+        const MeshKey key{ GetMeshKey(aRequest.id) };
+        
+        SetMeshState(key, AssetState::Uploading, aRequest.isReload);
         {
             std::lock_guard lock{ myMeshMutex };
-            if (!MeshProcessor::Process(raw, myMeshes[aRequest.id], *myGraphicsSystem))
+            Mesh* mesh{ myMeshes.Get(key) };
+            if (!MeshProcessor::Process(raw, *mesh, *myGraphicsSystem))
             {
                 return false;
             }
@@ -648,10 +705,12 @@ namespace Nalta
             return false;
         }
         
-        SetTextureState(aRequest.id, AssetState::Uploading, aRequest.isReload);
+        const TextureKey key{ GetTextureKey(aRequest.id) };
+        SetTextureState(key, AssetState::Uploading, aRequest.isReload);
         {
             std::lock_guard lock{ myTextureMutex };
-            if (!TextureProcessor::Process(raw, myTextures[aRequest.id], *myGraphicsSystem))
+            Texture* tex{ myTextures.Get(key) };
+            if (!TextureProcessor::Process(raw, *tex, *myGraphicsSystem))
             {
                 return false;
             }
@@ -682,10 +741,13 @@ namespace Nalta
             return false;
         }
         
-        SetPipelineState(aRequest.id, AssetState::Uploading, aRequest.isReload);
+        const PipelineKey key{ GetPipelineKey(aRequest.id) };
+        
+        SetPipelineState(key, AssetState::Uploading, aRequest.isReload);
         {
             std::lock_guard lock{ myPipelineMutex };
-            if (!PipelineProcessor::Process(raw, myPipelines[aRequest.id], *myGraphicsSystem))
+            Pipeline* pipeline{ myPipelines.Get(key) };
+            if (!PipelineProcessor::Process(raw, *pipeline, *myGraphicsSystem))
             {
                 return false;
             }
@@ -734,42 +796,48 @@ namespace Nalta
     void AssetManager::QueueReload(const std::string& aSourcePath)
     {
         const AssetPath path{ aSourcePath };
-        const uint64_t id{ path.GetHash() };
+        const uint64_t hash{ path.GetHash() };
 
         // Figure out which type this path maps to and whether it's loaded
         AssetType type{};
         bool wasReady{ false };
         bool found{ false };
         
+        if (const auto it{ myMeshIndex.find(hash) }; it != myMeshIndex.end())
         {
-            std::lock_guard lock{ myMeshMutex };
-            if (myMeshes.contains(id))
+            if (const Mesh* mesh{ myMeshes.Get(it->second) })
             {
-                wasReady = myMeshes[id].state == AssetState::Ready;
-                type = AssetType::Mesh;
-                found  = true;
+                wasReady = mesh->state == AssetState::Ready;
+                type  = AssetType::Mesh;
+                found = true;
             }
         }
 
         if (!found)
         {
             std::lock_guard lock{ myTextureMutex };
-            if (myTextures.contains(id))
+            if (const auto it{ myTextureIndex.find(hash) }; it != myTextureIndex.end())
             {
-                wasReady = myTextures[id].state == AssetState::Ready;
-                type = AssetType::Texture;
-                found = true;
+                if (const Texture* tex{ myTextures.Get(it->second) })
+                {
+                    wasReady = tex->state == AssetState::Ready;
+                    type  = AssetType::Texture;
+                    found = true;
+                }
             }
         }
 
         if (!found)
         {
             std::lock_guard lock{ myPipelineMutex };
-            if (myPipelines.contains(id))
+            if (const auto it{ myPipelineIndex.find(hash) }; it != myPipelineIndex.end())
             {
-                wasReady = myPipelines[id].state == AssetState::Ready;
-                type = AssetType::Pipeline;
-                found = true;
+                if (const Pipeline* pipeline{ myPipelines.Get(it->second) })
+                {
+                    wasReady = pipeline->state == AssetState::Ready;
+                    type  = AssetType::Pipeline;
+                    found = true;
+                }
             }
         }
         
@@ -788,7 +856,7 @@ namespace Nalta
 
         {
             std::lock_guard lock{ myQueueMutex };
-            myLoadQueue.push({ id, path, type, true, wasReady });
+            myLoadQueue.push({ hash, path, type, true, wasReady });
         }
         myQueueCV.notify_one();
     }
@@ -799,7 +867,7 @@ namespace Nalta
         return Paths::CookedDir() / filename;
     }
 
-    void AssetManager::SetMeshState(const uint64_t aId, const AssetState aState, const bool aIsReload)
+    void AssetManager::SetMeshState(const MeshKey aKey, const AssetState aState, const bool aIsReload)
     {
         if (aIsReload && aState != AssetState::Ready && aState != AssetState::Failed)
         {
@@ -807,10 +875,13 @@ namespace Nalta
         }
 
         std::lock_guard lock{ myMeshMutex };
-        myMeshes[aId].state = aState;
+        if (Mesh* mesh{ myMeshes.Get(aKey) })
+        {
+            mesh->state = aState;
+        }
     }
 
-    void AssetManager::SetTextureState(const uint64_t aId, const AssetState aState, const bool aIsReload)
+    void AssetManager::SetTextureState(const TextureKey aKey, const AssetState aState, const bool aIsReload)
     {
         if (aIsReload && aState != AssetState::Ready && aState != AssetState::Failed)
         {
@@ -818,10 +889,13 @@ namespace Nalta
         }
         
         std::lock_guard lock{ myTextureMutex };
-        myTextures[aId].state = aState;
+        if (Texture* tex{ myTextures.Get(aKey) })
+        {
+            tex->state = aState;
+        }
     }
 
-    void AssetManager::SetPipelineState(const uint64_t aId, const AssetState aState, const bool aIsReload)
+    void AssetManager::SetPipelineState(const PipelineKey aKey, const AssetState aState, const bool aIsReload)
     {
         if (aIsReload && aState != AssetState::Ready && aState != AssetState::Failed)
         {
@@ -829,40 +903,43 @@ namespace Nalta
         }
         
         std::lock_guard lock{ myPipelineMutex };
-        myPipelines[aId].state = aState;
+        if (Pipeline* pipeline{ myPipelines.Get(aKey) })
+        {
+            pipeline->state = aState;
+        }
     }
 
     void AssetManager::PromotePendingAssets()
     {
         {
             std::lock_guard lock{ myMeshMutex };
-            for (auto& mesh : myMeshes | std::views::values)
+            myMeshes.ForEach([](Mesh& aMesh)
             {
-                if (mesh.state == AssetState::Uploading)
+                if (aMesh.state == AssetState::Uploading)
                 {
-                    mesh.state = AssetState::Ready;
+                    aMesh.state = AssetState::Ready;
                 }
-            }
+            });
         }
         {
             std::lock_guard lock{ myTextureMutex };
-            for (auto& texture : myTextures | std::views::values)
+            myTextures.ForEach([](Texture& aTex)
             {
-                if (texture.state == AssetState::Uploading)
+                if (aTex.state == AssetState::Uploading)
                 {
-                    texture.state = AssetState::Ready;
+                    aTex.state = AssetState::Ready;
                 }
-            }
+            });
         }
         {
             std::lock_guard lock{ myPipelineMutex };
-            for (auto& pipeline : myPipelines | std::views::values)
+            myPipelines.ForEach([](Pipeline& aPipeline)
             {
-                if (pipeline.state == AssetState::Uploading)
+                if (aPipeline.state == AssetState::Uploading)
                 {
-                    pipeline.state = AssetState::Ready;
+                    aPipeline.state = AssetState::Ready;
                 }
-            }
+            });
         }
     }
 
@@ -877,7 +954,7 @@ namespace Nalta
         aWriter.Write(uint8_t{ 0 }); // padding
     }
 
-    bool AssetManager::ReadCookedHeader(BinaryReader& aReader, AssetType& aOutType) const
+    bool AssetManager::ReadCookedHeader(BinaryReader& aReader, AssetType& aOutType)
     {
         char magic[4]{};
         aReader.ReadBytes(std::span(reinterpret_cast<uint8_t*>(magic), 4));
