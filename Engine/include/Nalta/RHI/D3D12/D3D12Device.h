@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Nalta/RHI/D3D12/D3D12Common.h"
+#include "Nalta/RHI/D3D12/D3D12Descriptor.h"
 #include "Nalta/RHI/D3D12/D3D12Queue.h"
 
 #include <array>
@@ -7,6 +8,14 @@
 
 namespace Nalta::RHI::D3D12
 {
+    namespace HeapCapacity
+    {
+        constexpr uint32_t BINDLESS{ 1'000'000 }; // CBV/SRV/UAV, shader-visible
+        constexpr uint32_t SAMPLER{ 2'048 }; // shader-visible
+        constexpr uint32_t RTV{ 512 }; // staging, non-shader-visible
+        constexpr uint32_t DSV{ 128 }; // staging, non-shader-visible
+    }
+    
     class Device final
     {
     public:
@@ -22,17 +31,22 @@ namespace Nalta::RHI::D3D12
         void BeginFrame();
         void EndFrame();
         
-        ID3D12Device10* GetD3D12Device() const { return myDevice; }
-        IDXGIFactory7* GetDXGIFactory() const { return myFactory; }
-        IDxcUtils* GetDxcUtils() const { return myDxcUtils; }
-        D3D12MA::Allocator* GetAllocator() const { return myAllocator; }
-        Queue& GetQueue(QueueType aType) { return *myQueues[static_cast<size_t>(aType)]; }
+        [[nodiscard]] ID3D12Device10* GetD3D12Device() const { return myDevice; }
+        [[nodiscard]] IDXGIFactory7* GetDXGIFactory() const { return myFactory; }
+        [[nodiscard]] IDxcUtils* GetDxcUtils() const { return myDxcUtils; }
+        [[nodiscard]] D3D12MA::Allocator* GetAllocator() const { return myAllocator; }
+        [[nodiscard]] Queue& GetQueue(QueueType aType) { return *myQueues[static_cast<size_t>(aType)]; }
+        [[nodiscard]] FreeListDescriptorHeap& GetBindlessHeap() { return *myBindlessHeap; }
+        [[nodiscard]] FreeListDescriptorHeap& GetSamplerHeap() { return *mySamplerHeap; }
+        [[nodiscard]] FreeListDescriptorHeap& GetRTVHeap() { return *myRTVHeap; }
+        [[nodiscard]] FreeListDescriptorHeap& GetDSVHeap() { return *myDSVHeap; }
         
     private:
         void InitDebugLayer();
         void InitInfoQueue();
         void SelectAdapter();
         void InitAllocator();
+        void InitDescriptorHeaps();
         void CheckFeatureSupport() const;
         
         IDXGIFactory7* myFactory{ nullptr };
@@ -47,5 +61,10 @@ namespace Nalta::RHI::D3D12
 #endif
         
         std::array<std::unique_ptr<Queue>, static_cast<size_t>(QueueType::Count)> myQueues;
+        
+        std::unique_ptr<FreeListDescriptorHeap> myBindlessHeap;
+        std::unique_ptr<FreeListDescriptorHeap> mySamplerHeap;
+        std::unique_ptr<FreeListDescriptorHeap> myRTVHeap;
+        std::unique_ptr<FreeListDescriptorHeap> myDSVHeap;
     };
 }

@@ -65,6 +65,7 @@ namespace Nalta::RHI::D3D12
         N_D3D12_SET_NAME(myDevice, "Main D3D12 Device");
         
         InitAllocator();
+        InitDescriptorHeaps();
         CheckFeatureSupport();
         InitInfoQueue();
         
@@ -88,16 +89,21 @@ namespace Nalta::RHI::D3D12
             }
         }
         
+#ifndef N_SHIPPING
+        ID3D12DebugDevice* debugDevice;
+        myDevice->QueryInterface(IID_PPV_ARGS(&debugDevice));
+#endif
+        
         // Explicitly destroy queues before device
         for (auto& queue : myQueues)
         {
             queue.reset();
         }
         
-#ifndef N_SHIPPING
-        ID3D12DebugDevice* debugDevice;
-        myDevice->QueryInterface(IID_PPV_ARGS(&debugDevice));
-#endif
+        myBindlessHeap.reset();
+        mySamplerHeap.reset();
+        myRTVHeap.reset();
+        myDSVHeap.reset();
         
         SafeRelease(myAllocator);
         SafeRelease(myDxcUtils);
@@ -268,6 +274,23 @@ namespace Nalta::RHI::D3D12
         }
 
         NL_TRACE(GCoreLogger, "allocator initialized");
+    }
+
+    void Device::InitDescriptorHeaps()
+    {
+        myBindlessHeap = std::make_unique<FreeListDescriptorHeap>(myDevice, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, HeapCapacity::BINDLESS, true);
+        N_D3D12_SET_NAME(myBindlessHeap->GetHeap(), "Bindless CBV/SRV/UAV Heap");
+
+        mySamplerHeap = std::make_unique<FreeListDescriptorHeap>(myDevice, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, HeapCapacity::SAMPLER, true);
+        N_D3D12_SET_NAME(mySamplerHeap->GetHeap(), "Sampler Heap");
+
+        myRTVHeap = std::make_unique<FreeListDescriptorHeap>(myDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, HeapCapacity::RTV, false);
+        N_D3D12_SET_NAME(myRTVHeap->GetHeap(), "RTV Staging Heap");
+
+        myDSVHeap = std::make_unique<FreeListDescriptorHeap>(myDevice, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, HeapCapacity::DSV, false);
+        N_D3D12_SET_NAME(myDSVHeap->GetHeap(), "DSV Staging Heap");
+
+        NL_TRACE(GCoreLogger, "descriptor heaps initialized");
     }
 
     void Device::CheckFeatureSupport() const
