@@ -19,6 +19,7 @@ ThirdPartyIncludes.spdlog = dirs.thirdparty .. "/spdlog/include"
 ThirdPartyIncludes.hlslpp = dirs.thirdparty .. "/hlslpp/include"
 ThirdPartyIncludes.nlohmann = dirs.thirdparty .. "/nlohmann/include"
 ThirdPartyIncludes.directxtex = dirs.thirdparty .. "/DirectXTex/DirectXTex"
+ThirdPartyIncludes.d3d12ma = dirs.thirdparty .. "/D3D12MA/include"
 
 -- Ensure directories exist
 os.mkdir(dirs.build)

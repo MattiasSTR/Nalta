@@ -24,12 +24,14 @@ project "Engine"
         ThirdPartyIncludes.spdlog,
         ThirdPartyIncludes.nlohmann,
         ThirdPartyIncludes.directxtex,
+        ThirdPartyIncludes.d3d12ma,
     }
 
     links { 
         "DirectXTex",
+        "D3D12MA"
     }
 
-    dependson { "DirectXTex" }
+    dependson { "DirectXTex", "D3D12MA" }
 
     apply_common_settings()

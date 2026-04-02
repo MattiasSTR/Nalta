@@ -33,6 +33,7 @@ group ""
 
 group "ThirdParty"
     dofile("premake/directxtex.lua")
+    dofile("premake/d3d12ma.lua")
 group ""
 
 group "Applications"
