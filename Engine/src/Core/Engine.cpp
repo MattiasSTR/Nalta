@@ -7,11 +7,6 @@
 #include "Nalta/Core/Timer.h"
 #include "Nalta/Core/UpdateContext.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
-#include "Nalta/Graphics/SceneRenderer.h"
-#include "Nalta/Graphics/Commands/IRenderContext.h"
-#include "Nalta/Graphics/RenderResources/IDepthBuffer.h"
-#include "Nalta/Graphics/Surface/IRenderSurface.h"
-#include "Nalta/Graphics/Surface/RenderSurfaceDesc.h"
 #include "Nalta/Input/InputSystem.h"
 #include "Nalta/Platform/IWindow.h"
 #include "Nalta/Platform/PlatformFactory.h"
@@ -71,16 +66,16 @@ namespace Nalta
 			NL_INFO(GCoreLogger, "CPU logical cores: {}", coreCount);
 			NL_INFO(GCoreLogger, "System memory: {} MB", memoryBytes / (1024u * 1024u));
 			
-			myGraphicsSystem = std::make_unique<GraphicsSystem>();
+			myGraphicsSystem = std::make_unique<Graphics::GraphicsSystem>();
 			myGraphicsSystem->Initialize();
 			
-			myPlatformSystem->SetOnWindowDestroyedCallback([this](const WindowHandle aWindow)
-			{
-				if (myGraphicsSystem)
-				{
-					myGraphicsSystem->DestroySurface(aWindow);
-				}
-			});
+			// myPlatformSystem->SetOnWindowDestroyedCallback([this](const WindowHandle aWindow)
+			// {
+			// 	if (myGraphicsSystem)
+			// 	{
+			// 		myGraphicsSystem->DestroySurface(aWindow);
+			// 	}
+			// });
 
 			myMainWindow = myPlatformSystem->CreatePlatformWindow(*myConfig.mainWindowDesc);
 			myMainWindow->Show();
@@ -89,28 +84,6 @@ namespace Nalta
 			auto& inputSystem{ myPlatformSystem->GetInputSystem() };
 			myPlayerInput.AssignKeyboard(inputSystem.GetKeyboard());
 			myPlayerInput.AssignMouse(inputSystem.GetMouse());
-
-			Graphics::RenderSurfaceDesc surfaceDesc;
-			surfaceDesc.window      = myMainWindow;
-			surfaceDesc.bufferCount = 2;
-
-			myMainSurface = myGraphicsSystem->CreateSurface(surfaceDesc);
-			
-			NL_INFO(GCoreLogger, "Main surface created");
-			Graphics::DepthBufferDesc depthDesc;
-			depthDesc.width  = myConfig.mainWindowDesc->width;
-			depthDesc.height = myConfig.mainWindowDesc->height;
-			myMainDepthBuffer = myGraphicsSystem->CreateDepthBuffer(depthDesc);
-			myGraphicsSystem->SetSurfaceDepthBuffer(myMainSurface, myMainDepthBuffer);
-			NL_INFO(GCoreLogger, "Main depth buffer created");
-			
-			myAssetManager = std::make_unique<AssetManager>();
-			myAssetManager->Initialize(myGraphicsSystem.get(), myPlatformSystem.get());
-			NL_INFO(GCoreLogger, "AssetManager initialized");
-			
-			mySceneRenderer = std::make_unique<Graphics::SceneRenderer>();
-			mySceneRenderer->Initialize(myGraphicsSystem.get());
-			NL_INFO(GCoreLogger, "SceneRenderer initialized");
 		}
 		else
 		{
@@ -122,14 +95,8 @@ namespace Nalta
 			myGame = myConfig.gameFactory();
 
 			InitContext initContext;
-			initContext.graphicsSystem = myGraphicsSystem.get();
 			initContext.assetManager = myAssetManager.get();
 			myGame->Initialize(initContext);
-			
-			if (myGraphicsSystem != nullptr)
-			{
-				myGraphicsSystem->FlushUploads();
-			}
 
 			NL_INFO(GCoreLogger, "game initialized");
 		}
@@ -144,12 +111,6 @@ namespace Nalta
 			myGame->Shutdown();
 			myGame.reset();
 			NL_INFO(GCoreLogger, "Game shutdown");
-		}
-		
-		if (mySceneRenderer)
-		{
-			mySceneRenderer->Shutdown();
-			mySceneRenderer.reset();
 		}
 		
 		if (myAssetManager)
@@ -307,26 +268,13 @@ namespace Nalta
 		NL_SCOPE_CORE("RenderLoop");
 		NL_INFO(GCoreLogger, "Render loop started");
 		
-		constexpr float clearColor[]{ 0.01f, 0.01f, 0.01f, 1.0f };
-		
-		RenderFrame frame;
+		//constexpr float clearColor[]{ 0.01f, 0.01f, 0.01f, 1.0f };
 		
 		while (!myStop)
 		{
 			if (mySceneBuffer.Consume())
 			{
-				const SceneView& view{ mySceneBuffer.GetReadSlot() };
-				mySceneRenderer->BuildFrame(myAssetManager.get(), view, frame);
-				
-				myGraphicsSystem->BeginFrame();
-				
-				myMainSurface->SetAsRenderTarget(myMainDepthBuffer);
-				myMainSurface->Clear(clearColor);
-				myMainDepthBuffer->Clear();
-				
-				myGraphicsSystem->GetRenderContext()->Execute(frame);
-				
-				myGraphicsSystem->EndFrame();
+				[[maybe_unused]] const SceneView& view{ mySceneBuffer.GetReadSlot() };
 			}
 			else
 			{

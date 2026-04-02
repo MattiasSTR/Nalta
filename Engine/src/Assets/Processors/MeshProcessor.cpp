@@ -4,12 +4,10 @@
 #include "Nalta/Assets/RawAssetData.h"
 #include "Nalta/Assets/Mesh.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
-#include "Nalta/Graphics/Buffers/IndexBufferDesc.h"
-#include "Nalta/Graphics/Buffers/VertexBufferDesc.h"
 
 namespace Nalta
 {
-    bool MeshProcessor::Process(const RawMeshData& aRawData, Mesh& outMesh, GraphicsSystem& aGraphicsSystem)
+    bool MeshProcessor::Process(const RawMeshData& aRawData, Mesh& outMesh, GraphicsSystem&)
     {
         NL_SCOPE_CORE("MeshProcessor");
 
@@ -33,29 +31,29 @@ namespace Nalta
             });
         }
 
-        Graphics::VertexBufferDesc vbDesc;
-        vbDesc.stride = sizeof(MeshVertex);
-        vbDesc.count  = static_cast<uint32_t>(gpuVertices.size());
-
-        outMesh.vb = aGraphicsSystem.CreateVertexBuffer(vbDesc, std::as_bytes(std::span(gpuVertices)));
-
-        if (!outMesh.vb.IsValid())
-        {
-            NL_ERROR(GCoreLogger, "failed to create vertex buffer");
-            return false;
-        }
-
-        Graphics::IndexBufferDesc ibDesc;
-        ibDesc.count  = static_cast<uint32_t>(aRawData.indices.size());
-        ibDesc.format = Graphics::IndexFormat::Uint32;
-
-        outMesh.ib = aGraphicsSystem.CreateIndexBuffer(ibDesc, std::as_bytes(std::span(aRawData.indices)));
-
-        if (!outMesh.ib.IsValid())
-        {
-            NL_ERROR(GCoreLogger, "failed to create index buffer");
-            return false;
-        }
+        // Graphics::VertexBufferDesc vbDesc;
+        // vbDesc.stride = sizeof(MeshVertex);
+        // vbDesc.count  = static_cast<uint32_t>(gpuVertices.size());
+        //
+        // outMesh.vb = aGraphicsSystem.CreateVertexBuffer(vbDesc, std::as_bytes(std::span(gpuVertices)));
+        //
+        // if (!outMesh.vb.IsValid())
+        // {
+        //     NL_ERROR(GCoreLogger, "failed to create vertex buffer");
+        //     return false;
+        // }
+        //
+        // Graphics::IndexBufferDesc ibDesc;
+        // ibDesc.count  = static_cast<uint32_t>(aRawData.indices.size());
+        // ibDesc.format = Graphics::IndexFormat::Uint32;
+        //
+        // outMesh.ib = aGraphicsSystem.CreateIndexBuffer(ibDesc, std::as_bytes(std::span(aRawData.indices)));
+        //
+        // if (!outMesh.ib.IsValid())
+        // {
+        //     NL_ERROR(GCoreLogger, "failed to create index buffer");
+        //     return false;
+        // }
 
         outMesh.submeshes.reserve(aRawData.submeshes.size());
         for (const auto& rawSubmesh : aRawData.submeshes)

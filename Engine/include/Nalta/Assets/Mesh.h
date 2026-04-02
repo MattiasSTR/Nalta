@@ -1,7 +1,5 @@
 ﻿#pragma once
 #include "Nalta/Assets/AssetState.h"
-#include "Nalta/Graphics/Buffers/VertexBufferHandle.h"
-#include "Nalta/Graphics/Buffers/IndexBufferHandle.h"
 #include "Nalta/Core/Math.h"
 
 #include <vector>
@@ -44,8 +42,8 @@ namespace Nalta
 
     struct Mesh
     {
-        Graphics::VertexBufferHandle vb;
-        Graphics::IndexBufferHandle ib;
+        //Graphics::VertexBufferHandle vb;
+        //Graphics::IndexBufferHandle ib;
         MeshBounds bounds;
         std::vector<MeshSubmesh> submeshes;
         AssetState state{ AssetState::Unloaded };

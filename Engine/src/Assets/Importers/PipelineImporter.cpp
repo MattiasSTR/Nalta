@@ -1,9 +1,9 @@
 ﻿#include "npch.h"
 #include "Nalta/Assets/Importers/PipelineImporter.h"
 #include "Nalta/Assets/RawAssetData.h"
-#include "Nalta/Graphics/Pipeline/PipelineDesc.h"
-#include "Nalta/Graphics/Shader/ShaderCompiler.h"
-#include "Nalta/Graphics/Shader/ShaderDesc.h"
+// #include "Nalta/Graphics/Pipeline/PipelineDesc.h"
+// #include "Nalta/Graphics/Shader/ShaderCompiler.h"
+// #include "Nalta/Graphics/Shader/ShaderDesc.h"
 
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -47,8 +47,8 @@ namespace Nalta
         result->shaderPath = root.value("shader",      "");
         result->vertexEntry = root.value("vertexEntry", "VSMain");
         result->pixelEntry = root.value("pixelEntry",  "PSMain");
-        result->cullMode = root.value("cull", CullModeToString(Graphics::CullMode::Back));
-        result->fillMode = root.value("fill", FillModeToString(Graphics::FillMode::Solid));
+        //result->cullMode = root.value("cull", CullModeToString(Graphics::CullMode::Back));
+        //result->fillMode = root.value("fill", FillModeToString(Graphics::FillMode::Solid));
         result->blendEnabled = root.value("blend", false);
 
         if (root.contains("depth"))
@@ -56,7 +56,7 @@ namespace Nalta
             const auto& depth{ root["depth"] };
             result->depthEnabled = depth.value("enabled", false);
             result->depthWrite   = depth.value("write",   false);
-            result->depthCompare = depth.value("compare", DepthCompareToString(Graphics::DepthCompare::Greater));
+            //result->depthCompare = depth.value("compare", DepthCompareToString(Graphics::DepthCompare::Greater));
         }
         
         if (root.contains("defines"))
@@ -80,46 +80,46 @@ namespace Nalta
         N_CORE_ASSERT(myShaderCompiler, "null shader compiler");
         
         // Always invalidate before compiling — ensures hot reload picks up changes
-        myShaderCompiler->InvalidateCache(shaderPath);
+        //myShaderCompiler->InvalidateCache(shaderPath);
 
         // Compile shader
 
-        Graphics::ShaderDesc shaderDesc;
-        shaderDesc.filePath = shaderPath;
-        shaderDesc.defines = result->defines;
-        shaderDesc.stages   =
-        {
-            { Graphics::ShaderStage::Vertex, result->vertexEntry },
-            { Graphics::ShaderStage::Pixel,  result->pixelEntry  }
-        };
+        // Graphics::ShaderDesc shaderDesc;
+        // shaderDesc.filePath = shaderPath;
+        // shaderDesc.defines = result->defines;
+        // shaderDesc.stages   =
+        // {
+        //     { Graphics::ShaderStage::Vertex, result->vertexEntry },
+        //     { Graphics::ShaderStage::Pixel,  result->pixelEntry  }
+        // };
 
-        const auto shader{ myShaderCompiler->Compile(shaderDesc) };
-        if (!shader)
-        {
-            NL_ERROR(GCoreLogger, "PipelineImporter: failed to compile shader '{}'", shaderPath.string());
-            return nullptr;
-        }
-
-        // Store compiled bytecode in raw data
-        for (const auto stage : { Graphics::ShaderStage::Vertex, Graphics::ShaderStage::Pixel })
-        {
-            if (!shader->HasStage(stage))
-            {
-                continue;
-            }
-
-            const auto& bytecode{ shader->GetBytecode(stage) };
-            RawShaderStageData stageData;
-            stageData.stage = stage;
-            stageData.bytecode.assign(
-                static_cast<const uint8_t*>(bytecode.GetData()),
-                static_cast<const uint8_t*>(bytecode.GetData()) + bytecode.GetSize());
-            stageData.reflection.assign(
-                static_cast<const uint8_t*>(bytecode.GetReflectionData()),
-                static_cast<const uint8_t*>(bytecode.GetReflectionData()) + bytecode.GetReflectionSize());
-
-            result->stages.push_back(std::move(stageData));
-        }
+        // const auto shader{ myShaderCompiler->Compile(shaderDesc) };
+        // if (!shader)
+        // {
+        //     NL_ERROR(GCoreLogger, "PipelineImporter: failed to compile shader '{}'", shaderPath.string());
+        //     return nullptr;
+        // }
+        //
+        // // Store compiled bytecode in raw data
+        // for (const auto stage : { Graphics::ShaderStage::Vertex, Graphics::ShaderStage::Pixel })
+        // {
+        //     if (!shader->HasStage(stage))
+        //     {
+        //         continue;
+        //     }
+        //
+        //     const auto& bytecode{ shader->GetBytecode(stage) };
+        //     RawShaderStageData stageData;
+        //     stageData.stage = stage;
+        //     stageData.bytecode.assign(
+        //         static_cast<const uint8_t*>(bytecode.GetData()),
+        //         static_cast<const uint8_t*>(bytecode.GetData()) + bytecode.GetSize());
+        //     stageData.reflection.assign(
+        //         static_cast<const uint8_t*>(bytecode.GetReflectionData()),
+        //         static_cast<const uint8_t*>(bytecode.GetReflectionData()) + bytecode.GetReflectionSize());
+        //
+        //     result->stages.push_back(std::move(stageData));
+        // }
 
         NL_INFO(GCoreLogger, "imported '{}' ({} stages)", aPath.GetPath(), result->stages.size());
         return result;

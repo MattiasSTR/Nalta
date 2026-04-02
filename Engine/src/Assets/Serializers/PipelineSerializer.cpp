@@ -32,7 +32,7 @@ namespace Nalta
         aWriter.Write(static_cast<uint32_t>(aRawData.stages.size()));
         for (const auto& stage : aRawData.stages)
         {
-            aWriter.Write(static_cast<uint8_t>(stage.stage));
+            //aWriter.Write(static_cast<uint8_t>(stage.stage));
 
             aWriter.Write(static_cast<uint32_t>(stage.bytecode.size()));
             aWriter.WriteBytes(std::span(stage.bytecode));
@@ -71,7 +71,7 @@ namespace Nalta
         data.stages.resize(stageCount);
         for (auto& stage : data.stages)
         {
-            stage.stage = static_cast<Graphics::ShaderStage>(aReader.Read<uint8_t>());
+            //stage.stage = static_cast<Graphics::ShaderStage>(aReader.Read<uint8_t>());
 
             const uint32_t bytecodeSize{ aReader.Read<uint32_t>() };
             stage.bytecode.resize(bytecodeSize);

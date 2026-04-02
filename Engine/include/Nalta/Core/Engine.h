@@ -4,8 +4,6 @@
 #include "TripleBuffer.h"
 #include "SceneView.h"
 #include "Nalta/Core/IGame.h"
-#include "Nalta/Graphics/RenderResources/DepthBufferHandle.h"
-#include "Nalta/Graphics/Surface/RenderSurfaceHandle.h"
 #include "Nalta/Platform/WindowHandle.h"
 #include "Nalta/Input/PlayerInput.h"
 
@@ -17,14 +15,12 @@ namespace Nalta
 {
 	namespace Graphics
 	{
-		class SceneRenderer;
-		class IRenderSurface;
+		class GraphicsSystem;
 	}
 	
 	class AssetManager;
 	class Logger;
 	class IPlatformSystem;
-	class GraphicsSystem;
 	class IWindow;
 	
 	class Engine 
@@ -52,9 +48,8 @@ namespace Nalta
 		EngineConfig myConfig;
 		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
-		std::unique_ptr<GraphicsSystem> myGraphicsSystem;
+		std::unique_ptr<Graphics::GraphicsSystem> myGraphicsSystem;
 		std::unique_ptr<AssetManager> myAssetManager;
-		std::unique_ptr<Graphics::SceneRenderer> mySceneRenderer;
 		
 		WindowHandle myMainWindow;
 		
@@ -65,8 +60,6 @@ namespace Nalta
 		
 		std::atomic<bool> myStop{ false };
 		std::atomic<bool> myRestart{ false };
-		Graphics::RenderSurfaceHandle myMainSurface;
-		Graphics::DepthBufferHandle myMainDepthBuffer;
 		
 		PlayerInput myPlayerInput;
 

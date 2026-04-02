@@ -15,8 +15,8 @@
 #include "Nalta/Core/BinaryIO.h"
 #include "Nalta/Core/Paths.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
-#include "Nalta/Graphics/Shader/ShaderCompiler.h"
-#include "Nalta/Graphics/Shader/ShaderDesc.h"
+// #include "Nalta/Graphics/Shader/ShaderCompiler.h"
+// #include "Nalta/Graphics/Shader/ShaderDesc.h"
 #include "Nalta/Platform/IPlatformSystem.h"
 #include "Nalta/Platform/PlatformFactory.h"
 
@@ -56,7 +56,7 @@ namespace Nalta
 #endif
         
         myImporterRegistry.Register(std::make_unique<ObjImporter>());
-        myImporterRegistry.Register(std::make_unique<PipelineImporter>(myGraphicsSystem->GetShaderCompiler()));
+        //myImporterRegistry.Register(std::make_unique<PipelineImporter>(myGraphicsSystem->GetShaderCompiler()));
         myImporterRegistry.Register(std::make_unique<TextureDescriptorImporter>());
         myImporterRegistry.Register(std::make_unique<TextureImporter>(".png"));
         myImporterRegistry.Register(std::make_unique<TextureImporter>(".jpg"));
@@ -89,10 +89,10 @@ namespace Nalta
         }
 #endif
         
-        if (myGraphicsSystem != nullptr)
-        {
-            myGraphicsSystem->WaitForGPU();
-        }
+        // if (myGraphicsSystem != nullptr)
+        // {
+        //     myGraphicsSystem->WaitForGPU();
+        // }
         
         {
             std::lock_guard lock{ myMeshMutex };
@@ -370,7 +370,7 @@ namespace Nalta
             std::lock_guard lock{ myQueueMutex };
             if (myLoadQueue.empty())
             {
-                myGraphicsSystem->FlushUploads();
+                //myGraphicsSystem->FlushUploads();
                 PromotePendingAssets();
             }
         }
@@ -1008,78 +1008,78 @@ namespace Nalta
 
     void AssetManager::InitializeFallbackMesh()
     {
-        const std::vector<MeshVertex> vertices
-        {
-            // Front
-            { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-            { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-            { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-            { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-            // Back
-            { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-            { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-            { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-            { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-            // Left
-            { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-            { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-            { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-            { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-            // Right
-            { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-            { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-            { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-            { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-            // Top 
-            { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-            { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-            { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-            { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-            // Bottom
-            { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-            { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-            { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-            { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-        };
-    
-        const std::vector<uint32_t> indices
-        {
-            0,  2,  1,  2,  0,  3,  // front
-            4,  6,  5,  6,  4,  7,  // back
-            8, 10,  9, 10,  8, 11,  // left
-           12, 14, 13, 14, 12, 15,  // right
-           16, 18, 17, 18, 16, 19,  // top
-           20, 22, 21, 22, 20, 23,  // bottom
-        };
-    
-        RawMeshData raw;
-        for (const auto& v : vertices)
-        {
-            raw.vertices.push_back(
-            {
-                .position = { v.position.x, v.position.y, v.position.z },
-                .normal   = { v.normal.x,   v.normal.y,   v.normal.z   },
-                .texCoord = { v.texCoord.x, v.texCoord.y                },
-                .tangent  = { v.tangent.x,  v.tangent.y,  v.tangent.z, v.tangent.w }
-            });
-        }
-        raw.indices = indices;
-        raw.submeshes.push_back(
-        {
-            .name        = "fallback",
-            .vertexOffset = 0,
-            .vertexCount  = static_cast<uint32_t>(vertices.size()),
-            .indexOffset  = 0,
-            .indexCount   = static_cast<uint32_t>(indices.size()),
-            .materialIndex = 0
-        });
-        raw.boundsMin[0] = raw.boundsMin[1] = raw.boundsMin[2] = -0.5f;
-        raw.boundsMax[0] = raw.boundsMax[1] = raw.boundsMax[2] =  0.5f;
-    
-        const bool ok{ MeshProcessor::Process(raw, myFallbackMesh, *myGraphicsSystem) };
-        N_CORE_ASSERT(ok, "failed to create fallback mesh");
-        myGraphicsSystem->FlushUploads();
-        myFallbackMesh.state = AssetState::Ready;
+        // const std::vector<MeshVertex> vertices
+        // {
+        //     // Front
+        //     { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+        //     { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+        //     { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+        //     { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+        //     // Back
+        //     { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+        //     { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+        //     { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+        //     { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+        //     // Left
+        //     { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+        //     { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+        //     { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+        //     { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+        //     // Right
+        //     { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+        //     { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+        //     { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+        //     { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+        //     // Top 
+        //     { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+        //     { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+        //     { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+        //     { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+        //     // Bottom
+        //     { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+        //     { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+        //     { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+        //     { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+        // };
+        //
+        // const std::vector<uint32_t> indices
+        // {
+        //     0,  2,  1,  2,  0,  3,  // front
+        //     4,  6,  5,  6,  4,  7,  // back
+        //     8, 10,  9, 10,  8, 11,  // left
+        //    12, 14, 13, 14, 12, 15,  // right
+        //    16, 18, 17, 18, 16, 19,  // top
+        //    20, 22, 21, 22, 20, 23,  // bottom
+        // };
+        //
+        // RawMeshData raw;
+        // for (const auto& v : vertices)
+        // {
+        //     raw.vertices.push_back(
+        //     {
+        //         .position = { v.position.x, v.position.y, v.position.z },
+        //         .normal   = { v.normal.x,   v.normal.y,   v.normal.z   },
+        //         .texCoord = { v.texCoord.x, v.texCoord.y                },
+        //         .tangent  = { v.tangent.x,  v.tangent.y,  v.tangent.z, v.tangent.w }
+        //     });
+        // }
+        // raw.indices = indices;
+        // raw.submeshes.push_back(
+        // {
+        //     .name        = "fallback",
+        //     .vertexOffset = 0,
+        //     .vertexCount  = static_cast<uint32_t>(vertices.size()),
+        //     .indexOffset  = 0,
+        //     .indexCount   = static_cast<uint32_t>(indices.size()),
+        //     .materialIndex = 0
+        // });
+        // raw.boundsMin[0] = raw.boundsMin[1] = raw.boundsMin[2] = -0.5f;
+        // raw.boundsMax[0] = raw.boundsMax[1] = raw.boundsMax[2] =  0.5f;
+        //
+        // const bool ok{ MeshProcessor::Process(raw, myFallbackMesh, *myGraphicsSystem) };
+        // N_CORE_ASSERT(ok, "failed to create fallback mesh");
+        // myGraphicsSystem->FlushUploads();
+        // myFallbackMesh.state = AssetState::Ready;
     
         NL_INFO(GCoreLogger, "fallback mesh created");
     }
@@ -1104,48 +1104,48 @@ namespace Nalta
             }
         }
 
-        RawTextureData raw;
-        raw.width     = W;
-        raw.height    = H;
-        raw.mipLevels = 1;
-        raw.format    = Graphics::TextureFormat::RGBA8_UNORM;
-        raw.mips.push_back({ .rowPitch = W * 4, .slicePitch = W * H * 4, .pixels = std::move(pixels) });
-
-        const bool ok{ TextureProcessor::Process(raw, myFallbackTexture, *myGraphicsSystem) };
-        N_CORE_ASSERT(ok, "failed to create fallback texture");
-        myGraphicsSystem->FlushUploads();
-        myFallbackTexture.state = AssetState::Ready;
+        // RawTextureData raw;
+        // raw.width     = W;
+        // raw.height    = H;
+        // raw.mipLevels = 1;
+        // raw.format    = Graphics::TextureFormat::RGBA8_UNORM;
+        // raw.mips.push_back({ .rowPitch = W * 4, .slicePitch = W * H * 4, .pixels = std::move(pixels) });
+        //
+        // const bool ok{ TextureProcessor::Process(raw, myFallbackTexture, *myGraphicsSystem) };
+        // N_CORE_ASSERT(ok, "failed to create fallback texture");
+        // myGraphicsSystem->FlushUploads();
+        // myFallbackTexture.state = AssetState::Ready;
 
         NL_INFO(GCoreLogger, "fallback texture created");
     }
 
     void AssetManager::InitializeFallbackPipeline()
     {
-        const std::filesystem::path shaderPath{ Paths::EngineAssetDir() / "Shaders" / "Fallback.hlsl" };
-
-        Graphics::ShaderDesc shaderDesc;
-        shaderDesc.filePath = shaderPath;
-        shaderDesc.stages   =
-        {
-            { Graphics::ShaderStage::Vertex, "VSMain" },
-            { Graphics::ShaderStage::Pixel,  "PSMain" }
-        };
-
-        const auto shader{ myGraphicsSystem->GetShaderCompiler()->Compile(shaderDesc) };
-        N_CORE_ASSERT(shader, "failed to compile fallback shader");
-
-        Graphics::PipelineDesc pipelineDesc;
-        pipelineDesc.shader              = shader;
-        pipelineDesc.rasterizer.cullMode = Graphics::CullMode::Back;
-        pipelineDesc.rasterizer.fillMode = Graphics::FillMode::Solid;
-        pipelineDesc.depth.depthEnabled  = true;
-        pipelineDesc.depth.depthWrite    = true;
-        pipelineDesc.depth.compareFunc   = Graphics::DepthCompare::Greater;
-        pipelineDesc.blend.blendEnabled  = false;
-
-        myFallbackPipeline.gpuHandle = myGraphicsSystem->CreatePipeline(pipelineDesc);
-        N_CORE_ASSERT(myFallbackPipeline.gpuHandle.IsValid(), "failed to create fallback pipeline");
-        myFallbackPipeline.state = AssetState::Ready;
+        // const std::filesystem::path shaderPath{ Paths::EngineAssetDir() / "Shaders" / "Fallback.hlsl" };
+        //
+        // Graphics::ShaderDesc shaderDesc;
+        // shaderDesc.filePath = shaderPath;
+        // shaderDesc.stages   =
+        // {
+        //     { Graphics::ShaderStage::Vertex, "VSMain" },
+        //     { Graphics::ShaderStage::Pixel,  "PSMain" }
+        // };
+        //
+        // const auto shader{ myGraphicsSystem->GetShaderCompiler()->Compile(shaderDesc) };
+        // N_CORE_ASSERT(shader, "failed to compile fallback shader");
+        //
+        // Graphics::PipelineDesc pipelineDesc;
+        // pipelineDesc.shader              = shader;
+        // pipelineDesc.rasterizer.cullMode = Graphics::CullMode::Back;
+        // pipelineDesc.rasterizer.fillMode = Graphics::FillMode::Solid;
+        // pipelineDesc.depth.depthEnabled  = true;
+        // pipelineDesc.depth.depthWrite    = true;
+        // pipelineDesc.depth.compareFunc   = Graphics::DepthCompare::Greater;
+        // pipelineDesc.blend.blendEnabled  = false;
+        //
+        // myFallbackPipeline.gpuHandle = myGraphicsSystem->CreatePipeline(pipelineDesc);
+        // N_CORE_ASSERT(myFallbackPipeline.gpuHandle.IsValid(), "failed to create fallback pipeline");
+        // myFallbackPipeline.state = AssetState::Ready;
 
         NL_INFO(GCoreLogger, "fallback pipeline created");
     }

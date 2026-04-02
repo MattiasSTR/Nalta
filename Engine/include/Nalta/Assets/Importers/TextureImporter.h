@@ -1,11 +1,18 @@
 ﻿#pragma once
 #include "Nalta/Assets/Importers/IAssetImporter.h"
-#include "Nalta/Graphics/Texture/TextureDesc.h"
+//#include "Nalta/Graphics/Texture/TextureDesc.h"
 
 #include <string>
 
 namespace Nalta
 {
+    namespace Graphics
+    {
+        struct TextureFormat
+        {
+            
+        };
+    }
     class TextureImporter final : public IAssetImporter
     {
     public:

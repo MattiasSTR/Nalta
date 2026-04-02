@@ -2,7 +2,7 @@
 #include "Nalta/Assets/Importers/TextureDescriptorImporter.h"
 #include "Nalta/Assets/Importers/TextureImporter.h"
 #include "Nalta/Assets/RawAssetData.h"
-#include "Nalta/Graphics/Texture/TextureDesc.h"
+//#include "Nalta/Graphics/Texture/TextureDesc.h"
 
 #include <dxgiformat.h>
 #include <fstream>
@@ -12,21 +12,21 @@ using json = nlohmann::json;
 
 namespace Nalta
 {
-    namespace
-    {
-        Graphics::TextureFormat ParseCompression(const std::string& aStr, const bool aSRGB)
-        {
-            if (aStr == "BC1")   return aSRGB ? Graphics::TextureFormat::BC1_SRGB  : Graphics::TextureFormat::BC1_UNORM;
-            if (aStr == "BC3")   return aSRGB ? Graphics::TextureFormat::BC3_SRGB  : Graphics::TextureFormat::BC3_UNORM;
-            if (aStr == "BC4")   return Graphics::TextureFormat::BC4_UNORM;
-            if (aStr == "BC5")   return Graphics::TextureFormat::BC5_UNORM;
-            if (aStr == "BC7")   return aSRGB ? Graphics::TextureFormat::BC7_SRGB  : Graphics::TextureFormat::BC7_UNORM;
-            if (aStr == "BC6H")  return Graphics::TextureFormat::BC6H_UF16;
-            if (aStr == "RGBA8") return aSRGB ? Graphics::TextureFormat::RGBA8_SRGB : Graphics::TextureFormat::RGBA8_UNORM;
-            NL_WARN(GCoreLogger, "TextureDescriptorImporter: unknown compression '{}', defaulting to BC1", aStr);
-            return Graphics::TextureFormat::BC1_UNORM;
-        }
-    }
+    // namespace
+    // {
+    //     Graphics::TextureFormat ParseCompression(const std::string& aStr, const bool aSRGB)
+    //     {
+    //         if (aStr == "BC1")   return aSRGB ? Graphics::TextureFormat::BC1_SRGB  : Graphics::TextureFormat::BC1_UNORM;
+    //         if (aStr == "BC3")   return aSRGB ? Graphics::TextureFormat::BC3_SRGB  : Graphics::TextureFormat::BC3_UNORM;
+    //         if (aStr == "BC4")   return Graphics::TextureFormat::BC4_UNORM;
+    //         if (aStr == "BC5")   return Graphics::TextureFormat::BC5_UNORM;
+    //         if (aStr == "BC7")   return aSRGB ? Graphics::TextureFormat::BC7_SRGB  : Graphics::TextureFormat::BC7_UNORM;
+    //         if (aStr == "BC6H")  return Graphics::TextureFormat::BC6H_UF16;
+    //         if (aStr == "RGBA8") return aSRGB ? Graphics::TextureFormat::RGBA8_SRGB : Graphics::TextureFormat::RGBA8_UNORM;
+    //         NL_WARN(GCoreLogger, "TextureDescriptorImporter: unknown compression '{}', defaulting to BC1", aStr);
+    //         return Graphics::TextureFormat::BC1_UNORM;
+    //     }
+    // }
     
     bool TextureDescriptorImporter::CanImport(const std::string& aExtension) const
     {
@@ -70,12 +70,12 @@ namespace Nalta
         std::string normalizedSource{ resolvedSource.string() };
         std::ranges::replace(normalizedSource, '\\', '/');
 
-        const Graphics::TextureFormat targetFormat{ ParseCompression(compression, sRGB) };
+        //const Graphics::TextureFormat targetFormat{ ParseCompression(compression, sRGB) };
 
         // Delegate actual loading to TextureImporter
         const AssetPath sourceAssetPath{ normalizedSource };
         TextureImporter importer{ sourceAssetPath.GetExtension() };
-        auto rawData{ importer.ImportWithSettings(sourceAssetPath, targetFormat, generateMips) };
+        auto rawData{ importer.ImportWithSettings(sourceAssetPath, {}/*targetFormat*/, generateMips) };
 
         if (!rawData)
         {
