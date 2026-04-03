@@ -94,6 +94,11 @@ namespace Nalta::RHI::D3D12
         myDevice->QueryInterface(IID_PPV_ARGS(&debugDevice));
 #endif
         
+        for (uint32_t i{ 0 }; i < FRAMES_IN_FLIGHT; ++i)
+        {
+            ProcessDestructions(i);
+        }
+        
         // Explicitly destroy queues before device
         for (auto& queue : myQueues)
         {
@@ -124,10 +129,27 @@ namespace Nalta::RHI::D3D12
 
     void Device::BeginFrame()
     {
+        myFrameIndex = (myFrameIndex + 1) % FRAMES_IN_FLIGHT;
+
+        // Wait on the fences from FramesInFlight frames ago before reusing this slot
+        const FrameFences& fences{ myFrameFences[myFrameIndex] };
+        GetQueue(QueueType::Graphics).WaitForFenceCPUBlocking(fences.graphicsFence);
+        GetQueue(QueueType::Compute).WaitForFenceCPUBlocking(fences.computeFence);
+        GetQueue(QueueType::Copy).WaitForFenceCPUBlocking(fences.copyFence);
+        
+        // Process deferred destructions for this frame slot
+        ProcessDestructions(myFrameIndex);
+    }
+
+    void Device::PrePresent()
+    {
+        myFrameFences[myFrameIndex].computeFence = GetQueue(QueueType::Compute).SignalFence();
+        myFrameFences[myFrameIndex].copyFence = GetQueue(QueueType::Copy).SignalFence();
     }
 
     void Device::EndFrame()
     {
+        myFrameFences[myFrameIndex].graphicsFence = GetQueue(QueueType::Graphics).SignalFence();
     }
 
     void Device::InitDebugLayer()
@@ -345,5 +367,11 @@ namespace Nalta::RHI::D3D12
         {
             NL_INFO(GCoreLogger, "Mesh shaders supported");
         }
+    }
+
+    void Device::ProcessDestructions(const uint32_t aFrameIndex)
+    {
+        [[maybe_unused]] auto& queue{ myDestructionQueues[aFrameIndex] };
+        
     }
 }

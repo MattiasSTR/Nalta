@@ -29,6 +29,7 @@ namespace Nalta::RHI::D3D12
         Device& operator=(Device&&) = delete;
         
         void BeginFrame();
+        void PrePresent();
         void EndFrame();
         
         [[nodiscard]] ID3D12Device10* GetD3D12Device() const { return myDevice; }
@@ -49,6 +50,8 @@ namespace Nalta::RHI::D3D12
         void InitDescriptorHeaps();
         void CheckFeatureSupport() const;
         
+        void ProcessDestructions(uint32_t aFrameIndex);
+        
         IDXGIFactory7* myFactory{ nullptr };
         IDXGIAdapter4* myAdapter{ nullptr };
         ID3D12Device10* myDevice{ nullptr };
@@ -66,5 +69,22 @@ namespace Nalta::RHI::D3D12
         std::unique_ptr<FreeListDescriptorHeap> mySamplerHeap;
         std::unique_ptr<FreeListDescriptorHeap> myRTVHeap;
         std::unique_ptr<FreeListDescriptorHeap> myDSVHeap;
+        
+        uint32_t myFrameIndex{ 0 };
+        
+        struct FrameFences
+        {
+            uint64_t graphicsFence{ 0 };
+            uint64_t computeFence{ 0 };
+            uint64_t copyFence{ 0 };
+        };
+        std::array<FrameFences, FRAMES_IN_FLIGHT> myFrameFences{};
+        
+        struct DestructionQueue
+        {
+            // buffers, pipelines, textures
+        };
+        
+        std::array<DestructionQueue, FRAMES_IN_FLIGHT> myDestructionQueues;
     };
 }

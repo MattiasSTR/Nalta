@@ -1,19 +1,15 @@
 ﻿#pragma once
 #include "Nalta/RHI/RHI.h"
 
-#ifdef N_RHI_D3D12
-#include "Nalta/RHI/D3D12/D3D12Device.h"
+namespace Nalta::RHI {
 
-namespace Nalta::RHI
-{
+#if defined(N_RHI_D3D12)
+    namespace D3D12 { class Device; }
     using Device = D3D12::Device;
-}
 
 #elif defined(N_RHI_VULKAN)
-#include "Nalta/RHI/Vulkan/VulkanDevice.h"
-
-namespace Nalta::RHI
-{
+    namespace Vulkan { class Device; }
     using Device = Vulkan::Device;
-}
 #endif
+
+}

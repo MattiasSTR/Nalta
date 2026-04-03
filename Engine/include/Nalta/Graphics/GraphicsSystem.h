@@ -1,5 +1,4 @@
 ﻿#pragma once
-
 #include "Nalta/RHI/Device.h"
 
 #include <memory>
@@ -18,7 +17,6 @@ namespace Nalta::Graphics
         void Shutdown();
 
     private:
-        //std::unique_ptr<IDevice> myDevice;
-        RHI::Device myDevice;
+        std::unique_ptr<RHI::Device> myDevice;
     };
 }

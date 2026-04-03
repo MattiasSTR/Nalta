@@ -21,6 +21,8 @@
 
 namespace Nalta::RHI
 {
+    constexpr uint32_t FRAMES_IN_FLIGHT{ 2 };
+    
     enum class QueueType : uint8_t
     {
         Graphics = 0,
