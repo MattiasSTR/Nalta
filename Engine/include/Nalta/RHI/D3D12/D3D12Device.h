@@ -1,7 +1,11 @@
 ﻿#pragma once
+#include "D3D12Buffer.h"
+#include "D3D12UploadContext.h"
 #include "Nalta/RHI/D3D12/D3D12Common.h"
+#include "Nalta/RHI/D3D12/D3D12Context.h"
 #include "Nalta/RHI/D3D12/D3D12Descriptor.h"
 #include "Nalta/RHI/D3D12/D3D12Queue.h"
+#include "Nalta/RHI/D3D12/D3D12Texture.h"
 
 #include <array>
 #include <D3D12MemAlloc.h>
@@ -32,11 +36,25 @@ namespace Nalta::RHI::D3D12
         void PrePresent();
         void EndFrame();
         
+        ContextSubmissionResult SubmitContextWork(Context& aContext);
+        void WaitOnContextWork(ContextSubmissionResult aSubmission, ContextWaitType aWaitType);
+        void WaitForIdle();
+        
+        UploadContext& GetUploadContextForCurrentFrame() { return *myUploadContexts[myFrameIndex]; }
+        
+        std::unique_ptr<TextureResource> CreateTexture(const TextureCreationDesc& aDesc);
+        std::unique_ptr<BufferResource> CreateBuffer(const BufferCreationDesc& aDesc);
+        
+        void DestroyTexture(std::unique_ptr<TextureResource> aTexture);
+        void DestroyBuffer(std::unique_ptr<BufferResource> aBuffer);
+        void DestroyContext(std::unique_ptr<Context> aContext);
+        
         [[nodiscard]] ID3D12Device10* GetD3D12Device() const { return myDevice; }
         [[nodiscard]] IDXGIFactory7* GetDXGIFactory() const { return myFactory; }
         [[nodiscard]] IDxcUtils* GetDxcUtils() const { return myDxcUtils; }
         [[nodiscard]] D3D12MA::Allocator* GetAllocator() const { return myAllocator; }
         [[nodiscard]] Queue& GetQueue(QueueType aType) { return *myQueues[static_cast<size_t>(aType)]; }
+        [[nodiscard]] uint32_t& GetFrameIndex() { return myFrameIndex; }
         [[nodiscard]] FreeListDescriptorHeap& GetBindlessHeap() { return *myBindlessHeap; }
         [[nodiscard]] FreeListDescriptorHeap& GetSamplerHeap() { return *mySamplerHeap; }
         [[nodiscard]] FreeListDescriptorHeap& GetRTVHeap() { return *myRTVHeap; }
@@ -70,6 +88,8 @@ namespace Nalta::RHI::D3D12
         std::unique_ptr<FreeListDescriptorHeap> myRTVHeap;
         std::unique_ptr<FreeListDescriptorHeap> myDSVHeap;
         
+        std::array<std::unique_ptr<UploadContext>, FRAMES_IN_FLIGHT> myUploadContexts;
+        
         uint32_t myFrameIndex{ 0 };
         
         struct FrameFences
@@ -82,9 +102,17 @@ namespace Nalta::RHI::D3D12
         
         struct DestructionQueue
         {
-            // buffers, pipelines, textures
+            std::vector<std::unique_ptr<TextureResource>> texturesToDestroy;
+            std::vector<std::unique_ptr<BufferResource>> buffersToDestroy;
+            std::vector<std::unique_ptr<Context>> contextsToDestroy;
         };
-        
         std::array<DestructionQueue, FRAMES_IN_FLIGHT> myDestructionQueues;
+        
+        struct ContextSubmission
+        {
+            uint64_t fenceValue{ 0 };
+            D3D12_COMMAND_LIST_TYPE type{};
+        };
+        std::array<std::vector<ContextSubmission>, FRAMES_IN_FLIGHT> myContextSubmissions;
     };
 }

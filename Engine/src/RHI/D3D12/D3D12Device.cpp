@@ -66,6 +66,12 @@ namespace Nalta::RHI::D3D12
         
         InitAllocator();
         InitDescriptorHeaps();
+        for (uint32_t i{ 0 }; i < FRAMES_IN_FLIGHT; ++i)
+        {
+            myUploadContexts[i] = std::make_unique<UploadContext>(*this, 64ull * 1024ull * 1024ull);
+        }
+        NL_TRACE(GCoreLogger, "upload contexts initialized");
+        
         CheckFeatureSupport();
         InitInfoQueue();
         
@@ -97,6 +103,11 @@ namespace Nalta::RHI::D3D12
         for (uint32_t i{ 0 }; i < FRAMES_IN_FLIGHT; ++i)
         {
             ProcessDestructions(i);
+        }
+        
+        for (auto& ctx : myUploadContexts)
+        {
+            ctx.reset();
         }
         
         // Explicitly destroy queues before device
@@ -137,19 +148,438 @@ namespace Nalta::RHI::D3D12
         GetQueue(QueueType::Compute).WaitForFenceCPUBlocking(fences.computeFence);
         GetQueue(QueueType::Copy).WaitForFenceCPUBlocking(fences.copyFence);
         
-        // Process deferred destructions for this frame slot
+        myUploadContexts[myFrameIndex]->ResolveUploads();
+        myUploadContexts[myFrameIndex]->Reset();
+
         ProcessDestructions(myFrameIndex);
+        myContextSubmissions[myFrameIndex].clear();
     }
 
     void Device::PrePresent()
     {
+        myUploadContexts[myFrameIndex]->ProcessUploads();
+
+        if (myUploadContexts[myFrameIndex]->HasPendingWork())
+        {
+            ID3D12CommandList* lists[]{ myUploadContexts[myFrameIndex]->GetCommandList() };
+            myFrameFences[myFrameIndex].copyFence = GetQueue(QueueType::Copy).ExecuteCommandLists(lists);
+        }
+
         myFrameFences[myFrameIndex].computeFence = GetQueue(QueueType::Compute).SignalFence();
-        myFrameFences[myFrameIndex].copyFence = GetQueue(QueueType::Copy).SignalFence();
     }
 
     void Device::EndFrame()
     {
         myFrameFences[myFrameIndex].graphicsFence = GetQueue(QueueType::Graphics).SignalFence();
+    }
+
+    ContextSubmissionResult Device::SubmitContextWork(Context& aContext)
+    {
+        aContext.FlushBarriers();
+
+        ID3D12CommandList* lists[]{ aContext.GetCommandList() };
+        uint64_t fenceValue{ 0 };
+
+        switch (aContext.GetType())
+        {
+            case D3D12_COMMAND_LIST_TYPE_DIRECT:
+                fenceValue = GetQueue(QueueType::Graphics).ExecuteCommandLists(lists);
+                break;
+            case D3D12_COMMAND_LIST_TYPE_COMPUTE:
+                fenceValue = GetQueue(QueueType::Compute).ExecuteCommandLists(lists);
+                break;
+            case D3D12_COMMAND_LIST_TYPE_COPY:
+                fenceValue = GetQueue(QueueType::Copy).ExecuteCommandLists(lists);
+                break;
+            default:
+                N_CORE_ASSERT(false, "Unknown context type");
+                break;
+        }
+
+        ContextSubmissionResult result{};
+        result.frameId         = myFrameIndex;
+        result.submissionIndex = static_cast<uint32_t>(myContextSubmissions[myFrameIndex].size());
+
+        myContextSubmissions[myFrameIndex].push_back({ fenceValue, aContext.GetType() });
+
+        return result;
+    }
+
+    void Device::WaitOnContextWork(const ContextSubmissionResult aSubmission, const ContextWaitType aWaitType)
+    {
+        const auto& submission{ myContextSubmissions[aSubmission.frameId][aSubmission.submissionIndex] };
+    
+        Queue* sourceQueue{ nullptr };
+        switch (submission.type)
+        {
+            case D3D12_COMMAND_LIST_TYPE_DIRECT:
+                sourceQueue = &GetQueue(QueueType::Graphics);
+                break;
+            case D3D12_COMMAND_LIST_TYPE_COMPUTE:
+                sourceQueue = &GetQueue(QueueType::Compute);
+                break;
+            case D3D12_COMMAND_LIST_TYPE_COPY:
+                sourceQueue = &GetQueue(QueueType::Copy);
+                break;
+            default:
+                N_CORE_ASSERT(false, "Unknown submission type");
+                break;
+        }
+
+        switch (aWaitType)
+        {
+            case ContextWaitType::Host:
+                sourceQueue->WaitForFenceCPUBlocking(submission.fenceValue);
+                break;
+            case ContextWaitType::Graphics:
+                GetQueue(QueueType::Graphics).InsertWaitForQueueFence(*sourceQueue, submission.fenceValue);
+                break;
+            case ContextWaitType::Compute:
+                GetQueue(QueueType::Compute).InsertWaitForQueueFence(*sourceQueue, submission.fenceValue);
+                break;
+            case ContextWaitType::Copy:
+                GetQueue(QueueType::Copy).InsertWaitForQueueFence(*sourceQueue, submission.fenceValue);
+                break;
+            default:
+                N_CORE_ASSERT(false, "Unknown wait type");
+                break;
+        }
+    }
+
+    void Device::WaitForIdle()
+    {
+        for (auto& queue : myQueues)
+        {
+            if (queue) queue->WaitForIdle();
+        }
+    }
+
+    std::unique_ptr<TextureResource> Device::CreateTexture(const TextureCreationDesc& aDesc)
+    {
+        N_CORE_ASSERT(aDesc.format != TextureFormat::Unknown, "Texture format must be specified");
+        N_CORE_ASSERT(aDesc.width > 0 && aDesc.height > 0, "Texture dimensions must be non-zero");
+
+        const bool hasSRV{ aDesc.HasFlag(TextureViewFlags::ShaderResource) };
+        const bool hasRTV{ aDesc.HasFlag(TextureViewFlags::RenderTarget) };
+        const bool hasDSV{ aDesc.HasFlag(TextureViewFlags::DepthStencil) };
+        const bool hasUAV{ aDesc.HasFlag(TextureViewFlags::UnorderedAccess) };
+        
+        // Depth textures must be created as typeless so SRV and DSV can alias the same memory
+        const DXGI_FORMAT resourceFormat{ hasDSV ? DepthFormatToTypeless(aDesc.format) : TextureFormatToDXGI(aDesc.format) };
+        
+        D3D12_RESOURCE_DESC resourceDesc{};
+        resourceDesc.Width              = aDesc.width;
+        resourceDesc.Height             = aDesc.height;
+        resourceDesc.DepthOrArraySize   = aDesc.depth > 1 ? aDesc.depth : aDesc.arraySize;
+        resourceDesc.MipLevels          = aDesc.mipLevels;
+        resourceDesc.Format             = resourceFormat;
+        resourceDesc.SampleDesc.Count   = 1;
+        resourceDesc.SampleDesc.Quality = 0;
+        resourceDesc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        resourceDesc.Alignment          = 0;
+        resourceDesc.Flags              = D3D12_RESOURCE_FLAG_NONE;
+        resourceDesc.Dimension          = aDesc.depth > 1 ? D3D12_RESOURCE_DIMENSION_TEXTURE3D : D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        
+        if (hasRTV) resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+        if (hasDSV) resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        if (hasUAV) resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        
+        // Determine initial state - DSV/RTV/UAV are immediately usable, others start as copy dest
+        D3D12_RESOURCE_STATES initialState{ D3D12_RESOURCE_STATE_COMMON };
+        if (hasRTV) initialState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        if (hasDSV) initialState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+        if (hasUAV) initialState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        
+        D3D12_CLEAR_VALUE clearValue{};
+        D3D12_CLEAR_VALUE* clearValuePtr{ nullptr };
+        
+        if (hasRTV)
+        {
+            clearValue.Format  = TextureFormatToDXGI(aDesc.format);
+            clearValue.Color[0] = 0.0f;
+            clearValue.Color[1] = 0.0f;
+            clearValue.Color[2] = 0.0f;
+            clearValue.Color[3] = 1.0f;
+            clearValuePtr = &clearValue;
+        }
+        else if (hasDSV)
+        {
+            clearValue.Format = TextureFormatToDXGI(aDesc.format);
+            clearValue.DepthStencil.Depth = 0.0f;
+            clearValue.DepthStencil.Stencil = 0;
+            clearValuePtr = &clearValue;
+        }
+        
+        D3D12MA::ALLOCATION_DESC allocationDesc{};
+        allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        
+        auto texture{ std::make_unique<TextureResource>() };
+        texture->state = initialState;
+        texture->type = ResourceType::Texture;
+        texture->isReady = hasRTV || hasDSV;
+        
+        NL_DX_VERIFY(myAllocator->CreateResource(
+            &allocationDesc,
+            &resourceDesc,
+            initialState,
+            clearValuePtr,
+            &texture->allocation,
+            IID_PPV_ARGS(&texture->resource)));
+        
+        // SRV - goes into bindless heap, heapIndex is what shaders use
+        if (hasSRV)
+        {
+            texture->SRVDescriptor = myBindlessHeap->Allocate();
+
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    
+            if (hasDSV)
+            {
+                srvDesc.Format                        = DepthFormatToSRV(aDesc.format);
+                srvDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+                srvDesc.Texture2D.MipLevels           = aDesc.mipLevels;
+                srvDesc.Texture2D.MostDetailedMip     = 0;
+                srvDesc.Texture2D.PlaneSlice          = 0;
+                srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+            }
+            else if (aDesc.IsCubeMap())
+            {
+                srvDesc.Format                          = TextureFormatToDXGI(aDesc.format);
+                srvDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURECUBE;
+                srvDesc.TextureCube.MostDetailedMip     = 0;
+                srvDesc.TextureCube.MipLevels           = aDesc.mipLevels;
+                srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+            }
+            else if (aDesc.depth > 1)
+            {
+                srvDesc.Format                        = TextureFormatToDXGI(aDesc.format);
+                srvDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE3D;
+                srvDesc.Texture3D.MostDetailedMip     = 0;
+                srvDesc.Texture3D.MipLevels           = aDesc.mipLevels;
+                srvDesc.Texture3D.ResourceMinLODClamp = 0.0f;
+            }
+            else if (aDesc.arraySize > 1)
+            {
+                srvDesc.Format                               = TextureFormatToDXGI(aDesc.format);
+                srvDesc.ViewDimension                        = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                srvDesc.Texture2DArray.MostDetailedMip       = 0;
+                srvDesc.Texture2DArray.MipLevels             = aDesc.mipLevels;
+                srvDesc.Texture2DArray.FirstArraySlice       = 0;
+                srvDesc.Texture2DArray.ArraySize             = aDesc.arraySize;
+                srvDesc.Texture2DArray.PlaneSlice            = 0;
+                srvDesc.Texture2DArray.ResourceMinLODClamp   = 0.0f;
+            }
+            else
+            {
+                srvDesc.Format                        = TextureFormatToDXGI(aDesc.format);
+                srvDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+                srvDesc.Texture2D.MipLevels           = aDesc.mipLevels;
+                srvDesc.Texture2D.MostDetailedMip     = 0;
+                srvDesc.Texture2D.PlaneSlice          = 0;
+                srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+            }
+    
+            myDevice->CreateShaderResourceView(texture->resource, &srvDesc, texture->SRVDescriptor.CPUHandle);
+        }
+        
+        // RTV - goes into RTV staging heap
+        if (hasRTV)
+        {
+            texture->RTVDescriptor = myRTVHeap->Allocate();
+            myDevice->CreateRenderTargetView(texture->resource, nullptr, texture->RTVDescriptor.CPUHandle);
+        }
+        
+        // DSV - goes into DSV staging heap
+        if (hasDSV)
+        {
+            texture->DSVDescriptor = myDSVHeap->Allocate();
+
+            D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+            dsvDesc.Format             = TextureFormatToDXGI(aDesc.format);
+            dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
+            dsvDesc.Flags              = D3D12_DSV_FLAG_NONE;
+            dsvDesc.Texture2D.MipSlice = 0;
+
+            myDevice->CreateDepthStencilView(texture->resource, &dsvDesc, texture->DSVDescriptor.CPUHandle);
+        }
+        
+        // UAV - goes into bindless heap
+        if (hasUAV)
+        {
+            texture->UAVDescriptor = myBindlessHeap->Allocate();
+            myDevice->CreateUnorderedAccessView(texture->resource, nullptr, nullptr, texture->UAVDescriptor.CPUHandle);
+        }
+        
+        if (!aDesc.debugName.empty())
+        {
+            const std::wstring wideName(aDesc.debugName.begin(), aDesc.debugName.end());
+            N_D3D12_SET_NAME_W(texture->resource, wideName.c_str());
+        }
+
+        NL_TRACE(GCoreLogger, "texture created '{}' [{}x{}]", aDesc.debugName, aDesc.width, aDesc.height);
+        
+        return texture;
+    }
+
+    std::unique_ptr<BufferResource> Device::CreateBuffer(const BufferCreationDesc& aDesc)
+    {
+        N_CORE_ASSERT(aDesc.size > 0, "Buffer size must be non-zero");
+        N_CORE_ASSERT(aDesc.access != BufferAccessFlags::GpuOnly || !aDesc.HasFlag(BufferViewFlags::ConstantBuffer),
+            "Constant buffers must be CpuToGpu access");
+        
+        const bool hasCBV{ aDesc.HasFlag(BufferViewFlags::ConstantBuffer) };
+        const bool hasSRV{ aDesc.HasFlag(BufferViewFlags::ShaderResource) };
+        const bool hasUAV{ aDesc.HasFlag(BufferViewFlags::UnorderedAccess) };
+        const bool isUpload{ aDesc.access == BufferAccessFlags::CpuToGpu };
+        const bool isReadback{ aDesc.access == BufferAccessFlags::GpuToCpu };
+        
+        // CBVs must be 256-byte aligned, apply to all buffers for safety
+        const uint64_t alignedSize{ (aDesc.size + 255) & ~255ull };
+        
+        D3D12_RESOURCE_DESC resourceDesc{};
+        resourceDesc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
+        resourceDesc.Width              = alignedSize;
+        resourceDesc.Height             = 1;
+        resourceDesc.DepthOrArraySize   = 1;
+        resourceDesc.MipLevels          = 1;
+        resourceDesc.Format             = DXGI_FORMAT_UNKNOWN;
+        resourceDesc.SampleDesc.Count   = 1;
+        resourceDesc.SampleDesc.Quality = 0;
+        resourceDesc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        resourceDesc.Flags              = hasUAV
+            ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+            : D3D12_RESOURCE_FLAG_NONE;
+        
+        D3D12_RESOURCE_STATES initialState{ D3D12_RESOURCE_STATE_COPY_DEST };
+        if (isUpload)   initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+        if (isReadback) initialState = D3D12_RESOURCE_STATE_COPY_DEST;
+        
+        D3D12MA::ALLOCATION_DESC allocDesc{};
+        switch (aDesc.access)
+        {
+            case BufferAccessFlags::GpuOnly:  allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;  break;
+            case BufferAccessFlags::CpuToGpu: allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;   break;
+            case BufferAccessFlags::GpuToCpu: allocDesc.HeapType = D3D12_HEAP_TYPE_READBACK; break;
+            default:
+                N_CORE_ASSERT(false, "Unknown buffer access flag");
+                break;
+        }
+        
+        auto buffer{ std::make_unique<BufferResource>() };
+        buffer->state = initialState;
+        buffer->stride = aDesc.stride;
+        
+        NL_DX_VERIFY(myAllocator->CreateResource(
+            &allocDesc,
+            &resourceDesc,
+            initialState,
+            nullptr,
+            &buffer->allocation,
+            IID_PPV_ARGS(&buffer->resource)));
+
+        buffer->gpuAddress = buffer->resource->GetGPUVirtualAddress();
+        
+        if (isUpload || isReadback)
+        {
+            NL_DX_VERIFY(buffer->resource->Map(0, nullptr, reinterpret_cast<void**>(&buffer->mappedData)));
+        }
+        
+        const uint32_t numElements{ aDesc.stride > 0 ? static_cast<uint32_t>(aDesc.size / aDesc.stride) : static_cast<uint32_t>(aDesc.size / 4) };
+        
+        // CBV - bindless heap
+        if (hasCBV)
+        {
+            buffer->CBVDescriptor = myBindlessHeap->Allocate();
+
+            D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc{};
+            cbvDesc.BufferLocation = buffer->gpuAddress;
+            cbvDesc.SizeInBytes    = static_cast<uint32_t>(alignedSize);
+
+            myDevice->CreateConstantBufferView(&cbvDesc, buffer->CBVDescriptor.CPUHandle);
+        }
+        
+        // SRV - bindless heap
+        if (hasSRV)
+        {
+            buffer->SRVDescriptor = myBindlessHeap->Allocate();
+
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.ViewDimension               = D3D12_SRV_DIMENSION_BUFFER;
+            srvDesc.Shader4ComponentMapping     = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Buffer.FirstElement         = 0;
+            srvDesc.Buffer.NumElements          = numElements;
+
+            if (aDesc.isRawAccess)
+            {
+                srvDesc.Format                  = DXGI_FORMAT_R32_TYPELESS;
+                srvDesc.Buffer.StructureByteStride = 0;
+                srvDesc.Buffer.Flags            = D3D12_BUFFER_SRV_FLAG_RAW;
+            }
+            else
+            {
+                srvDesc.Format                  = DXGI_FORMAT_UNKNOWN;
+                srvDesc.Buffer.StructureByteStride = aDesc.stride;
+                srvDesc.Buffer.Flags            = D3D12_BUFFER_SRV_FLAG_NONE;
+            }
+
+            myDevice->CreateShaderResourceView(buffer->resource, &srvDesc, buffer->SRVDescriptor.CPUHandle);
+        }
+        
+        // UAV — bindless heap
+        if (hasUAV)
+        {
+            buffer->UAVDescriptor = myBindlessHeap->Allocate();
+
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+            uavDesc.ViewDimension               = D3D12_UAV_DIMENSION_BUFFER;
+            uavDesc.Buffer.FirstElement         = 0;
+            uavDesc.Buffer.NumElements          = numElements;
+            uavDesc.Buffer.CounterOffsetInBytes = 0;
+
+            if (aDesc.isRawAccess)
+            {
+                uavDesc.Format                     = DXGI_FORMAT_R32_TYPELESS;
+                uavDesc.Buffer.StructureByteStride = 0;
+                uavDesc.Buffer.Flags               = D3D12_BUFFER_UAV_FLAG_RAW;
+            }
+            else
+            {
+                uavDesc.Format                     = DXGI_FORMAT_UNKNOWN;
+                uavDesc.Buffer.StructureByteStride = aDesc.stride;
+                uavDesc.Buffer.Flags               = D3D12_BUFFER_UAV_FLAG_NONE;
+            }
+
+            myDevice->CreateUnorderedAccessView(buffer->resource, nullptr, &uavDesc, buffer->UAVDescriptor.CPUHandle);
+        }
+        
+        if (!aDesc.debugName.empty())
+        {
+            const std::wstring wideName(aDesc.debugName.begin(), aDesc.debugName.end());
+            N_D3D12_SET_NAME_W(buffer->resource, wideName.c_str());
+        }
+
+        NL_TRACE(GCoreLogger, "buffer created '{}' [{} bytes]", aDesc.debugName, alignedSize);
+
+        return buffer;
+    }
+
+    void Device::DestroyTexture(std::unique_ptr<TextureResource> aTexture)
+    {
+        N_CORE_ASSERT(aTexture != nullptr, "Destroying null texture");
+        myDestructionQueues[myFrameIndex].texturesToDestroy.push_back(std::move(aTexture));
+    }
+
+    void Device::DestroyBuffer(std::unique_ptr<BufferResource> aBuffer)
+    {
+        N_CORE_ASSERT(aBuffer != nullptr, "Destroying null buffer");
+        myDestructionQueues[myFrameIndex].buffersToDestroy.push_back(std::move(aBuffer));
+    }
+
+    void Device::DestroyContext(std::unique_ptr<Context> aContext)
+    {
+        N_CORE_ASSERT(aContext != nullptr, "Destroying null context");
+        myDestructionQueues[myFrameIndex].contextsToDestroy.push_back(std::move(aContext));
     }
 
     void Device::InitDebugLayer()
@@ -213,7 +643,7 @@ namespace Nalta::RHI::D3D12
         if (SUCCEEDED(myDevice->QueryInterface(IID_PPV_ARGS(&infoQueue1))))
         {
             infoQueue1->RegisterMessageCallback(
-                [](D3D12_MESSAGE_CATEGORY, D3D12_MESSAGE_SEVERITY aSeverity,
+                [](D3D12_MESSAGE_CATEGORY, const D3D12_MESSAGE_SEVERITY aSeverity,
                    D3D12_MESSAGE_ID, LPCSTR aDescription, void*)
                 {
                     switch (aSeverity)
@@ -273,7 +703,7 @@ namespace Nalta::RHI::D3D12
         DXGI_ADAPTER_DESC1 desc{};
         myAdapter->GetDesc1(&desc);
 
-        auto toMB = [](SIZE_T bytes)
+        auto toMB = [](const SIZE_T bytes)
         {
             return static_cast<size_t>(bytes / (1024 * 1024));
         };
@@ -373,5 +803,41 @@ namespace Nalta::RHI::D3D12
     {
         [[maybe_unused]] auto& queue{ myDestructionQueues[aFrameIndex] };
         
+        for (auto& texture : queue.texturesToDestroy)
+        {
+            if (texture->SRVDescriptor.IsValid()) myBindlessHeap->Free(texture->SRVDescriptor);
+            if (texture->RTVDescriptor.IsValid()) myRTVHeap->Free(texture->RTVDescriptor);
+            if (texture->DSVDescriptor.IsValid()) myDSVHeap->Free(texture->DSVDescriptor);
+            if (texture->UAVDescriptor.IsValid()) myBindlessHeap->Free(texture->UAVDescriptor);
+            
+            if (texture->allocation != nullptr)
+            {
+                SafeRelease(texture->allocation);
+            }
+
+            SafeRelease(texture->resource);
+        }
+        for (auto& buffer : queue.buffersToDestroy)
+        {
+            if (buffer->mappedData != nullptr)
+            {
+                buffer->resource->Unmap(0, nullptr);
+            }
+
+            if (buffer->CBVDescriptor.IsValid()) myBindlessHeap->Free(buffer->CBVDescriptor);
+            if (buffer->SRVDescriptor.IsValid()) myBindlessHeap->Free(buffer->SRVDescriptor);
+            if (buffer->UAVDescriptor.IsValid()) myBindlessHeap->Free(buffer->UAVDescriptor);
+
+            if (buffer->allocation != nullptr)
+            {
+                SafeRelease(buffer->allocation);
+            }
+
+            SafeRelease(buffer->resource);
+        }
+        
+        queue.texturesToDestroy.clear();
+        queue.buffersToDestroy.clear();
+        queue.contextsToDestroy.clear(); // unique_ptr destructor handles cleanup
     }
 }

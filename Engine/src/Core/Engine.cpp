@@ -275,6 +275,8 @@ namespace Nalta
 			if (mySceneBuffer.Consume())
 			{
 				[[maybe_unused]] const SceneView& view{ mySceneBuffer.GetReadSlot() };
+				
+				myGraphicsSystem->Test();
 			}
 			else
 			{
