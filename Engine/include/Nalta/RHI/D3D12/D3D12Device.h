@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include "D3D12Buffer.h"
+#include "D3D12GraphicsContext.h"
+#include "D3D12RenderSurface.h"
 #include "D3D12UploadContext.h"
 #include "Nalta/RHI/D3D12/D3D12Common.h"
 #include "Nalta/RHI/D3D12/D3D12Context.h"
@@ -40,11 +42,14 @@ namespace Nalta::RHI::D3D12
         void WaitOnContextWork(ContextSubmissionResult aSubmission, ContextWaitType aWaitType);
         void WaitForIdle();
         
+        std::unique_ptr<GraphicsContext> CreateGraphicsContext();
         UploadContext& GetUploadContextForCurrentFrame() { return *myUploadContexts[myFrameIndex]; }
         
+        std::unique_ptr<RenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc);
         std::unique_ptr<TextureResource> CreateTexture(const TextureCreationDesc& aDesc);
         std::unique_ptr<BufferResource> CreateBuffer(const BufferCreationDesc& aDesc);
         
+        void DestroyRenderSurface(std::unique_ptr<RenderSurface> aSurface);
         void DestroyTexture(std::unique_ptr<TextureResource> aTexture);
         void DestroyBuffer(std::unique_ptr<BufferResource> aBuffer);
         void DestroyContext(std::unique_ptr<Context> aContext);

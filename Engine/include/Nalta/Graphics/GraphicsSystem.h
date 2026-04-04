@@ -3,6 +3,11 @@
 
 #include <memory>
 
+namespace Nalta
+{
+    class WindowHandle;
+}
+
 namespace Nalta::Graphics
 {
     class IDevice;
@@ -13,7 +18,7 @@ namespace Nalta::Graphics
         GraphicsSystem();
         ~GraphicsSystem();
         
-        void Initialize();
+        void Initialize(const WindowHandle& aHandle);
         void Shutdown();
         
         void Test();

@@ -66,8 +66,7 @@ namespace Nalta
 			NL_INFO(GCoreLogger, "CPU logical cores: {}", coreCount);
 			NL_INFO(GCoreLogger, "System memory: {} MB", memoryBytes / (1024u * 1024u));
 			
-			myGraphicsSystem = std::make_unique<Graphics::GraphicsSystem>();
-			myGraphicsSystem->Initialize();
+			
 			
 			// myPlatformSystem->SetOnWindowDestroyedCallback([this](const WindowHandle aWindow)
 			// {
@@ -80,6 +79,9 @@ namespace Nalta
 			myMainWindow = myPlatformSystem->CreatePlatformWindow(*myConfig.mainWindowDesc);
 			myMainWindow->Show();
 			NL_INFO(GCoreLogger, "Main window created");
+			
+			myGraphicsSystem = std::make_unique<Graphics::GraphicsSystem>();
+			myGraphicsSystem->Initialize(myMainWindow);
 			
 			auto& inputSystem{ myPlatformSystem->GetInputSystem() };
 			myPlayerInput.AssignKeyboard(inputSystem.GetKeyboard());

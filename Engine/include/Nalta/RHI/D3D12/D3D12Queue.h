@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/RHI/RHI.h"
+#include "Nalta/RHI/RHITypes.h"
 #include "Nalta/RHI/D3D12/D3D12Common.h"
 
 #include <mutex>

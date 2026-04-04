@@ -254,6 +254,16 @@ namespace Nalta::RHI::D3D12
         }
     }
 
+    std::unique_ptr<GraphicsContext> Device::CreateGraphicsContext()
+    {
+        return std::make_unique<GraphicsContext>(*this);
+    }
+
+    std::unique_ptr<RenderSurface> Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
+    {
+        return std::make_unique<RenderSurface>(*this, aDesc);
+    }
+
     std::unique_ptr<TextureResource> Device::CreateTexture(const TextureCreationDesc& aDesc)
     {
         N_CORE_ASSERT(aDesc.format != TextureFormat::Unknown, "Texture format must be specified");
@@ -562,6 +572,15 @@ namespace Nalta::RHI::D3D12
         NL_TRACE(GCoreLogger, "buffer created '{}' [{} bytes]", aDesc.debugName, alignedSize);
 
         return buffer;
+    }
+
+    void Device::DestroyRenderSurface(std::unique_ptr<RenderSurface> aSurface)
+    {
+        N_CORE_ASSERT(aSurface != nullptr, "Destroying null render surface");
+        NL_TRACE(GCoreLogger, "waiting for GPU idle before releasing render surface");
+        WaitForIdle();
+        aSurface.reset();
+        NL_TRACE(GCoreLogger, "render surface destroyed");
     }
 
     void Device::DestroyTexture(std::unique_ptr<TextureResource> aTexture)

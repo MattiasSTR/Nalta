@@ -18,16 +18,3 @@
 #if defined(N_RHI_D3D12) && defined(N_RHI_VULKAN)
     #error "Cannot define multiple RHI backends simultaneously."
 #endif
-
-namespace Nalta::RHI
-{
-    constexpr uint32_t FRAMES_IN_FLIGHT{ 2 };
-    
-    enum class QueueType : uint8_t
-    {
-        Graphics = 0,
-        Compute,
-        Copy,
-        Count
-    };
-}

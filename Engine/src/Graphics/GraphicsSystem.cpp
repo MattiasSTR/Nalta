@@ -1,6 +1,8 @@
 ﻿#include "npch.h"
 #include "Nalta/Graphics/GraphicsSystem.h"
+
 #include "Nalta/Platform/IWindow.h"
+#include "Nalta/Platform/WindowHandle.h"
 
 #ifdef N_RHI_D3D12
 #include "Nalta/RHI/D3D12/D3D12Device.h"
@@ -11,16 +13,26 @@
 namespace Nalta
 {
     using namespace Graphics;
+    
+    static std::unique_ptr<RHI::D3D12::GraphicsContext> context;
+    static std::unique_ptr<RHI::D3D12::RenderSurface> surface;
 
     GraphicsSystem::GraphicsSystem() = default;
     GraphicsSystem::~GraphicsSystem() = default;
 
-    void GraphicsSystem::Initialize()
+    void GraphicsSystem::Initialize(const WindowHandle& aHandle)
     {
         NL_SCOPE_CORE("GraphicsSystem");
         //N_CORE_ASSERT(myDevice == nullptr, "already initialized");
+        
+        RHI::RenderSurfaceDesc rdesc;
+        rdesc.height = aHandle->GetHeight();
+        rdesc.width = aHandle->GetWidth();
+        rdesc.window = aHandle->GetNativeHandle();
 
         myDevice = std::make_unique<RHI::Device>();
+        context = myDevice->CreateGraphicsContext();
+        surface = myDevice->CreateRenderSurface(rdesc);
         
         auto MakeSolidColorPixels = [](uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
         {
@@ -181,15 +193,28 @@ namespace Nalta
     {
         NL_SCOPE_CORE("GraphicsSystem");
         
+        myDevice->DestroyRenderSurface(std::move(surface));
+        myDevice->DestroyContext(std::move(context));
+        myDevice.reset();
+        
         NL_INFO(GCoreLogger, "shutdown");
     }
 
     void GraphicsSystem::Test()
     {
         myDevice->BeginFrame();
+        context->Reset();
+        constexpr float clearColor[]{ 0.01f, 0.01f, 0.01f, 1.0f };
+        
+        surface->SetAsRenderTarget(*context);
+        surface->Clear(*context, clearColor);
+        
+        surface->EndRenderTarget(*context);
+        context->Close();
+        myDevice->SubmitContextWork(*context);
         
         myDevice->PrePresent();
-        
+        surface->Present(true);
         myDevice->EndFrame();
     }
 }

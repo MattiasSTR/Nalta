@@ -7,6 +7,25 @@
 
 namespace Nalta::RHI
 {
+    constexpr uint32_t FRAMES_IN_FLIGHT{ 2 };
+    constexpr uint32_t BACK_BUFFER_COUNT{ 3 };
+    
+    enum class QueueType : uint8_t
+    {
+        Graphics = 0,
+        Compute,
+        Copy,
+        Count
+    };
+    
+    struct RenderSurfaceDesc
+    {
+        void* window{ nullptr };
+        uint32_t width{ 0 };
+        uint32_t height{ 0 };
+        uint32_t bufferCount{ BACK_BUFFER_COUNT };
+    };
+    
     enum class ResourceType : uint8_t
     {
         Texture,
