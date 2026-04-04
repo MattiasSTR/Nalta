@@ -34,7 +34,7 @@ namespace Nalta::RHI::D3D12
         Context(Context&&) = delete;
         Context& operator=(Context&&) = delete;
 
-        void Reset();
+        virtual void Reset();
         void AddBarrier(Resource& aResource, D3D12_RESOURCE_STATES aNewState);
         void FlushBarriers();
         

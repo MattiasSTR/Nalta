@@ -17,6 +17,7 @@ namespace Nalta::RHI::D3D12
 
         uint8_t* mappedData{ nullptr }; // non-null only for CpuToGpu/GpuToCpu
         uint32_t stride{ 0 };
+        uint64_t size{ 0 };
         uint64_t gpuAddress{ 0 }; // virtual address, used for CBV and ray tracing
 
         // Descriptors - only valid if corresponding view flag was set at creation

@@ -3,10 +3,15 @@
 
 namespace Nalta::RHI::D3D12
 {
+    struct BufferResource;
+    struct PipelineStateObject;
+
     class GraphicsContext final : public Context
     {
     public:
         explicit GraphicsContext(Device& aDevice);
+        
+        void Reset() override;
     
         // Viewport and scissor
         void SetViewport(uint32_t aWidth, uint32_t aHeight);
@@ -15,8 +20,24 @@ namespace Nalta::RHI::D3D12
         void SetScissor(const D3D12_RECT& aRect);
     
         // State
-        void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY aTopology);
+        void SetPrimitiveTopology(PrimitiveTopology aTopology);
         void SetStencilRef(uint32_t aRef);
+        
+        void SetRootConstants(const void* aData, uint32_t aCount, uint32_t aOffset = 0);
+        void SetPassCBV(uint64_t aGPUAddress);
+        
+        void SetPipeline(const PipelineStateObject& aPipeline);
+        void SetComputePipeline(const PipelineStateObject& aPipeline);
+        
+        template<typename T>
+        void SetRootConstants(const T& aData, const uint32_t aOffset = 0)
+        {
+            static_assert(sizeof(T) % 4 == 0, "Root constant struct must be 4-byte aligned");
+            static_assert(sizeof(T) / 4 <= ROOT_CONSTANT_COUNT, "Root constant struct too large");
+            SetRootConstants(&aData, sizeof(T) / 4, aOffset);
+        }
+        
+        void SetIndexBuffer(const BufferResource& aBuffer);
     
         // Render targets
         void SetRenderTargets(std::span<const TextureResource* const> aRenderTargets, const TextureResource* aDepthStencil = nullptr);

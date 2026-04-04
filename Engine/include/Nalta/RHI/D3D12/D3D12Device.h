@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include "D3D12Buffer.h"
+#include "D3D12ComputeContext.h"
 #include "D3D12GraphicsContext.h"
+#include "D3D12PipelineStateObject.h"
 #include "D3D12RenderSurface.h"
 #include "D3D12UploadContext.h"
 #include "Nalta/RHI/D3D12/D3D12Common.h"
@@ -43,15 +45,20 @@ namespace Nalta::RHI::D3D12
         void WaitForIdle();
         
         std::unique_ptr<GraphicsContext> CreateGraphicsContext();
+        std::unique_ptr<ComputeContext> CreateComputeContext();
         UploadContext& GetUploadContextForCurrentFrame() { return *myUploadContexts[myFrameIndex]; }
         
         std::unique_ptr<RenderSurface> CreateRenderSurface(const RenderSurfaceDesc& aDesc);
         std::unique_ptr<TextureResource> CreateTexture(const TextureCreationDesc& aDesc);
         std::unique_ptr<BufferResource> CreateBuffer(const BufferCreationDesc& aDesc);
+        std::unique_ptr<Shader> CreateShader(const ShaderDesc& aDesc);
+        std::unique_ptr<PipelineStateObject> CreateGraphicsPipeline(const GraphicsPipelineDesc& aDesc);
+        std::unique_ptr<PipelineStateObject> CreateComputePipeline(const ComputePipelineDesc& aDesc);
         
         void DestroyRenderSurface(std::unique_ptr<RenderSurface> aSurface);
         void DestroyTexture(std::unique_ptr<TextureResource> aTexture);
         void DestroyBuffer(std::unique_ptr<BufferResource> aBuffer);
+        void DestroyPipeline(std::unique_ptr<PipelineStateObject> aPipeline);
         void DestroyContext(std::unique_ptr<Context> aContext);
         
         [[nodiscard]] ID3D12Device10* GetD3D12Device() const { return myDevice; }
@@ -60,6 +67,7 @@ namespace Nalta::RHI::D3D12
         [[nodiscard]] D3D12MA::Allocator* GetAllocator() const { return myAllocator; }
         [[nodiscard]] Queue& GetQueue(QueueType aType) { return *myQueues[static_cast<size_t>(aType)]; }
         [[nodiscard]] uint32_t& GetFrameIndex() { return myFrameIndex; }
+        [[nodiscard]] ID3D12RootSignature* GetRootSignature() const { return myRootSignature; }
         [[nodiscard]] FreeListDescriptorHeap& GetBindlessHeap() { return *myBindlessHeap; }
         [[nodiscard]] FreeListDescriptorHeap& GetSamplerHeap() { return *mySamplerHeap; }
         [[nodiscard]] FreeListDescriptorHeap& GetRTVHeap() { return *myRTVHeap; }
@@ -71,6 +79,7 @@ namespace Nalta::RHI::D3D12
         void SelectAdapter();
         void InitAllocator();
         void InitDescriptorHeaps();
+        void InitRootSignature();
         void CheckFeatureSupport() const;
         
         void ProcessDestructions(uint32_t aFrameIndex);
@@ -81,12 +90,17 @@ namespace Nalta::RHI::D3D12
         IDxcUtils* myDxcUtils{ nullptr };
         D3D12MA::Allocator* myAllocator{ nullptr };
         
+        IDxcCompiler3* myDxcCompiler{ nullptr };
+        IDxcIncludeHandler* myDxcIncludeHandler{ nullptr };
+        
 #ifndef N_SHIPPING
         ID3D12Debug6* myDebugController{ nullptr };
         DWORD myCallbackCookie{ 0 };
 #endif
         
         std::array<std::unique_ptr<Queue>, static_cast<size_t>(QueueType::Count)> myQueues;
+        
+        ID3D12RootSignature* myRootSignature{ nullptr };
         
         std::unique_ptr<FreeListDescriptorHeap> myBindlessHeap;
         std::unique_ptr<FreeListDescriptorHeap> mySamplerHeap;
@@ -110,6 +124,7 @@ namespace Nalta::RHI::D3D12
             std::vector<std::unique_ptr<TextureResource>> texturesToDestroy;
             std::vector<std::unique_ptr<BufferResource>> buffersToDestroy;
             std::vector<std::unique_ptr<Context>> contextsToDestroy;
+            std::vector<std::unique_ptr<PipelineStateObject>> pipelinesToDestroy;
         };
         std::array<DestructionQueue, FRAMES_IN_FLIGHT> myDestructionQueues;
         

@@ -4,11 +4,35 @@
 
 namespace Nalta::RHI::D3D12
 {
+    namespace
+    {
+        D3D12_PRIMITIVE_TOPOLOGY ToDXGIPrimitiveTopology(const PrimitiveTopology aTopology)
+        {
+            switch (aTopology)
+            {
+                case PrimitiveTopology::TriangleList:  return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+                case PrimitiveTopology::TriangleStrip: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+                case PrimitiveTopology::LineList:      return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+                case PrimitiveTopology::LineStrip:     return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+                case PrimitiveTopology::PointList:     return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+                default:
+                    N_CORE_ASSERT(false, "Unknown PrimitiveTopology");
+                    return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            }
+        }
+    }
+    
     GraphicsContext::GraphicsContext(Device& aDevice)
         : Context(aDevice, D3D12_COMMAND_LIST_TYPE_DIRECT)
     {
     }
-    
+
+    void GraphicsContext::Reset()
+    {
+        Context::Reset(); // base reset - allocator, command list, descriptor heaps
+        myCommandList->SetGraphicsRootSignature(myDevice.GetRootSignature());
+    }
+
     void GraphicsContext::SetViewport(const uint32_t aWidth, const uint32_t aHeight)
     {
         D3D12_VIEWPORT vp{};
@@ -37,16 +61,59 @@ namespace Nalta::RHI::D3D12
         myCommandList->RSSetScissorRects(1, &aRect);
     }
 
-    void GraphicsContext::SetPrimitiveTopology(const D3D12_PRIMITIVE_TOPOLOGY aTopology)
+    void GraphicsContext::SetPrimitiveTopology(PrimitiveTopology aTopology)
     {
-        myCommandList->IASetPrimitiveTopology(aTopology);
+        myCommandList->IASetPrimitiveTopology(ToDXGIPrimitiveTopology(aTopology));
     }
 
     void GraphicsContext::SetStencilRef(const uint32_t aRef)
     {
         myCommandList->OMSetStencilRef(aRef);
     }
-    
+
+    void GraphicsContext::SetRootConstants(const void* aData, const uint32_t aCount, const uint32_t aOffset)
+    {
+        N_CORE_ASSERT(aOffset + aCount <= ROOT_CONSTANT_COUNT, "Root constants out of range");
+        myCommandList->SetGraphicsRoot32BitConstants(
+            static_cast<uint32_t>(RootParameter::Constants),
+            aCount,
+            aData,
+            aOffset);
+    }
+
+    void GraphicsContext::SetPassCBV(const uint64_t aGPUAddress)
+    {
+        myCommandList->SetGraphicsRootConstantBufferView(static_cast<uint32_t>(RootParameter::PassCBV), aGPUAddress);
+    }
+
+    void GraphicsContext::SetPipeline(const PipelineStateObject& aPipeline)
+    {
+        N_CORE_ASSERT(aPipeline.IsValid(), "Setting invalid pipeline");
+        N_CORE_ASSERT(!aPipeline.isCompute, "Use SetComputePipeline for compute pipelines");
+        myCommandList->SetPipelineState(aPipeline.pipelineState);
+    }
+
+    void GraphicsContext::SetComputePipeline(const PipelineStateObject& aPipeline)
+    {
+        N_CORE_ASSERT(aPipeline.IsValid(), "Setting invalid pipeline");
+        N_CORE_ASSERT(aPipeline.isCompute, "Use SetPipeline for graphics pipelines");
+        myCommandList->SetPipelineState(aPipeline.pipelineState);
+    }
+
+    void GraphicsContext::SetIndexBuffer(const BufferResource& aBuffer)
+    {
+        N_CORE_ASSERT(aBuffer.IsValid(), "Invalid index buffer");
+        N_CORE_ASSERT(aBuffer.stride == 2 || aBuffer.stride == 4,
+            "Index buffer stride must be 2 (uint16) or 4 (uint32)");
+
+        D3D12_INDEX_BUFFER_VIEW view{};
+        view.BufferLocation = aBuffer.gpuAddress;
+        view.SizeInBytes = static_cast<UINT>(aBuffer.size);
+        view.Format = aBuffer.stride == 4 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT;
+
+        myCommandList->IASetIndexBuffer(&view);
+    }
+
     void GraphicsContext::SetRenderTargets(const std::span<const TextureResource* const> aRenderTargets, const TextureResource* aDepthStencil)
     {
         N_CORE_ASSERT(aRenderTargets.size() <= D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT, "Too many render targets");
@@ -111,7 +178,7 @@ namespace Nalta::RHI::D3D12
 
     void GraphicsContext::DrawFullScreenTriangle()
     {
-        SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        SetPrimitiveTopology(PrimitiveTopology::TriangleList);
         myCommandList->IASetIndexBuffer(nullptr);
         Draw(3);
     }

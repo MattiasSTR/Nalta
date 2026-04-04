@@ -5,6 +5,11 @@ namespace Nalta::RHI::D3D12
 {
     namespace
     {
+        std::wstring ToWide(const std::string& aStr)
+        {
+            return std::wstring(aStr.begin(), aStr.end());
+        }
+        
         constexpr D3D_FEATURE_LEVEL MIN_FEATURE_LEVEL{ D3D_FEATURE_LEVEL_12_0 };
 
         constexpr D3D_FEATURE_LEVEL FEATURE_LEVELS[]
@@ -27,6 +32,180 @@ namespace Nalta::RHI::D3D12
                 case D3D_FEATURE_LEVEL_12_2: return "12_2";
                 default: return "Unknown";
             }
+        }
+        
+        const wchar_t* ShaderStageToProfile(const ShaderStage aStage)
+        {
+            switch (aStage)
+            {
+                case ShaderStage::Vertex:        return L"vs_6_6";
+                case ShaderStage::Pixel:         return L"ps_6_6";
+                case ShaderStage::Compute:       return L"cs_6_6";
+                case ShaderStage::Mesh:          return L"ms_6_6";
+                case ShaderStage::Amplification: return L"as_6_6";
+                default:
+                    N_CORE_ASSERT(false, "Unknown shader stage");
+                    return L"";
+            }
+        }
+        
+        D3D12_CULL_MODE ToDXGICullMode(const CullMode aCullMode)
+        {
+            switch (aCullMode)
+            {
+                case CullMode::None:  return D3D12_CULL_MODE_NONE;
+                case CullMode::Front: return D3D12_CULL_MODE_FRONT;
+                case CullMode::Back:  return D3D12_CULL_MODE_BACK;
+                default:
+                    N_CORE_ASSERT(false, "Unknown CullMode");
+                    return D3D12_CULL_MODE_NONE;
+            }
+        }
+        
+        D3D12_FILL_MODE ToDXGIFillMode(const FillMode aFillMode)
+        {
+            switch (aFillMode)
+            {
+                case FillMode::Solid:     return D3D12_FILL_MODE_SOLID;
+                case FillMode::Wireframe: return D3D12_FILL_MODE_WIREFRAME;
+                default:
+                    N_CORE_ASSERT(false, "Unknown FillMode");
+                    return D3D12_FILL_MODE_SOLID;
+            }
+        }
+        
+        D3D12_COMPARISON_FUNC ToDXGIComparisonFunc(const DepthCompare aCompare)
+        {
+            switch (aCompare)
+            {
+                case DepthCompare::Never:        return D3D12_COMPARISON_FUNC_NEVER;
+                case DepthCompare::Less:         return D3D12_COMPARISON_FUNC_LESS;
+                case DepthCompare::LessEqual:    return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                case DepthCompare::Equal:        return D3D12_COMPARISON_FUNC_EQUAL;
+                case DepthCompare::GreaterEqual: return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+                case DepthCompare::Greater:      return D3D12_COMPARISON_FUNC_GREATER;
+                case DepthCompare::NotEqual:     return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+                case DepthCompare::Always:       return D3D12_COMPARISON_FUNC_ALWAYS;
+                default:
+                    N_CORE_ASSERT(false, "Unknown DepthCompare");
+                    return D3D12_COMPARISON_FUNC_LESS;
+            }
+        }
+        
+        D3D12_BLEND ToDXGIBlendFactor(const BlendFactor aFactor)
+        {
+            switch (aFactor)
+            {
+                case BlendFactor::Zero:             return D3D12_BLEND_ZERO;
+                case BlendFactor::One:              return D3D12_BLEND_ONE;
+                case BlendFactor::SrcAlpha:         return D3D12_BLEND_SRC_ALPHA;
+                case BlendFactor::OneMinusSrcAlpha: return D3D12_BLEND_INV_SRC_ALPHA;
+                case BlendFactor::SrcColor:         return D3D12_BLEND_SRC_COLOR;
+                case BlendFactor::OneMinusSrcColor: return D3D12_BLEND_INV_SRC_COLOR;
+                default:
+                    N_CORE_ASSERT(false, "Unknown BlendFactor");
+                    return D3D12_BLEND_ZERO;
+            }
+        }
+        
+        D3D12_BLEND_OP ToDXGIBlendOp(const BlendOp aOp)
+        {
+            switch (aOp)
+            {
+                case BlendOp::Add:             return D3D12_BLEND_OP_ADD;
+                case BlendOp::Subtract:        return D3D12_BLEND_OP_SUBTRACT;
+                case BlendOp::ReverseSubtract: return D3D12_BLEND_OP_REV_SUBTRACT;
+                case BlendOp::Min:             return D3D12_BLEND_OP_MIN;
+                case BlendOp::Max:             return D3D12_BLEND_OP_MAX;
+                default:
+                    N_CORE_ASSERT(false, "Unknown BlendOp");
+                    return D3D12_BLEND_OP_ADD;
+            }
+        }
+        
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE ToDXGITopologyType(const PrimitiveTopology aTopology)
+        {
+            switch (aTopology)
+            {
+                case PrimitiveTopology::TriangleList:
+                case PrimitiveTopology::TriangleStrip: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+                case PrimitiveTopology::LineList:
+                case PrimitiveTopology::LineStrip:     return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+                case PrimitiveTopology::PointList:     return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+                default:
+                    N_CORE_ASSERT(false, "Unknown PrimitiveTopology");
+                    return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            }
+        }
+        
+        D3D12_RASTERIZER_DESC BuildRasterizerDesc(const RasterizerDesc& aDesc)
+        {
+            D3D12_RASTERIZER_DESC desc{};
+            desc.FillMode              = ToDXGIFillMode(aDesc.fillMode);
+            desc.CullMode              = ToDXGICullMode(aDesc.cullMode);
+            desc.FrontCounterClockwise = aDesc.frontCCW ? TRUE : FALSE;
+            desc.DepthBias             = static_cast<INT>(aDesc.depthBias);
+            desc.DepthBiasClamp        = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+            desc.SlopeScaledDepthBias  = aDesc.slopeScaledDepthBias;
+            desc.DepthClipEnable       = TRUE;
+            desc.MultisampleEnable     = FALSE;
+            desc.AntialiasedLineEnable = FALSE;
+            desc.ForcedSampleCount     = 0;
+            desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+            return desc;
+        }
+        
+        D3D12_BLEND_DESC BuildBlendDesc(const BlendDesc& aDesc)
+        {
+            D3D12_BLEND_DESC desc{};
+            desc.AlphaToCoverageEnable  = FALSE;
+            desc.IndependentBlendEnable = TRUE;
+
+            for (uint32_t i{ 0 }; i < 8; ++i)
+            {
+                const auto& rt{ aDesc.renderTargets[i] };
+                auto& d3dRT{ desc.RenderTarget[i] };
+
+                d3dRT.BlendEnable           = rt.enabled ? TRUE : FALSE;
+                d3dRT.LogicOpEnable         = FALSE;
+                d3dRT.SrcBlend              = ToDXGIBlendFactor(rt.srcBlend);
+                d3dRT.DestBlend             = ToDXGIBlendFactor(rt.dstBlend);
+                d3dRT.BlendOp               = ToDXGIBlendOp(rt.blendOp);
+                d3dRT.SrcBlendAlpha         = ToDXGIBlendFactor(rt.srcBlendAlpha);
+                d3dRT.DestBlendAlpha        = ToDXGIBlendFactor(rt.dstBlendAlpha);
+                d3dRT.BlendOpAlpha          = ToDXGIBlendOp(rt.blendOpAlpha);
+                d3dRT.LogicOp               = D3D12_LOGIC_OP_NOOP;
+                d3dRT.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+            }
+
+            return desc;
+        }
+        
+        D3D12_DEPTH_STENCIL_DESC BuildDepthStencilDesc(const DepthDesc& aDesc)
+        {
+            D3D12_DEPTH_STENCIL_DESC desc{};
+            desc.DepthEnable    = aDesc.depthEnabled ? TRUE : FALSE;
+            desc.DepthWriteMask = aDesc.depthWrite
+                ? D3D12_DEPTH_WRITE_MASK_ALL
+                : D3D12_DEPTH_WRITE_MASK_ZERO;
+            desc.DepthFunc      = ToDXGIComparisonFunc(aDesc.compareFunc);
+            desc.StencilEnable  = aDesc.stencilEnabled ? TRUE : FALSE;
+
+            // Default stencil ops - expand when stencil is actually used
+            constexpr D3D12_DEPTH_STENCILOP_DESC defaultStencilOp
+            {
+                .StencilFailOp      = D3D12_STENCIL_OP_KEEP,
+                .StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+                .StencilPassOp      = D3D12_STENCIL_OP_KEEP,
+                .StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS,
+            };
+
+            desc.StencilReadMask  = D3D12_DEFAULT_STENCIL_READ_MASK;
+            desc.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
+            desc.FrontFace        = defaultStencilOp;
+            desc.BackFace         = defaultStencilOp;
+
+            return desc;
         }
     }
     
@@ -66,6 +245,7 @@ namespace Nalta::RHI::D3D12
         
         InitAllocator();
         InitDescriptorHeaps();
+        InitRootSignature();
         for (uint32_t i{ 0 }; i < FRAMES_IN_FLIGHT; ++i)
         {
             myUploadContexts[i] = std::make_unique<UploadContext>(*this, 64ull * 1024ull * 1024ull);
@@ -79,6 +259,18 @@ namespace Nalta::RHI::D3D12
         {
             NL_FATAL(GCoreLogger, "failed to create DXC utils for reflection");
         }
+        
+        if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&myDxcCompiler))))
+        {
+            NL_FATAL(GCoreLogger, "failed to create DXC compiler");
+        }
+
+        if (FAILED(myDxcUtils->CreateDefaultIncludeHandler(&myDxcIncludeHandler)))
+        {
+            NL_FATAL(GCoreLogger, "failed to create DXC include handler");
+        }
+
+        NL_TRACE(GCoreLogger, "shader compiler initialized");
 
         NL_INFO(GCoreLogger, "initialized");
     }
@@ -116,12 +308,16 @@ namespace Nalta::RHI::D3D12
             queue.reset();
         }
         
+        SafeRelease(myRootSignature);
+        
         myBindlessHeap.reset();
         mySamplerHeap.reset();
         myRTVHeap.reset();
         myDSVHeap.reset();
         
         SafeRelease(myAllocator);
+        SafeRelease(myDxcIncludeHandler);
+        SafeRelease(myDxcCompiler);
         SafeRelease(myDxcUtils);
         SafeRelease(myAdapter);
         SafeRelease(myFactory);
@@ -257,6 +453,11 @@ namespace Nalta::RHI::D3D12
     std::unique_ptr<GraphicsContext> Device::CreateGraphicsContext()
     {
         return std::make_unique<GraphicsContext>(*this);
+    }
+
+    std::unique_ptr<ComputeContext> Device::CreateComputeContext()
+    {
+        return std::make_unique<ComputeContext>(*this);
     }
 
     std::unique_ptr<RenderSurface> Device::CreateRenderSurface(const RenderSurfaceDesc& aDesc)
@@ -563,6 +764,8 @@ namespace Nalta::RHI::D3D12
             myDevice->CreateUnorderedAccessView(buffer->resource, nullptr, &uavDesc, buffer->UAVDescriptor.CPUHandle);
         }
         
+        buffer->size = aDesc.size;
+        
         if (!aDesc.debugName.empty())
         {
             const std::wstring wideName(aDesc.debugName.begin(), aDesc.debugName.end());
@@ -572,6 +775,235 @@ namespace Nalta::RHI::D3D12
         NL_TRACE(GCoreLogger, "buffer created '{}' [{} bytes]", aDesc.debugName, alignedSize);
 
         return buffer;
+    }
+
+    std::unique_ptr<Shader> Device::CreateShader(const ShaderDesc& aDesc)
+    {
+        N_CORE_ASSERT(!aDesc.stages.empty(), "ShaderDesc has no stages");
+
+        if (!std::filesystem::exists(aDesc.filePath))
+        {
+            NL_ERROR(GCoreLogger, "shader file not found: '{}'", aDesc.filePath.string());
+            return nullptr;
+        }
+
+        auto shader{ std::make_unique<Shader>() };
+        shader->debugName = aDesc.debugName;
+        
+        for (const auto& stageDesc : aDesc.stages)
+        {
+            IDxcBlobEncoding* sourceBlob{ nullptr };
+            if (FAILED(myDxcUtils->LoadFile(
+                aDesc.filePath.wstring().c_str(), nullptr, &sourceBlob)))
+            {
+                NL_ERROR(GCoreLogger, "failed to load shader '{}'", aDesc.filePath.string());
+                return nullptr;
+            }
+            
+            const DxcBuffer sourceBuffer
+            {
+                .Ptr      = sourceBlob->GetBufferPointer(),
+                .Size     = sourceBlob->GetBufferSize(),
+                .Encoding = DXC_CP_ACP
+            };
+            
+            std::vector<LPCWSTR> args;
+            
+            // Row-major matrices
+            args.push_back(L"-Zpr");
+            
+            // Filename for error messages
+            const std::wstring fileName{ aDesc.filePath.wstring() };
+            args.push_back(fileName.c_str());
+
+            // Entry point
+            args.push_back(L"-E");
+            const std::wstring entryPoint{ ToWide(stageDesc.entryPoint) };
+            args.push_back(entryPoint.c_str());
+
+            // Target profile
+            args.push_back(L"-T");
+            args.push_back(ShaderStageToProfile(stageDesc.stage));
+
+            // Include directory - parent of source file
+            args.push_back(L"-I");
+            const std::wstring includeDir{ aDesc.filePath.parent_path().wstring() };
+            args.push_back(includeDir.c_str());
+            
+#ifndef N_SHIPPING
+            args.push_back(L"-Zi");
+            args.push_back(L"-Qembed_debug");
+            args.push_back(L"-Od");
+#else
+            args.push_back(L"-O3");
+#endif
+
+            std::vector<std::wstring> defineStrings;
+            for (const auto& [name, value] : aDesc.defines)
+            {
+                defineStrings.push_back(ToWide(name + "=" + value));
+                args.push_back(L"-D");
+                args.push_back(defineStrings.back().c_str());
+            }
+            
+            IDxcResult* result{ nullptr };
+            if (FAILED(myDxcCompiler->Compile(
+                &sourceBuffer,
+                args.data(),
+                static_cast<UINT32>(args.size()),
+                myDxcIncludeHandler,
+                IID_PPV_ARGS(&result))))
+            {
+                SafeRelease(sourceBlob);
+                NL_ERROR(GCoreLogger, "DXC compile call failed for '{}'", aDesc.filePath.string());
+                return nullptr;
+            }
+            
+            IDxcBlobUtf8* errors{ nullptr };
+            result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+            if (errors && errors->GetStringLength() > 0)
+            {
+                NL_ERROR(GCoreLogger, "shader '{}' ({}):\n{}",
+                    aDesc.filePath.string(),
+                    stageDesc.entryPoint,
+                    errors->GetStringPointer());
+            }
+            SafeRelease(errors);
+            
+            HRESULT status{};
+            result->GetStatus(&status);
+            if (FAILED(status))
+            {
+                SafeRelease(result);
+                SafeRelease(sourceBlob);
+                NL_ERROR(GCoreLogger, "shader compilation failed '{}' ({})", aDesc.filePath.string(), stageDesc.entryPoint);
+                return nullptr;
+            }
+
+            IDxcBlob* bytecodeBlob{ nullptr };
+            result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&bytecodeBlob), nullptr);
+            if (!bytecodeBlob || bytecodeBlob->GetBufferSize() == 0)
+            {
+                NL_ERROR(GCoreLogger, "empty bytecode for '{}' ({})", aDesc.filePath.string(), stageDesc.entryPoint);
+                SafeRelease(bytecodeBlob);
+                SafeRelease(result);
+                SafeRelease(sourceBlob);
+                return nullptr;
+            }
+            
+            CompiledStage compiled{};
+            compiled.stage = stageDesc.stage;
+            const auto* data{ static_cast<const uint8_t*>(bytecodeBlob->GetBufferPointer()) };
+            compiled.bytecode.assign(data, data + bytecodeBlob->GetBufferSize());
+            shader->stages.push_back(std::move(compiled));
+            
+            SafeRelease(bytecodeBlob);
+            SafeRelease(result);
+            SafeRelease(sourceBlob);
+            
+            NL_TRACE(GCoreLogger, "compiled '{}' ({})", aDesc.filePath.string(), stageDesc.entryPoint);
+        }
+        
+        NL_INFO(GCoreLogger, "shader created '{}'", aDesc.debugName);
+        return shader;
+    }
+
+    std::unique_ptr<PipelineStateObject> Device::CreateGraphicsPipeline(const GraphicsPipelineDesc& aDesc)
+    {
+        N_CORE_ASSERT(aDesc.shader != nullptr, "GraphicsPipelineDesc has no shader");
+        N_CORE_ASSERT(aDesc.shader->HasStage(RHI::ShaderStage::Vertex), "Graphics pipeline requires a vertex shader");
+        N_CORE_ASSERT(!aDesc.renderTargetFormats.empty() || aDesc.depthFormat != RHI::TextureFormat::Unknown,
+            "Pipeline must have at least one render target or a depth target");
+        
+        const CompiledStage* vs{ aDesc.shader->GetStage(ShaderStage::Vertex) };
+        const CompiledStage* ps{ aDesc.shader->GetStage(ShaderStage::Pixel)  };
+        
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
+        psoDesc.pRootSignature        = myRootSignature;
+        psoDesc.NodeMask              = 0;
+        psoDesc.SampleMask            = UINT_MAX;
+        psoDesc.PrimitiveTopologyType = ToDXGITopologyType(aDesc.topology);
+        psoDesc.RasterizerState       = BuildRasterizerDesc(aDesc.rasterizer);
+        psoDesc.BlendState            = BuildBlendDesc(aDesc.blend);
+        psoDesc.DepthStencilState     = BuildDepthStencilDesc(aDesc.depth);
+        psoDesc.SampleDesc            = { 1, 0 };
+
+        // No input layout - fully bindless, vertex data comes from buffers
+        psoDesc.InputLayout = { nullptr, 0 };
+        
+        if (vs != nullptr)
+        {
+            psoDesc.VS.pShaderBytecode = vs->GetData();
+            psoDesc.VS.BytecodeLength  = vs->GetSize();
+        }
+        
+        if (ps != nullptr)
+        {
+            psoDesc.PS.pShaderBytecode = ps->GetData();
+            psoDesc.PS.BytecodeLength  = ps->GetSize();
+        }
+
+        // Render target formats
+        psoDesc.NumRenderTargets = static_cast<UINT>(aDesc.renderTargetFormats.size());
+        for (uint32_t i{ 0 }; i < aDesc.renderTargetFormats.size(); ++i)
+        {
+            psoDesc.RTVFormats[i] = TextureFormatToDXGI(aDesc.renderTargetFormats[i]);
+        }
+
+        // Depth format
+        psoDesc.DSVFormat = aDesc.depthFormat != TextureFormat::Unknown ? TextureFormatToDXGI(aDesc.depthFormat) : DXGI_FORMAT_UNKNOWN;
+
+        auto pso{ std::make_unique<PipelineStateObject>() };
+        pso->isCompute  = false;
+        pso->debugName  = aDesc.debugName;
+
+        if (FAILED(myDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso->pipelineState))))
+        {
+            NL_ERROR(GCoreLogger, "failed to create graphics pipeline '{}'", aDesc.debugName);
+            return nullptr;
+        }
+        
+        if (!aDesc.debugName.empty())
+        {
+            const std::wstring wideName(aDesc.debugName.begin(), aDesc.debugName.end());
+            N_D3D12_SET_NAME_W(pso->pipelineState, wideName.c_str());
+        }
+        
+        NL_TRACE(GCoreLogger, "graphics pipeline created '{}'", aDesc.debugName);
+        return pso;
+    }
+
+    std::unique_ptr<PipelineStateObject> Device::CreateComputePipeline(const ComputePipelineDesc& aDesc)
+    {
+        N_CORE_ASSERT(aDesc.shader != nullptr, "ComputePipelineDesc has no shader");
+        N_CORE_ASSERT(aDesc.shader->HasStage(RHI::ShaderStage::Compute), "Compute pipeline requires a compute shader");
+        
+        const CompiledStage* cs{ aDesc.shader->GetStage(ShaderStage::Compute) };
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+        psoDesc.pRootSignature      = myRootSignature;
+        psoDesc.NodeMask            = 0;
+        psoDesc.CS.pShaderBytecode  = cs->GetData();
+        psoDesc.CS.BytecodeLength   = cs->GetSize();
+
+        auto pso{ std::make_unique<PipelineStateObject>() };
+        pso->isCompute = true;
+        pso->debugName = aDesc.debugName;
+        
+        if (FAILED(myDevice->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&pso->pipelineState))))
+        {
+            NL_ERROR(GCoreLogger, "failed to create compute pipeline '{}'", aDesc.debugName);
+            return nullptr;
+        }
+
+        if (!aDesc.debugName.empty())
+        {
+            const std::wstring wideName(aDesc.debugName.begin(), aDesc.debugName.end());
+            N_D3D12_SET_NAME_W(pso->pipelineState, wideName.c_str());
+        }
+
+        NL_TRACE(GCoreLogger, "compute pipeline created '{}'", aDesc.debugName);
+        return pso;
     }
 
     void Device::DestroyRenderSurface(std::unique_ptr<RenderSurface> aSurface)
@@ -593,6 +1025,12 @@ namespace Nalta::RHI::D3D12
     {
         N_CORE_ASSERT(aBuffer != nullptr, "Destroying null buffer");
         myDestructionQueues[myFrameIndex].buffersToDestroy.push_back(std::move(aBuffer));
+    }
+
+    void Device::DestroyPipeline(std::unique_ptr<PipelineStateObject> aPipeline)
+    {
+        N_CORE_ASSERT(aPipeline != nullptr, "Destroying null pipeline");
+        myDestructionQueues[myFrameIndex].pipelinesToDestroy.push_back(std::move(aPipeline));
     }
 
     void Device::DestroyContext(std::unique_ptr<Context> aContext)
@@ -764,6 +1202,64 @@ namespace Nalta::RHI::D3D12
         NL_TRACE(GCoreLogger, "descriptor heaps initialized");
     }
 
+    void Device::InitRootSignature()
+    {
+        // Root parameter 0 - push constants, per-draw bindless indices
+        // Root parameter 1 - per-pass/per-frame CBV, set once per pass
+        D3D12_ROOT_PARAMETER1 rootParameters[2]{};
+
+        // Push constants — 16 x uint32, visible to all shader stages
+        rootParameters[static_cast<uint32_t>(RootParameter::Constants)].ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        rootParameters[static_cast<uint32_t>(RootParameter::Constants)].ShaderVisibility         = D3D12_SHADER_VISIBILITY_ALL;
+        rootParameters[static_cast<uint32_t>(RootParameter::Constants)].Constants.ShaderRegister = 0;
+        rootParameters[static_cast<uint32_t>(RootParameter::Constants)].Constants.RegisterSpace  = 0;
+        rootParameters[static_cast<uint32_t>(RootParameter::Constants)].Constants.Num32BitValues = ROOT_CONSTANT_COUNT;
+
+        // Per-pass CBV - root descriptor, GPU virtual address set directly
+        rootParameters[static_cast<uint32_t>(RootParameter::PassCBV)].ParameterType              = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        rootParameters[static_cast<uint32_t>(RootParameter::PassCBV)].ShaderVisibility           = D3D12_SHADER_VISIBILITY_ALL;
+        rootParameters[static_cast<uint32_t>(RootParameter::PassCBV)].Descriptor.ShaderRegister  = 1;
+        rootParameters[static_cast<uint32_t>(RootParameter::PassCBV)].Descriptor.RegisterSpace   = 0;
+        rootParameters[static_cast<uint32_t>(RootParameter::PassCBV)].Descriptor.Flags           = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE;
+
+        D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc{};
+        rootSignatureDesc.Version                    = D3D_ROOT_SIGNATURE_VERSION_1_1;
+        rootSignatureDesc.Desc_1_1.NumParameters     = static_cast<UINT>(std::size(rootParameters));
+        rootSignatureDesc.Desc_1_1.pParameters       = rootParameters;
+        rootSignatureDesc.Desc_1_1.NumStaticSamplers = 0;
+        rootSignatureDesc.Desc_1_1.pStaticSamplers   = nullptr;
+        
+        // These two flags are what enable ResourceDescriptorHeap and SamplerDescriptorHeap
+        // indexing in HLSL — the core of bindless
+        rootSignatureDesc.Desc_1_1.Flags =
+            D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
+            D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
+
+        ID3DBlob* signatureBlob{ nullptr };
+        ID3DBlob* errorBlob{ nullptr };
+        
+        if (FAILED(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &signatureBlob, &errorBlob)))
+        {
+            if (errorBlob != nullptr)
+            {
+                NL_FATAL(GCoreLogger, "root signature serialization failed: {}", static_cast<const char*>(errorBlob->GetBufferPointer()));
+            }
+            NL_FATAL(GCoreLogger, "failed to serialize root signature");
+        }
+
+        NL_DX_VERIFY(myDevice->CreateRootSignature(
+            0,
+            signatureBlob->GetBufferPointer(),
+            signatureBlob->GetBufferSize(),
+            IID_PPV_ARGS(&myRootSignature)));
+
+        SafeRelease(signatureBlob);
+        SafeRelease(errorBlob);
+
+        N_D3D12_SET_NAME(myRootSignature, "Global Bindless Root Signature");
+        NL_TRACE(GCoreLogger, "global root signature initialized [{} root constants]", ROOT_CONSTANT_COUNT);
+    }
+
     void Device::CheckFeatureSupport() const
     {
         // Shader Model - need 6.6 for ResourceDescriptorHeap indexing
@@ -854,7 +1350,12 @@ namespace Nalta::RHI::D3D12
 
             SafeRelease(buffer->resource);
         }
+        for (auto& pipeline : queue.pipelinesToDestroy)
+        {
+            SafeRelease(pipeline->pipelineState);
+        }
         
+        queue.pipelinesToDestroy.clear();
         queue.texturesToDestroy.clear();
         queue.buffersToDestroy.clear();
         queue.contextsToDestroy.clear(); // unique_ptr destructor handles cleanup
