@@ -37,7 +37,7 @@ namespace Nalta::RHI
     
     struct TextureMipData
     {
-        std::span<const std::byte> data{};
+        std::vector<std::byte> data{};
         uint32_t rowPitch{ 0 };
         uint32_t slicePitch{ 0 };
     };

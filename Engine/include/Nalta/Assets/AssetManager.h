@@ -43,6 +43,8 @@ namespace Nalta
         // Get loaded asset data - returns fallback if not ready yet
         [[nodiscard]] const Mesh* GetMesh(MeshKey aKey) const;
         [[nodiscard]] const Texture* GetTexture(TextureKey aKey) const;
+        
+        void OnFileChanged(const std::filesystem::path& aPath);
 
     private:
         enum class AssetType : uint8_t
@@ -90,7 +92,6 @@ namespace Nalta
         bool LoadTextureFromCooked(const LoadRequest& aRequest, const std::filesystem::path& aCookedPath);
 
         // Hot reload
-        void OnFileChanged(const std::filesystem::path& aPath);
         void DebounceReload(const std::string& aSourcePath);
         void QueueReload(const std::string& aSourcePath);
 

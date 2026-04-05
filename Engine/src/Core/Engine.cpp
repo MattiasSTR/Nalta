@@ -87,9 +87,12 @@ namespace Nalta
 			});
 			
 #ifndef N_SHIPPING
-			myFileWatcher->SetOnChangedCallback([this](const std::filesystem::path&)
+			myFileWatcher->SetOnChangedCallback([this](const std::filesystem::path& aPath)
 			{
-				//OnFileChanged(aPath);
+				if (myAssetManager)
+				{
+					myAssetManager->OnFileChanged(aPath);
+				}
 			});
 #endif
 

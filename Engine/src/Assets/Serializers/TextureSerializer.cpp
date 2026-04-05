@@ -12,7 +12,7 @@ namespace Nalta
         aWriter.Write(aRawData.width);
         aWriter.Write(aRawData.height);
         aWriter.Write(aRawData.mipLevels);
-        //aWriter.Write(static_cast<uint8_t>(aRawData.format));
+        aWriter.Write(static_cast<uint8_t>(aRawData.textureFormat));
 
         aWriter.Write(static_cast<uint32_t>(aRawData.mips.size()));
         for (const auto& mip : aRawData.mips)
@@ -34,7 +34,7 @@ namespace Nalta
         data.width = aReader.Read<uint32_t>();
         data.height = aReader.Read<uint32_t>();
         data.mipLevels = aReader.Read<uint32_t>();
-        //data.format = static_cast<Graphics::TextureFormat>(aReader.Read<uint8_t>());
+        data.textureFormat = static_cast<RHI::TextureFormat>(aReader.Read<uint8_t>());
 
         const uint32_t mipCount{ aReader.Read<uint32_t>() };
         data.mips.resize(mipCount);

@@ -34,7 +34,10 @@ namespace Nalta
             RHI::TextureMipData mipData{};
             mipData.rowPitch = mip.rowPitch;
             mipData.slicePitch = mip.slicePitch;
-            mipData.data = std::as_bytes(std::span{ mip.pixels });
+            
+            const auto bytes{ std::as_bytes(std::span{ mip.pixels }) };
+            mipData.data.assign(bytes.begin(), bytes.end());
+            
             upload.mips.push_back(mipData);
         }
 
