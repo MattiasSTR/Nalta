@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Nalta/Platform/IPlatformSystem.h"
+#include "Nalta/Util/SlotMap.h"
 
 #include <memory>
 #include <unordered_map>
@@ -22,10 +23,10 @@ namespace Nalta
         bool PollEvents() override;
         void TickInput() override;
         
-        [[nodiscard]] WindowHandle CreatePlatformWindow(const WindowDesc& aDesc) override;
-        void DestroyWindow(WindowHandle aHandle) override;
+        [[nodiscard]] WindowKey CreatePlatformWindow(const WindowDesc& aDesc) override;
+        [[nodiscard]] IWindow* GetWindow(WindowKey aKey) override;
+        void DestroyWindow(WindowKey aKey) override;
         
-        [[nodiscard]] WindowHandle GetMainWindow() const override;
         [[nodiscard]] InputSystem& GetInputSystem() override;
         
         void SetOnWindowDestroyedCallback(OnWindowDestroyedCallback aCallback) override;
@@ -36,8 +37,9 @@ namespace Nalta
         [[nodiscard]] uint64_t GetSystemMemoryBytes() const override;
         
     private:
+
         std::unique_ptr<Impl> myImpl;
 
-        std::vector<std::unique_ptr<Win32Window>> myWindows;
+        SlotMap<WindowKey, std::unique_ptr<Win32Window>> myWindows;
     };
 }

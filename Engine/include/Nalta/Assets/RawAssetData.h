@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Nalta/Assets/AssetPath.h"
+#include "Nalta/RHI/Types/RHIEnums.h"
 
 #include <vector>
 #include <string>
@@ -63,38 +64,6 @@ namespace Nalta
         }
     };
     
-    struct RawShaderStageData
-    {
-        //Graphics::ShaderStage stage{};
-        std::vector<uint8_t> bytecode;
-        std::vector<uint8_t> reflection;
-    };
-    
-    struct RawPipelineData : RawAssetData
-    {
-        // Shader source - compiled during import
-        std::string shaderPath;
-        std::string vertexEntry{ "VSMain" };
-        std::string pixelEntry { "PSMain" };
-        std::unordered_map<std::string, std::string> defines;
-
-        // Compiled bytecode per stage — filled by importer
-        std::vector<RawShaderStageData> stages;
-
-        // Pipeline state
-        std::string cullMode{ "Back" };
-        std::string fillMode{ "Solid" };
-        bool depthEnabled{ false };
-        bool depthWrite  { false };
-        std::string depthCompare{ "Greater" };
-        bool blendEnabled{ false };
-
-        [[nodiscard]] bool IsValid() const override
-        {
-            return !stages.empty();
-        }
-    };
-    
     struct RawTextureMip
     {
         uint32_t rowPitch{ 0 };
@@ -108,7 +77,7 @@ namespace Nalta
         uint32_t width{ 0 };
         uint32_t height{ 0 };
         uint32_t mipLevels{ 1 };
-        //Graphics::TextureFormat format{ Graphics::TextureFormat::RGBA8_UNORM };
+        RHI::TextureFormat textureFormat{ RHI::TextureFormat::BC1_SRGB };
         std::vector<RawTextureMip> mips;
 
         [[nodiscard]] bool IsValid() const override

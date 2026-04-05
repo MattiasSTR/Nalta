@@ -1,12 +1,11 @@
 ﻿#pragma once
-#include "WindowHandle.h"
+#include "IWindow.h"
 
 namespace Nalta
 {
     class InputSystem;
-    struct WindowDesc;
     
-    using OnWindowDestroyedCallback = std::function<void(WindowHandle)>;
+    using OnWindowDestroyedCallback = std::function<void(WindowKey)>;
 
     class IPlatformSystem
     {
@@ -18,10 +17,9 @@ namespace Nalta
         virtual bool PollEvents() = 0; // Returns false if wants to close main window
         virtual void TickInput() = 0;
 
-        [[nodiscard]] virtual WindowHandle CreatePlatformWindow(const WindowDesc& aDesc) = 0;
-        virtual void DestroyWindow(WindowHandle aWindow) = 0;
-        
-        [[nodiscard]] virtual WindowHandle GetMainWindow() const = 0;
+        [[nodiscard]] virtual WindowKey CreatePlatformWindow(const WindowDesc& aDesc) = 0;
+        [[nodiscard]] virtual IWindow* GetWindow(WindowKey aKey) = 0;
+        virtual void DestroyWindow(WindowKey aWindow) = 0;
         
         [[nodiscard]] virtual InputSystem& GetInputSystem() = 0;
         

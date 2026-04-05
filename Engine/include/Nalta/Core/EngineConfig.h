@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "Nalta/Core/IGame.h"
 #include "Nalta/Core/Logger.h"
-#include "Nalta/Platform/WindowDesc.h"
+#include "Nalta/Platform/IWindow.h"
 
 #include <functional>
 #include <optional>

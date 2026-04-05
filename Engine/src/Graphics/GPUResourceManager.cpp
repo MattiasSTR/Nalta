@@ -73,6 +73,16 @@ namespace Nalta::Graphics
         return myTextures.Insert(std::move(texture));
     }
 
+    bool GPUResourceManager::IsTextureReady(const TextureKey aKey) const
+    {
+        const auto* slot{ myTextures.Get(aKey) };
+        if (slot == nullptr)
+        {
+            return false;
+        }
+        return (*slot)->isReady;
+    }
+
     void GPUResourceManager::DestroyTexture(const TextureKey aKey)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
@@ -112,6 +122,16 @@ namespace Nalta::Graphics
         return myBuffers.Insert(std::move(buffer));
     }
 
+    bool GPUResourceManager::IsBufferReady(const BufferKey aKey) const
+    {
+        const auto* slot{ myBuffers.Get(aKey) };
+        if (slot == nullptr)
+        {
+            return false;
+        }
+        return (*slot)->isReady;
+    }
+
     void GPUResourceManager::DestroyBuffer(const BufferKey aKey)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
@@ -128,14 +148,16 @@ namespace Nalta::Graphics
         return myBuffers.Get(aKey)->get();
     }
 
-    RenderSurfaceKey GPUResourceManager::CreateRenderSurface(const RHI::RenderSurfaceDesc& aDesc)
+    RenderSurfaceKey GPUResourceManager::CreateRenderSurface(const RHI::RenderSurfaceDesc& aDesc, const WindowKey aKey)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
 
         std::unique_ptr<RHI::RenderSurface> surface{ myDevice->CreateRenderSurface(aDesc) };
         N_CORE_ASSERT(surface != nullptr, "Failed to create render surface");
 
-        return myRenderSurfaces.Insert(std::move(surface));
+        const RenderSurfaceKey key{ myRenderSurfaces.Insert(std::move(surface)) };
+        myWindowSurfaces[aKey] = key;
+        return key;
     }
 
     void GPUResourceManager::DestroyRenderSurface(const RenderSurfaceKey aKey)
@@ -143,8 +165,28 @@ namespace Nalta::Graphics
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
         N_CORE_ASSERT(myRenderSurfaces.Contains(aKey), "RenderSurfaceKey is not valid");
 
+        // Remove window mapping if one exists for this key
+        for (auto it{ myWindowSurfaces.begin() }; it != myWindowSurfaces.end(); ++it)
+        {
+            if (it->second == aKey)
+            {
+                myWindowSurfaces.erase(it);
+                break;
+            }
+        }
+
         myDevice->DestroyRenderSurface(std::move(*myRenderSurfaces.Get(aKey)));
         myRenderSurfaces.Remove(aKey);
+    }
+
+    void GPUResourceManager::DestroyRenderSurface(const WindowKey aKey)
+    {
+        N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
+
+        const auto it{ myWindowSurfaces.find(aKey) };
+        N_CORE_ASSERT(it != myWindowSurfaces.end(), "No render surface found for window handle");
+
+        DestroyRenderSurface(it->second);
     }
 
     RHI::RenderSurface* GPUResourceManager::GetRenderSurface(const RenderSurfaceKey aKey)

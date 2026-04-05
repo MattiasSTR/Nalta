@@ -9,7 +9,6 @@ namespace Nalta
     struct MeshDrawEntry
     {
         MeshKey mesh;
-        PipelineKey pipeline;
         TextureKey albedo;
         float4x4 transform;
     };

@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 #include <string>
+#include "Nalta/Util/SlotKey.h"
 
 namespace Nalta
 {
@@ -10,6 +11,18 @@ namespace Nalta
         WindowedFullscreen,
         Fullscreen
     };
+    
+    struct WindowDesc
+    {
+        uint32_t width          { 1280 };
+        uint32_t height         { 720 };
+        std::string caption     { "Nalta" };
+        WindowMode windowMode   { WindowMode::Windowed };
+        bool resizable          { true };
+        bool isMainWindow       { false };
+    };
+    
+    struct WindowKey : SlotKey { using SlotKey::SlotKey; };
     
     class IWindow
     {

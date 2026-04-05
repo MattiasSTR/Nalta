@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <string>
 #include "Nalta/Platform/IWindow.h"
-#include "Nalta/Platform/WindowDesc.h"
 
 namespace Nalta
 {

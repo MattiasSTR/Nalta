@@ -98,7 +98,7 @@ namespace Nalta::RHI::D3D12
 
     void UploadContext::ProcessUploads()
     {
-        if (myPendingTextureUploads.empty())
+        if (myPendingTextureUploads.empty() && myPendingBufferUploads.empty())
         {
             return;
         }

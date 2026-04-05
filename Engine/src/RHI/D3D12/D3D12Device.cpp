@@ -457,6 +457,28 @@ namespace Nalta::RHI::D3D12
         }
     }
 
+    void Device::FlushUploads()
+    {
+        for (auto& uploadCtx : myUploadContexts)
+        {
+            uploadCtx->ProcessUploads();
+
+            if (uploadCtx->HasPendingWork())
+            {
+                ID3D12CommandList* lists[]{ uploadCtx->GetCommandList() };
+                GetQueue(QueueType::Copy).ExecuteCommandLists(lists);
+            }
+        }
+
+        GetQueue(QueueType::Copy).WaitForIdle();
+
+        for (auto& uploadCtx : myUploadContexts)
+        {
+            uploadCtx->ResolveUploads();
+            uploadCtx->Reset();
+        }
+    }
+
     std::unique_ptr<GraphicsContext> Device::CreateGraphicsContext()
     {
         return std::make_unique<GraphicsContext>(*this);
@@ -669,7 +691,7 @@ namespace Nalta::RHI::D3D12
             ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
             : D3D12_RESOURCE_FLAG_NONE;
         
-        D3D12_RESOURCE_STATES initialState{ D3D12_RESOURCE_STATE_COPY_DEST };
+        D3D12_RESOURCE_STATES initialState{ D3D12_RESOURCE_STATE_COMMON };
         if (isUpload)   initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
         if (isReadback) initialState = D3D12_RESOURCE_STATE_COPY_DEST;
         

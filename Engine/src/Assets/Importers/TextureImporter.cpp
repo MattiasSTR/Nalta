@@ -8,53 +8,53 @@ namespace Nalta
 {
     namespace
     {
-        // Graphics::TextureFormat FromDXGIFormat(const DXGI_FORMAT aFormat)
-        // {
-        //     switch (aFormat)
-        //     {
-        //         case DXGI_FORMAT_R8G8B8A8_UNORM:      return Graphics::TextureFormat::RGBA8_UNORM;
-        //         case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return Graphics::TextureFormat::RGBA8_SRGB;
-        //         case DXGI_FORMAT_BC1_UNORM:            return Graphics::TextureFormat::BC1_UNORM;
-        //         case DXGI_FORMAT_BC1_UNORM_SRGB:       return Graphics::TextureFormat::BC1_SRGB;
-        //         case DXGI_FORMAT_BC3_UNORM:            return Graphics::TextureFormat::BC3_UNORM;
-        //         case DXGI_FORMAT_BC3_UNORM_SRGB:       return Graphics::TextureFormat::BC3_SRGB;
-        //         case DXGI_FORMAT_BC4_UNORM:            return Graphics::TextureFormat::BC4_UNORM;
-        //         case DXGI_FORMAT_BC5_UNORM:            return Graphics::TextureFormat::BC5_UNORM;
-        //         case DXGI_FORMAT_BC7_UNORM:            return Graphics::TextureFormat::BC7_UNORM;
-        //         case DXGI_FORMAT_BC7_UNORM_SRGB:       return Graphics::TextureFormat::BC7_SRGB;
-        //         case DXGI_FORMAT_BC6H_UF16:            return Graphics::TextureFormat::BC6H_UF16;
-        //         default:                               return Graphics::TextureFormat::RGBA8_UNORM;
-        //     }
-        // }
-        //
-        // DXGI_FORMAT ToCompressDXGI(const Graphics::TextureFormat aFormat)
-        // {
-        //     switch (aFormat)
-        //     {
-        //         case Graphics::TextureFormat::BC1_UNORM:   return DXGI_FORMAT_BC1_UNORM;
-        //         case Graphics::TextureFormat::BC1_SRGB:    return DXGI_FORMAT_BC1_UNORM_SRGB;
-        //         case Graphics::TextureFormat::BC3_UNORM:   return DXGI_FORMAT_BC3_UNORM;
-        //         case Graphics::TextureFormat::BC3_SRGB:    return DXGI_FORMAT_BC3_UNORM_SRGB;
-        //         case Graphics::TextureFormat::BC4_UNORM:   return DXGI_FORMAT_BC4_UNORM;
-        //         case Graphics::TextureFormat::BC5_UNORM:   return DXGI_FORMAT_BC5_UNORM;
-        //         case Graphics::TextureFormat::BC7_UNORM:   return DXGI_FORMAT_BC7_UNORM;
-        //         case Graphics::TextureFormat::BC7_SRGB:    return DXGI_FORMAT_BC7_UNORM_SRGB;
-        //         case Graphics::TextureFormat::BC6H_UF16:   return DXGI_FORMAT_BC6H_UF16;
-        //         case Graphics::TextureFormat::RGBA8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM;
-        //         case Graphics::TextureFormat::RGBA8_SRGB:  return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-        //         default:                                   return DXGI_FORMAT_BC1_UNORM;
-        //     }
-        // }
-        //
-        // bool IsUncompressed(const Graphics::TextureFormat aFormat)
-        // {
-        //     return aFormat == Graphics::TextureFormat::RGBA8_UNORM || aFormat == Graphics::TextureFormat::RGBA8_SRGB;
-        // }
-        //
-        // bool IsHDR(const Graphics::TextureFormat aFormat)
-        // {
-        //     return aFormat == Graphics::TextureFormat::BC6H_UF16;
-        // }
+        RHI::TextureFormat FromDXGIFormat(const DXGI_FORMAT aFormat)
+        {
+            switch (aFormat)
+            {
+                case DXGI_FORMAT_R8G8B8A8_UNORM:       return RHI::TextureFormat::RGBA8_UNORM;
+                case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:  return RHI::TextureFormat::RGBA8_SRGB;
+                case DXGI_FORMAT_BC1_UNORM:            return RHI::TextureFormat::BC1_UNORM;
+                case DXGI_FORMAT_BC1_UNORM_SRGB:       return RHI::TextureFormat::BC1_SRGB;
+                case DXGI_FORMAT_BC3_UNORM:            return RHI::TextureFormat::BC3_UNORM;
+                case DXGI_FORMAT_BC3_UNORM_SRGB:       return RHI::TextureFormat::BC3_SRGB;
+                case DXGI_FORMAT_BC4_UNORM:            return RHI::TextureFormat::BC4_UNORM;
+                case DXGI_FORMAT_BC5_UNORM:            return RHI::TextureFormat::BC5_UNORM;
+                case DXGI_FORMAT_BC7_UNORM:            return RHI::TextureFormat::BC7_UNORM;
+                case DXGI_FORMAT_BC7_UNORM_SRGB:       return RHI::TextureFormat::BC7_SRGB;
+                case DXGI_FORMAT_BC6H_UF16:            return RHI::TextureFormat::BC6H_UF16;
+                default:                               return RHI::TextureFormat::RGBA8_UNORM;
+            }
+        }
+        
+        DXGI_FORMAT ToCompressDXGI(const RHI::TextureFormat aFormat)
+        {
+            switch (aFormat)
+            {
+                case RHI::TextureFormat::BC1_UNORM:   return DXGI_FORMAT_BC1_UNORM;
+                case RHI::TextureFormat::BC1_SRGB:    return DXGI_FORMAT_BC1_UNORM_SRGB;
+                case RHI::TextureFormat::BC3_UNORM:   return DXGI_FORMAT_BC3_UNORM;
+                case RHI::TextureFormat::BC3_SRGB:    return DXGI_FORMAT_BC3_UNORM_SRGB;
+                case RHI::TextureFormat::BC4_UNORM:   return DXGI_FORMAT_BC4_UNORM;
+                case RHI::TextureFormat::BC5_UNORM:   return DXGI_FORMAT_BC5_UNORM;
+                case RHI::TextureFormat::BC7_UNORM:   return DXGI_FORMAT_BC7_UNORM;
+                case RHI::TextureFormat::BC7_SRGB:    return DXGI_FORMAT_BC7_UNORM_SRGB;
+                case RHI::TextureFormat::BC6H_UF16:   return DXGI_FORMAT_BC6H_UF16;
+                case RHI::TextureFormat::RGBA8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM;
+                case RHI::TextureFormat::RGBA8_SRGB:  return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+                default:                                   return DXGI_FORMAT_BC1_UNORM;
+            }
+        }
+        
+        bool IsUncompressed(const RHI::TextureFormat aFormat)
+        {
+            return aFormat == RHI::TextureFormat::RGBA8_UNORM || aFormat == RHI::TextureFormat::RGBA8_SRGB;
+        }
+        
+        bool IsHDR(const RHI::TextureFormat aFormat)
+        {
+            return aFormat == RHI::TextureFormat::BC6H_UF16;
+        }
         
         struct COMInitializer
         {
@@ -82,15 +82,13 @@ namespace Nalta
         return "TextureImporter(" + myExtension + ")";
     }
 
-    std::unique_ptr<RawAssetData> TextureImporter::Import(const AssetPath&) const
+    std::unique_ptr<RawAssetData> TextureImporter::Import(const AssetPath& aPath) const
     {
-        return {};
-        //return ImportWithSettings(aPath, Graphics::TextureFormat::BC1_UNORM, true);
+        return ImportWithSettings(aPath, RHI::TextureFormat::BC1_UNORM, true);
     }
     
-    std::unique_ptr<RawAssetData> TextureImporter::ImportWithSettings(const AssetPath& aPath, Graphics::TextureFormat aTargetFormat, bool aGenerateMips) const
+    std::unique_ptr<RawAssetData> TextureImporter::ImportWithSettings(const AssetPath& aPath, RHI::TextureFormat aTargetFormat, bool aGenerateMips) const
     {
-        aTargetFormat;
         EnsureCOMInitialized();
         NL_SCOPE_CORE("TextureImporter");
         NL_TRACE(GCoreLogger, "importing '{}'", aPath.GetPath());
@@ -114,7 +112,7 @@ namespace Nalta
             return nullptr;
         }
         
-        const DXGI_FORMAT convertTarget{ /*IsHDR(aTargetFormat) ? DXGI_FORMAT_R32G32B32A32_FLOAT :*/ DXGI_FORMAT_R8G8B8A8_UNORM };
+        const DXGI_FORMAT convertTarget{ IsHDR(aTargetFormat) ? DXGI_FORMAT_R32G32B32A32_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM };
         
         const auto& meta{ image.GetMetadata() };
         if (meta.format != convertTarget)
@@ -147,31 +145,31 @@ namespace Nalta
             mipped = std::move(image);
         }
         
-        //DirectX::TEX_COMPRESS_FLAGS compressFlags{ DirectX::TEX_COMPRESS_DEFAULT | DirectX::TEX_COMPRESS_PARALLEL };
-// #ifndef N_SHIPPING
-//         if (ToCompressDXGI(aTargetFormat) == DXGI_FORMAT_BC7_UNORM || ToCompressDXGI(aTargetFormat) == DXGI_FORMAT_BC7_UNORM_SRGB)
-//         {
-//             compressFlags |= DirectX::TEX_COMPRESS_BC7_QUICK;
-//         }
-// #endif
+        DirectX::TEX_COMPRESS_FLAGS compressFlags{ DirectX::TEX_COMPRESS_DEFAULT | DirectX::TEX_COMPRESS_PARALLEL };
+ #ifndef N_SHIPPING
+         if (ToCompressDXGI(aTargetFormat) == DXGI_FORMAT_BC7_UNORM || ToCompressDXGI(aTargetFormat) == DXGI_FORMAT_BC7_UNORM_SRGB)
+         {
+             compressFlags |= DirectX::TEX_COMPRESS_BC7_QUICK;
+         }
+ #endif
         
         DirectX::ScratchImage compressed;
-        // if (!IsUncompressed(aTargetFormat))
-        // {
-        //     if (FAILED(DirectX::Compress(
-        //         mipped.GetImages(), mipped.GetImageCount(), mipped.GetMetadata(),
-        //         ToCompressDXGI(aTargetFormat),
-        //         compressFlags,
-        //         DirectX::TEX_THRESHOLD_DEFAULT, compressed)))
-        //     {
-        //         NL_WARN(GCoreLogger, "compression failed - falling back to RGBA8");
-        //         compressed = std::move(mipped);
-        //     }
-        // }
-        // else
-        // {
-        //     compressed = std::move(mipped);
-        // }
+        if (!IsUncompressed(aTargetFormat))
+        {
+            if (FAILED(DirectX::Compress(
+                mipped.GetImages(), mipped.GetImageCount(), mipped.GetMetadata(),
+                ToCompressDXGI(aTargetFormat),
+                compressFlags,
+                DirectX::TEX_THRESHOLD_DEFAULT, compressed)))
+            {
+                NL_WARN(GCoreLogger, "compression failed - falling back to RGBA8");
+                compressed = std::move(mipped);
+            }
+        }
+        else
+        {
+            compressed = std::move(mipped);
+        }
         
         const auto& finalMeta{ compressed.GetMetadata() };
         auto result{ std::make_unique<RawTextureData>() };
@@ -179,7 +177,7 @@ namespace Nalta
         result->width      = static_cast<uint32_t>(finalMeta.width);
         result->height     = static_cast<uint32_t>(finalMeta.height);
         result->mipLevels  = static_cast<uint32_t>(finalMeta.mipLevels);
-        //result->format     = FromDXGIFormat(finalMeta.format);
+        result->textureFormat = FromDXGIFormat(finalMeta.format);
 
         for (size_t mip{ 0 }; mip < finalMeta.mipLevels; ++mip)
         {

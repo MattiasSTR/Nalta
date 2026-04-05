@@ -4,7 +4,7 @@
 #include "TripleBuffer.h"
 #include "Nalta/Core/IGame.h"
 #include "Nalta/Graphics/RenderFrame.h"
-#include "Nalta/Platform/WindowHandle.h"
+#include "Nalta/Platform/IWindow.h"
 #include "Nalta/Input/PlayerInput.h"
 
 #include <atomic>
@@ -19,6 +19,7 @@ namespace Nalta
 		class GPUResourceManager;
 	}
 	
+	class IFileWatcher;
 	class AssetManager;
 	class Logger;
 	class IPlatformSystem;
@@ -49,11 +50,12 @@ namespace Nalta
 		EngineConfig myConfig;
 		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
+		std::unique_ptr<IFileWatcher> myFileWatcher;
 		std::unique_ptr<Graphics::GPUResourceManager> myGPUResourceManager;
 		std::unique_ptr<AssetManager> myAssetManager;
 		std::unique_ptr<Graphics::Renderer> myRenderer;
 		
-		WindowHandle myMainWindow;
+		WindowKey myMainWindowKey;
 		Graphics::RenderSurfaceKey myMainSurfaceKey;
 		
 		std::unique_ptr<IGame> myGame;

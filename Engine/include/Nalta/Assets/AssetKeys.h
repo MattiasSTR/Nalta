@@ -5,5 +5,4 @@ namespace Nalta
 {
     struct MeshKey : SlotKey { using SlotKey::SlotKey; };
     struct TextureKey : SlotKey{ using SlotKey::SlotKey; };
-    struct PipelineKey : SlotKey { using SlotKey::SlotKey; };
 }

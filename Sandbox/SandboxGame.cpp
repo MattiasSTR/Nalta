@@ -20,9 +20,8 @@ struct TransformData
 
 void SandboxGame::Initialize([[maybe_unused]] const InitContext& aContext)
 {
-    // myMeshKey = aContext.assetManager->RequestMesh(AssetPath(Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
-    // myPipelineKey = aContext.assetManager->RequestPipeline(AssetPath(Paths::EngineAssetDir() / "Pipelines" / "Mesh.pipeline"));
-    // myTextureKey = aContext.assetManager->RequestTexture(AssetPath(Paths::EngineAssetDir() / "Textures" / "test.texture"));
+    myMeshKey = aContext.assetManager->RequestMesh(AssetPath(Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
+    myTextureKey = aContext.assetManager->RequestTexture(AssetPath(Paths::EngineAssetDir() / "Textures" / "test.texture"));
 }
 
 void SandboxGame::Shutdown()

@@ -3,20 +3,15 @@
 #include "Nalta/Assets/Importers/ObjImporter.h"
 #include "Nalta/Assets/Importers/TextureImporter.h"
 #include "Nalta/Assets/Importers/DDSImporter.h"
-#include "Nalta/Assets/Importers/PipelineImporter.h"
 #include "Nalta/Assets/Importers/TextureDescriptorImporter.h"
 #include "Nalta/Assets/Serializers/MeshSerializer.h"
 #include "Nalta/Assets/Serializers/TextureSerializer.h"
-#include "Nalta/Assets/Serializers/PipelineSerializer.h"
 #include "Nalta/Assets/Processors/MeshProcessor.h"
 #include "Nalta/Assets/Processors/TextureProcessor.h"
-#include "Nalta/Assets/Processors/PipelineProcessor.h"
 #include "Nalta/Assets/RawAssetData.h"
 #include "Nalta/Core/BinaryIO.h"
 #include "Nalta/Core/Paths.h"
-#include "Nalta/Graphics/GraphicsSystem.h"
-// #include "Nalta/Graphics/Shader/ShaderCompiler.h"
-// #include "Nalta/Graphics/Shader/ShaderDesc.h"
+#include "Nalta/Graphics/GPUResourceManager.h"
 #include "Nalta/Platform/IPlatformSystem.h"
 #include "Nalta/Platform/PlatformFactory.h"
 
@@ -26,12 +21,14 @@ namespace Nalta
     AssetManager::AssetManager() = default;
     AssetManager::~AssetManager() = default;
 
-    void AssetManager::Initialize(GraphicsSystem* aGraphicsSystem, IPlatformSystem* aPlatformSystem)
+    void AssetManager::Initialize(Graphics::GPUResourceManager* aGraphicsSystem, IFileWatcher* aFileWatcher, IPlatformSystem* aPlatformSystem)
     {
         NL_SCOPE_CORE("AssetManager");
         N_CORE_ASSERT(aGraphicsSystem, "AssetManager: null graphics system");
+        N_CORE_ASSERT(aFileWatcher, "AssetManager: null file watcher");
 
-        myGraphicsSystem = aGraphicsSystem;
+        myGPUResourceManager = aGraphicsSystem;
+        myFileWatcher = aFileWatcher;
         myStop = false;
 
         myAssetThread = std::thread([this, aPlatformSystem]()
@@ -45,18 +42,7 @@ namespace Nalta
 
         myRegistry.Initialize(Paths::CookedDir() / "AssetRegistry.json");
         
-#ifndef N_SHIPPING
-        myFileWatcher = CreateFileWatcher();
-        myFileWatcher->Initialize();
-        myFileWatcher->SetOnChangedCallback([this](const std::filesystem::path& aPath)
-        {
-            OnFileChanged(aPath);
-        });
-        myFileWatcher->Watch(Paths::EngineAssetDir());
-#endif
-        
         myImporterRegistry.Register(std::make_unique<ObjImporter>());
-        //myImporterRegistry.Register(std::make_unique<PipelineImporter>(myGraphicsSystem->GetShaderCompiler()));
         myImporterRegistry.Register(std::make_unique<TextureDescriptorImporter>());
         myImporterRegistry.Register(std::make_unique<TextureImporter>(".png"));
         myImporterRegistry.Register(std::make_unique<TextureImporter>(".jpg"));
@@ -81,33 +67,39 @@ namespace Nalta
             myAssetThread.join();
         }
         
-#ifndef N_SHIPPING
-        if (myFileWatcher)
         {
-            myFileWatcher->Shutdown();
-            myFileWatcher.reset();
+            std::lock_guard lock{ myPendingUploadsMutex };
+            myPendingMeshUploads.clear();
         }
-#endif
-        
-        // if (myGraphicsSystem != nullptr)
-        // {
-        //     myGraphicsSystem->WaitForGPU();
-        // }
-        
+
         {
             std::lock_guard lock{ myMeshMutex };
+            myMeshes.ForEach([this](const Mesh& aMesh)
+            {
+                if (aMesh.vertexBuffer.IsValid())
+                {
+                    myGPUResourceManager->DestroyBuffer(aMesh.vertexBuffer);
+                }
+                if (aMesh.indexBuffer.IsValid())
+                {
+                    myGPUResourceManager->DestroyBuffer(aMesh.indexBuffer);
+                }
+            });
             myMeshes = {};
             myMeshIndex.clear();
         }
+        
         {
             std::lock_guard lock{ myTextureMutex };
+            myTextures.ForEach([this](const Texture& aTex)
+            {
+                if (aTex.gpuTexture.IsValid())
+                {
+                    myGPUResourceManager->DestroyTexture(aTex.gpuTexture);
+                }
+            });
             myTextures = {};
             myTextureIndex.clear();
-        }
-        {
-            std::lock_guard lock{ myPipelineMutex };
-            myPipelines = {};
-            myPipelineIndex.clear();
         }
 
         myRegistry.Shutdown();
@@ -122,11 +114,6 @@ namespace Nalta
     TextureKey AssetManager::RequestTexture(const AssetPath& aPath)
     {
         return RequestTextureInternal(aPath, false);
-    }
-
-    PipelineKey AssetManager::RequestPipeline(const AssetPath& aPath)
-    {
-        return RequestPipelineInternal(aPath, false);
     }
 
     const Mesh* AssetManager::GetMesh(const MeshKey aKey) const
@@ -155,21 +142,6 @@ namespace Nalta
             }
         }
         return &myFallbackTexture;
-    }
-
-    const Pipeline* AssetManager::GetPipeline(const PipelineKey aKey) const
-    {
-        if (aKey.IsValid())
-        {
-            std::lock_guard lock{ myPipelineMutex };
-            const Pipeline* pipeline{ myPipelines.Get(aKey) };
-            if ((pipeline != nullptr) && pipeline->state == AssetState::Ready)
-            {
-                return pipeline;
-            }
-        }
-        //return &myFallbackPipeline;
-        return nullptr;
     }
 
     MeshKey AssetManager::RequestMeshInternal(const AssetPath& aPath, const bool aIsReload)
@@ -244,42 +216,6 @@ namespace Nalta
         return key;
     }
 
-    PipelineKey AssetManager::RequestPipelineInternal(const AssetPath& aPath, const bool aIsReload)
-    {
-        N_CORE_ASSERT(!aPath.IsEmpty(), "empty asset path");
-        const uint64_t hash{ aPath.GetHash() };
-
-        PipelineKey key;
-        {
-            std::lock_guard lock{ myPipelineMutex };
-
-            if (const auto it{ myPipelineIndex.find(hash) }; it != myPipelineIndex.end())
-            {
-                if (!aIsReload)
-                {
-                    return it->second;
-                }
-
-                key = it->second;
-                myPipelines.Get(key)->state = AssetState::Requested;
-            }
-            else
-            {
-                key = myPipelines.Insert(Pipeline{ .state = AssetState::Requested });
-                myPipelineIndex[hash] = key;
-            }
-        }
-
-        {
-            std::lock_guard lock{ myQueueMutex };
-            myLoadQueue.push({ hash, aPath, AssetType::Pipeline, aIsReload });
-        }
-        myQueueCV.notify_one();
-
-        NL_TRACE(GCoreLogger, "requested mesh '{}'", aPath.GetPath());
-        return key;
-    }
-
     MeshKey AssetManager::GetMeshKey(const uint64_t aHash) const
     {
         const auto it{ myMeshIndex.find(aHash) };
@@ -294,13 +230,6 @@ namespace Nalta
         return it->second;
     }
 
-    PipelineKey AssetManager::GetPipelineKey(const uint64_t aHash) const
-    {
-        const auto it{ myPipelineIndex.find(aHash) };
-        N_CORE_ASSERT(it != myPipelineIndex.end(), "no pipeline key for hash - asset was never requested");
-        return it->second;
-    }
-
     void AssetManager::AssetThreadLoop()
     {
         NL_SCOPE_CORE("AssetThread");
@@ -308,6 +237,8 @@ namespace Nalta
         
         while (!myStop)
         {
+            PollPendingUploads();
+            
             // Check delayed reloads
             {
                 std::lock_guard lock{ myDelayedReloadsMutex };
@@ -359,43 +290,102 @@ namespace Nalta
 
         switch (aRequest.type)
         {
-            case AssetType::Mesh: success = LoadMesh(aRequest); break;
+            case AssetType::Mesh:    success = LoadMesh(aRequest);    break;
             case AssetType::Texture: success = LoadTexture(aRequest); break;
-            case AssetType::Pipeline: success = LoadPipeline(aRequest); break;
-        }
-        
-        // Flush only when the queue is drained - batches all pending uploads together
-        // TODO: MAKE THIS SMARTER, What if we queue 1000 assets? needs to be chunked
-        {
-            std::lock_guard lock{ myQueueMutex };
-            if (myLoadQueue.empty())
-            {
-                //myGraphicsSystem->FlushUploads();
-                PromotePendingAssets();
-            }
         }
 
-        if (!success)
+        if (success)
+        {
+            if (aRequest.type == AssetType::Mesh)
+            {
+                std::lock_guard lock{ myPendingUploadsMutex };
+                myPendingMeshUploads.push_back({ GetMeshKey(aRequest.id), aRequest.isReload });
+            }
+            else if (aRequest.type == AssetType::Texture)
+            {
+                std::lock_guard lock{ myPendingUploadsMutex };
+                myPendingTextureUploads.push_back({ GetTextureKey(aRequest.id), aRequest.isReload });
+            }
+        }
+        else
         {
             if (aRequest.isReload && aRequest.wasReady)
             {
                 NL_WARN(GCoreLogger, "reload failed - keeping previous version of '{}'", aRequest.path.GetPath());
-                // Restore ready state so the old GPU data keeps being used
                 switch (aRequest.type)
                 {
-                    case AssetType::Mesh: SetMeshState(GetMeshKey(aRequest.id), AssetState::Ready, aRequest.isReload); break;
+                    case AssetType::Mesh:    SetMeshState(GetMeshKey(aRequest.id), AssetState::Ready, aRequest.isReload);  break;
                     case AssetType::Texture: SetTextureState(GetTextureKey(aRequest.id), AssetState::Ready, aRequest.isReload); break;
-                    case AssetType::Pipeline: SetPipelineState(GetPipelineKey(aRequest.id), AssetState::Ready, aRequest.isReload); break;
                 }
             }
             else
             {
                 switch (aRequest.type)
                 {
-                    case AssetType::Mesh: SetMeshState(GetMeshKey(aRequest.id), AssetState::Failed, aRequest.isReload); break;
+                    case AssetType::Mesh:    SetMeshState(GetMeshKey(aRequest.id), AssetState::Failed, aRequest.isReload);  break;
                     case AssetType::Texture: SetTextureState(GetTextureKey(aRequest.id), AssetState::Failed, aRequest.isReload); break;
-                    case AssetType::Pipeline: SetPipelineState(GetPipelineKey(aRequest.id), AssetState::Failed, aRequest.isReload); break;
                 }
+            }
+        }
+    }
+
+    void AssetManager::PollPendingUploads()
+    {
+        std::lock_guard lock{ myPendingUploadsMutex };
+
+        for (auto it{ myPendingMeshUploads.begin() }; it != myPendingMeshUploads.end();)
+        {
+            const Mesh* mesh{ nullptr };
+            {
+                std::lock_guard meshLock{ myMeshMutex };
+                mesh = myMeshes.Get(it->key);
+            }
+
+            if (mesh == nullptr)
+            {
+                it = myPendingMeshUploads.erase(it);
+                continue;
+            }
+
+            // A mesh upload is complete when both buffers report isReady
+            const bool vbReady{ myGPUResourceManager->IsBufferReady(mesh->vertexBuffer) };
+            const bool ibReady{ myGPUResourceManager->IsBufferReady(mesh->indexBuffer) };
+
+            if (vbReady && ibReady)
+            {
+                SetMeshState(it->key, AssetState::Ready, it->isReload);
+                NL_TRACE(GCoreLogger, "mesh upload complete");
+                it = myPendingMeshUploads.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        
+        for (auto it{ myPendingTextureUploads.begin() }; it != myPendingTextureUploads.end();)
+        {
+            const Texture* tex{ nullptr };
+            {
+                std::lock_guard texLock{ myTextureMutex };
+                tex = myTextures.Get(it->key);
+            }
+
+            if (tex == nullptr)
+            {
+                it = myPendingTextureUploads.erase(it);
+                continue;
+            }
+
+            if (myGPUResourceManager->IsTextureReady(tex->gpuTexture))
+            {
+                SetTextureState(it->key, AssetState::Ready, it->isReload);
+                NL_TRACE(GCoreLogger, "texture upload complete");
+                it = myPendingTextureUploads.erase(it);
+            }
+            else
+            {
+                ++it;
             }
         }
     }
@@ -458,35 +448,6 @@ namespace Nalta
 #endif
     }
 
-    bool AssetManager::LoadPipeline(const LoadRequest& aRequest)
-    {
-        SetPipelineState(GetPipelineKey(aRequest.id), AssetState::Loading, aRequest.isReload);
-
-        const auto cookedPath{ GetCookedPath(aRequest.path) };
-
-#ifndef N_SHIPPING
-        if (!myRegistry.NeedsRecook(aRequest.path) && std::filesystem::exists(cookedPath))
-        {
-            NL_TRACE(GCoreLogger, "loading pipeline from cooked");
-            if (LoadPipelineFromCooked(aRequest, cookedPath))
-            {
-                return true;
-            }
-
-            NL_WARN(GCoreLogger, "cooked load failed — falling back to full import");
-        }
-
-        return CookAndProcessPipeline(aRequest, aRequest.path);
-#else
-        if (!LoadPipelineFromCooked(aRequest, cookedPath))
-        {
-            NL_ERROR(GCoreLogger, "failed to load cooked pipeline '{}'", cookedPath.string());
-            return false;
-        }
-        return true;
-#endif
-    }
-
     bool AssetManager::CookAndProcessMesh(const LoadRequest& aRequest, const AssetPath& aPath)
     {
         const IAssetImporter* importer{ myImporterRegistry.GetImporter(aPath) };
@@ -512,7 +473,7 @@ namespace Nalta
         {
             std::lock_guard lock{ myMeshMutex };
             Mesh* mesh{ myMeshes.Get(key) };
-            if (!MeshProcessor::Process(raw, *mesh, *myGraphicsSystem))
+            if (!MeshProcessor::Process(raw, *mesh, *myGPUResourceManager))
             {
                 return false;
             }
@@ -560,7 +521,7 @@ namespace Nalta
         {
             std::lock_guard lock{ myTextureMutex };
             Texture* tex{ myTextures.Get(key) };
-            if (!TextureProcessor::Process(raw, *tex, *myGraphicsSystem))
+            if (!TextureProcessor::Process(raw, *tex, *myGPUResourceManager))
             {
                 return false;
             }
@@ -586,64 +547,6 @@ namespace Nalta
 #endif
         
         NL_INFO(GCoreLogger, "loaded texture '{}'", aPath.GetPath());
-        return true;
-    }
-
-    bool AssetManager::CookAndProcessPipeline(const LoadRequest& aRequest, const AssetPath& aPath)
-    {
-        const IAssetImporter* importer{ myImporterRegistry.GetImporter(aPath) };
-        if (importer == nullptr)
-        {
-            NL_ERROR(GCoreLogger, "no importer for '{}'", aPath.GetPath());
-            return false;
-        }
-        
-        const PipelineKey key{ GetPipelineKey(aRequest.id) };
-
-        SetPipelineState(key, AssetState::Processing, aRequest.isReload);
-        const auto rawBase{ importer->Import(aPath) };
-        if (!rawBase || !rawBase->IsValid())
-        {
-            NL_ERROR(GCoreLogger, "import failed for '{}'", aPath.GetPath());
-            return false;
-        }
-
-        auto& raw{ static_cast<RawPipelineData&>(*rawBase) };
-
-        SetPipelineState(key, AssetState::Uploading, aRequest.isReload);
-        {
-            std::lock_guard lock{ myPipelineMutex };
-            Pipeline* pipeline{ myPipelines.Get(key) };
-            if (!PipelineProcessor::Process(raw, *pipeline, *myGraphicsSystem))
-            {
-                return false;
-            }
-        }
-
-#ifndef N_SHIPPING
-        std::vector<std::string> deps;
-        if (!raw.shaderPath.empty())
-        {
-            const auto pipelineDir{ std::filesystem::path(aPath.GetPath()).parent_path() };
-            auto shaderAbs{ std::filesystem::weakly_canonical(pipelineDir / raw.shaderPath) };
-            std::string normalized{ shaderAbs.string() };
-            std::ranges::replace(normalized, '\\', '/');
-            deps.push_back(normalized);
-        }
-
-        BinaryWriter writer;
-        WriteCookedHeader(writer, AssetType::Pipeline);
-        PipelineSerializer::Write(raw, writer);
-
-        const auto cookedPath{ GetCookedPath(aPath) };
-        if (writer.SaveToFile(cookedPath))
-        {
-            RegisterCookedEntry(aPath, cookedPath, AssetType::Pipeline, deps);
-            NL_INFO(GCoreLogger, "cooked pipeline to '{}'", cookedPath.string());
-        }
-#endif
-        
-        NL_INFO(GCoreLogger, "loaded pipeline '{}'", aPath.GetPath());
         return true;
     }
 
@@ -674,7 +577,7 @@ namespace Nalta
         {
             std::lock_guard lock{ myMeshMutex };
             Mesh* mesh{ myMeshes.Get(key) };
-            if (!MeshProcessor::Process(raw, *mesh, *myGraphicsSystem))
+            if (!MeshProcessor::Process(raw, *mesh, *myGPUResourceManager))
             {
                 return false;
             }
@@ -710,50 +613,13 @@ namespace Nalta
         {
             std::lock_guard lock{ myTextureMutex };
             Texture* tex{ myTextures.Get(key) };
-            if (!TextureProcessor::Process(raw, *tex, *myGraphicsSystem))
+            if (!TextureProcessor::Process(raw, *tex, *myGPUResourceManager))
             {
                 return false;
             }
         }
         
         NL_INFO(GCoreLogger, "loaded texture from cooked '{}'", aCookedPath.string());
-        return true;
-    }
-
-    bool AssetManager::LoadPipelineFromCooked(const LoadRequest& aRequest, const std::filesystem::path& aCookedPath)
-    {
-        auto reader{ BinaryReader::FromFile(aCookedPath) };
-        if (!reader.IsValid())
-        {
-            return false;
-        }
-
-        AssetType type{};
-        if (!ReadCookedHeader(reader, type) || type != AssetType::Pipeline)
-        {
-            NL_WARN(GCoreLogger, "cooked header mismatch for pipeline '{}'", aCookedPath.string());
-            return false;
-        }
-
-        const auto raw{ PipelineSerializer::Read(reader) };
-        if (!raw.IsValid())
-        {
-            return false;
-        }
-        
-        const PipelineKey key{ GetPipelineKey(aRequest.id) };
-        
-        SetPipelineState(key, AssetState::Uploading, aRequest.isReload);
-        {
-            std::lock_guard lock{ myPipelineMutex };
-            Pipeline* pipeline{ myPipelines.Get(key) };
-            if (!PipelineProcessor::Process(raw, *pipeline, *myGraphicsSystem))
-            {
-                return false;
-            }
-        }
-        
-        NL_INFO(GCoreLogger, "loaded pipeline from cooked '{}'", aCookedPath.string());
         return true;
     }
 
@@ -826,20 +692,6 @@ namespace Nalta
                 }
             }
         }
-
-        if (!found)
-        {
-            std::lock_guard lock{ myPipelineMutex };
-            if (const auto it{ myPipelineIndex.find(hash) }; it != myPipelineIndex.end())
-            {
-                if (const Pipeline* pipeline{ myPipelines.Get(it->second) })
-                {
-                    wasReady = pipeline->state == AssetState::Ready;
-                    type  = AssetType::Pipeline;
-                    found = true;
-                }
-            }
-        }
         
         if (!found)
         {
@@ -895,54 +747,6 @@ namespace Nalta
         }
     }
 
-    void AssetManager::SetPipelineState(const PipelineKey aKey, const AssetState aState, const bool aIsReload)
-    {
-        if (aIsReload && aState != AssetState::Ready && aState != AssetState::Failed)
-        {
-            return;
-        }
-        
-        std::lock_guard lock{ myPipelineMutex };
-        if (Pipeline* pipeline{ myPipelines.Get(aKey) })
-        {
-            pipeline->state = aState;
-        }
-    }
-
-    void AssetManager::PromotePendingAssets()
-    {
-        {
-            std::lock_guard lock{ myMeshMutex };
-            myMeshes.ForEach([](Mesh& aMesh)
-            {
-                if (aMesh.state == AssetState::Uploading)
-                {
-                    aMesh.state = AssetState::Ready;
-                }
-            });
-        }
-        {
-            std::lock_guard lock{ myTextureMutex };
-            myTextures.ForEach([](Texture& aTex)
-            {
-                if (aTex.state == AssetState::Uploading)
-                {
-                    aTex.state = AssetState::Ready;
-                }
-            });
-        }
-        {
-            std::lock_guard lock{ myPipelineMutex };
-            myPipelines.ForEach([](Pipeline& aPipeline)
-            {
-                if (aPipeline.state == AssetState::Uploading)
-                {
-                    aPipeline.state = AssetState::Ready;
-                }
-            });
-        }
-    }
-
     void AssetManager::WriteCookedHeader(BinaryWriter& aWriter, AssetType aType)
     {
         constexpr char magic[4]{ 'N', 'A', 'L', 'T' };
@@ -980,7 +784,7 @@ namespace Nalta
 
     void AssetManager::RegisterCookedEntry(const AssetPath& aPath, const std::filesystem::path& aCookedPath, AssetType aType, const std::vector<std::string>& aDependencies)
     {
-        static constexpr std::string_view typeNames[]{ "Mesh", "Texture", "Pipeline" };
+        static constexpr std::string_view typeNames[]{ "Mesh", "Texture" };
 
         AssetRegistryEntry entry;
         entry.sourcePath = aPath.GetPath();
@@ -1001,86 +805,88 @@ namespace Nalta
     {
         InitializeFallbackMesh();
         InitializeFallbackTexture();
-        InitializeFallbackPipeline();
     
         NL_INFO(GCoreLogger, "fallbacks initialized");
     }
 
     void AssetManager::InitializeFallbackMesh()
     {
-        // const std::vector<MeshVertex> vertices
-        // {
-        //     // Front
-        //     { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-        //     { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-        //     { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-        //     { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-        //     // Back
-        //     { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-        //     { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-        //     { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-        //     { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-        //     // Left
-        //     { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-        //     { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-        //     { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-        //     { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-        //     // Right
-        //     { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-        //     { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-        //     { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-        //     { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-        //     // Top 
-        //     { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-        //     { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-        //     { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-        //     { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-        //     // Bottom
-        //     { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
-        //     { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
-        //     { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
-        //     { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
-        // };
-        //
-        // const std::vector<uint32_t> indices
-        // {
-        //     0,  2,  1,  2,  0,  3,  // front
-        //     4,  6,  5,  6,  4,  7,  // back
-        //     8, 10,  9, 10,  8, 11,  // left
-        //    12, 14, 13, 14, 12, 15,  // right
-        //    16, 18, 17, 18, 16, 19,  // top
-        //    20, 22, 21, 22, 20, 23,  // bottom
-        // };
-        //
-        // RawMeshData raw;
-        // for (const auto& v : vertices)
-        // {
-        //     raw.vertices.push_back(
-        //     {
-        //         .position = { v.position.x, v.position.y, v.position.z },
-        //         .normal   = { v.normal.x,   v.normal.y,   v.normal.z   },
-        //         .texCoord = { v.texCoord.x, v.texCoord.y                },
-        //         .tangent  = { v.tangent.x,  v.tangent.y,  v.tangent.z, v.tangent.w }
-        //     });
-        // }
-        // raw.indices = indices;
-        // raw.submeshes.push_back(
-        // {
-        //     .name        = "fallback",
-        //     .vertexOffset = 0,
-        //     .vertexCount  = static_cast<uint32_t>(vertices.size()),
-        //     .indexOffset  = 0,
-        //     .indexCount   = static_cast<uint32_t>(indices.size()),
-        //     .materialIndex = 0
-        // });
-        // raw.boundsMin[0] = raw.boundsMin[1] = raw.boundsMin[2] = -0.5f;
-        // raw.boundsMax[0] = raw.boundsMax[1] = raw.boundsMax[2] =  0.5f;
-        //
-        // const bool ok{ MeshProcessor::Process(raw, myFallbackMesh, *myGraphicsSystem) };
-        // N_CORE_ASSERT(ok, "failed to create fallback mesh");
-        // myGraphicsSystem->FlushUploads();
-        // myFallbackMesh.state = AssetState::Ready;
-    
+        const std::vector<MeshVertex> vertices
+        {
+            // Front
+            { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+            { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+            { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+            { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  0.f, -1.f}, .tangent = float4{1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+            // Back
+            { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+            { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+            { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+            { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  0.f,  1.f}, .tangent = float4{-1.f, 0.f, 0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+            // Left
+            { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+            { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+            { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+            { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{-1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f, -1.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+            // Right
+            { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+            { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+            { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+            { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 1.f,  0.f,  0.f}, .tangent = float4{0.f, 0.f,  1.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+            // Top 
+            { .position = float3{-0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+            { .position = float3{ 0.5f,  0.5f, -0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+            { .position = float3{ 0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+            { .position = float3{-0.5f,  0.5f,  0.5f}, .normal = float3{ 0.f,  1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+            // Bottom
+            { .position = float3{-0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 1.f} },
+            { .position = float3{ 0.5f, -0.5f,  0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 1.f} },
+            { .position = float3{ 0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{1.f, 0.f} },
+            { .position = float3{-0.5f, -0.5f, -0.5f}, .normal = float3{ 0.f, -1.f,  0.f}, .tangent = float4{1.f, 0.f,  0.f, 1.f}, .texCoord = float2{0.f, 0.f} },
+        };
+        
+        const std::vector<uint32_t> indices
+        {
+            0,  2,  1,  2,  0,  3,  // front
+            4,  6,  5,  6,  4,  7,  // back
+            8, 10,  9, 10,  8, 11,  // left
+           12, 14, 13, 14, 12, 15,  // right
+           16, 18, 17, 18, 16, 19,  // top
+           20, 22, 21, 22, 20, 23,  // bottom
+        };
+        
+        RawMeshData raw;
+        raw.vertices.reserve(vertices.size());
+        for (const auto& v : vertices)
+        {
+            raw.vertices.push_back(
+            {
+                .position = { v.position.x, v.position.y, v.position.z },
+                .normal   = { v.normal.x,   v.normal.y,   v.normal.z   },
+                .texCoord = { v.texCoord.x, v.texCoord.y               },
+                .tangent  = { v.tangent.x,  v.tangent.y,  v.tangent.z, v.tangent.w }
+            });
+        }
+        raw.indices   = indices;
+        raw.boundsMin[0] = raw.boundsMin[1] = raw.boundsMin[2] = -0.5f;
+        raw.boundsMax[0] = raw.boundsMax[1] = raw.boundsMax[2] =  0.5f;
+        raw.submeshes.push_back(
+        {
+            .name          = "fallback",
+            .vertexOffset  = 0,
+            .vertexCount   = static_cast<uint32_t>(vertices.size()),
+            .indexOffset   = 0,
+            .indexCount    = static_cast<uint32_t>(indices.size()),
+            .materialIndex = 0
+        });
+
+        const bool ok{ MeshProcessor::Process(raw, myFallbackMesh, *myGPUResourceManager) };
+        N_CORE_ASSERT(ok, "failed to create fallback mesh");
+
+        // Fallbacks must be synchronously ready - flush and wait before any frame runs
+        myGPUResourceManager->GetDevice().FlushUploads();
+
+        myFallbackMesh.state = AssetState::Ready;
         NL_INFO(GCoreLogger, "fallback mesh created");
     }
 
@@ -1104,49 +910,25 @@ namespace Nalta
             }
         }
 
-        // RawTextureData raw;
-        // raw.width     = W;
-        // raw.height    = H;
-        // raw.mipLevels = 1;
-        // raw.format    = Graphics::TextureFormat::RGBA8_UNORM;
-        // raw.mips.push_back({ .rowPitch = W * 4, .slicePitch = W * H * 4, .pixels = std::move(pixels) });
-        //
-        // const bool ok{ TextureProcessor::Process(raw, myFallbackTexture, *myGraphicsSystem) };
-        // N_CORE_ASSERT(ok, "failed to create fallback texture");
-        // myGraphicsSystem->FlushUploads();
-        // myFallbackTexture.state = AssetState::Ready;
+        RawTextureData raw;
+        raw.width         = W;
+        raw.height        = H;
+        raw.mipLevels     = 1;
+        raw.textureFormat = RHI::TextureFormat::RGBA8_UNORM;
+        raw.mips.push_back(
+        {
+            .rowPitch   = W * 4,
+            .slicePitch = W * H * 4,
+            .pixels     = std::move(pixels)
+        });
 
+        const bool ok{ TextureProcessor::Process(raw, myFallbackTexture, *myGPUResourceManager) };
+        N_CORE_ASSERT(ok, "failed to create fallback texture");
+
+        // Fallbacks must be synchronously ready - flush and wait before any frame runs
+        myGPUResourceManager->GetDevice().FlushUploads();
+
+        myFallbackTexture.state = AssetState::Ready;
         NL_INFO(GCoreLogger, "fallback texture created");
-    }
-
-    void AssetManager::InitializeFallbackPipeline()
-    {
-        // const std::filesystem::path shaderPath{ Paths::EngineAssetDir() / "Shaders" / "Fallback.hlsl" };
-        //
-        // Graphics::ShaderDesc shaderDesc;
-        // shaderDesc.filePath = shaderPath;
-        // shaderDesc.stages   =
-        // {
-        //     { Graphics::ShaderStage::Vertex, "VSMain" },
-        //     { Graphics::ShaderStage::Pixel,  "PSMain" }
-        // };
-        //
-        // const auto shader{ myGraphicsSystem->GetShaderCompiler()->Compile(shaderDesc) };
-        // N_CORE_ASSERT(shader, "failed to compile fallback shader");
-        //
-        // Graphics::PipelineDesc pipelineDesc;
-        // pipelineDesc.shader              = shader;
-        // pipelineDesc.rasterizer.cullMode = Graphics::CullMode::Back;
-        // pipelineDesc.rasterizer.fillMode = Graphics::FillMode::Solid;
-        // pipelineDesc.depth.depthEnabled  = true;
-        // pipelineDesc.depth.depthWrite    = true;
-        // pipelineDesc.depth.compareFunc   = Graphics::DepthCompare::Greater;
-        // pipelineDesc.blend.blendEnabled  = false;
-        //
-        // myFallbackPipeline.gpuHandle = myGraphicsSystem->CreatePipeline(pipelineDesc);
-        // N_CORE_ASSERT(myFallbackPipeline.gpuHandle.IsValid(), "failed to create fallback pipeline");
-        // myFallbackPipeline.state = AssetState::Ready;
-
-        NL_INFO(GCoreLogger, "fallback pipeline created");
     }
 }

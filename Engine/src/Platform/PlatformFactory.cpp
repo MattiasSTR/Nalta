@@ -10,7 +10,7 @@
 #include "Nalta/Platform/Mac/MacWindowSystem.h"
 #endif
 
-namespace Nalta
+namespace Nalta::PlatformFactory
 {
     std::unique_ptr<IPlatformSystem> CreatePlatformSystem()
     {

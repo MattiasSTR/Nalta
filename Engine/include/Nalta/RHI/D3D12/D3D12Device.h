@@ -46,6 +46,9 @@ namespace Nalta::RHI::D3D12
         void WaitOnContextWork(ContextSubmissionResult aSubmission, ContextWaitType aWaitType);
         void WaitForIdle();
         
+        // This should only be called during initialization, regular flushing is handled automatically
+        void FlushUploads();
+        
         std::unique_ptr<GraphicsContext> CreateGraphicsContext();
         std::unique_ptr<ComputeContext> CreateComputeContext();
         UploadContext& GetUploadContextForCurrentFrame() { return *myUploadContexts[myFrameIndex]; }

@@ -1,18 +1,12 @@
 ﻿#pragma once
 #include "Nalta/Assets/Importers/IAssetImporter.h"
-//#include "Nalta/Graphics/Texture/TextureDesc.h"
+#include "Nalta/RHI/Types/RHIEnums.h"
 
 #include <string>
 
 namespace Nalta
 {
-    namespace Graphics
-    {
-        struct TextureFormat
-        {
-            
-        };
-    }
+
     class TextureImporter final : public IAssetImporter
     {
     public:
@@ -23,7 +17,7 @@ namespace Nalta
         [[nodiscard]] std::string GetName() const override;
         
         // Called by TextureDescriptorImporter with explicit settings
-        [[nodiscard]] std::unique_ptr<RawAssetData> ImportWithSettings(const AssetPath& aPath, Graphics::TextureFormat aTargetFormat, bool aGenerateMips) const;
+        [[nodiscard]] std::unique_ptr<RawAssetData> ImportWithSettings(const AssetPath& aPath, RHI::TextureFormat aTargetFormat, bool aGenerateMips) const;
 
     private:
         std::string myExtension;

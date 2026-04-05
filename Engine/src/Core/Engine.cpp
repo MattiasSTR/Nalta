@@ -59,7 +59,7 @@ namespace Nalta
 		
 		if (myConfig.ShouldCreateWindow())
 		{
-			myPlatformSystem = CreatePlatformSystem();
+			myPlatformSystem = PlatformFactory::CreatePlatformSystem();
 			myPlatformSystem->Initialize();
 			
 			const uint32_t coreCount{ myPlatformSystem->GetCPUCoreCount() };
@@ -67,26 +67,41 @@ namespace Nalta
 			NL_INFO(GCoreLogger, "CPU logical cores: {}", coreCount);
 			NL_INFO(GCoreLogger, "System memory: {} MB", memoryBytes / (1024u * 1024u));
 			
-			// myPlatformSystem->SetOnWindowDestroyedCallback([this](const WindowHandle aWindow)
-			// {
-			// 	if (myGraphicsSystem)
-			// 	{
-			// 		myGraphicsSystem->DestroySurface(aWindow);
-			// 	}
-			// });
-
-			myMainWindow = myPlatformSystem->CreatePlatformWindow(*myConfig.mainWindowDesc);
-			myMainWindow->Show();
-			NL_INFO(GCoreLogger, "Main window created");
-			
+#ifndef N_SHIPPING
+			myFileWatcher = PlatformFactory::CreateFileWatcher();
+			myFileWatcher->Initialize();
+			myFileWatcher->Watch(Paths::EngineAssetDir());
+#endif
 			myGPUResourceManager = std::make_unique<Graphics::GPUResourceManager>();
 			myGPUResourceManager->Initialize();
+			
+			myAssetManager = std::make_unique<AssetManager>();
+			myAssetManager->Initialize(myGPUResourceManager.get(), myFileWatcher.get(), myPlatformSystem.get());
+			
+			myPlatformSystem->SetOnWindowDestroyedCallback([this](const WindowKey aKey)
+			{
+				if (myGPUResourceManager)
+				{
+					myGPUResourceManager->DestroyRenderSurface(aKey);
+				}
+			});
+			
+#ifndef N_SHIPPING
+			myFileWatcher->SetOnChangedCallback([this](const std::filesystem::path&)
+			{
+				//OnFileChanged(aPath);
+			});
+#endif
+
+			myMainWindowKey = myPlatformSystem->CreatePlatformWindow(*myConfig.mainWindowDesc);
+			auto* window{ myPlatformSystem->GetWindow(myMainWindowKey) };
+			window->Show();
 			
 			RHI::RenderSurfaceDesc desc;
 			desc.width = myConfig.mainWindowDesc->width;
 			desc.height = myConfig.mainWindowDesc->height;
-			desc.window = myMainWindow->GetNativeHandle();
-			myMainSurfaceKey = myGPUResourceManager->CreateRenderSurface(desc);
+			desc.window = window->GetNativeHandle();
+			myMainSurfaceKey = myGPUResourceManager->CreateRenderSurface(desc, myMainWindowKey);
 			
 			auto& inputSystem{ myPlatformSystem->GetInputSystem() };
 			myPlayerInput.AssignKeyboard(inputSystem.GetKeyboard());
@@ -127,6 +142,7 @@ namespace Nalta
 		{
 			myRenderer->Shutdown();
 			myRenderer.reset();
+			NL_INFO(GCoreLogger, "Renderer shutdown");
 		}
 		
 		if (myAssetManager)
@@ -149,6 +165,13 @@ namespace Nalta
 			myPlatformSystem->Shutdown();
 			myPlatformSystem.reset();
 			NL_INFO(GCoreLogger, "PlatformSystem destroyed");
+		}
+		
+		if (myFileWatcher)
+		{
+			myFileWatcher->Shutdown();
+			myFileWatcher.reset();
+			NL_INFO(GCoreLogger, "FileWatcher destroyed");
 		}
 		
 		if (myCoreLogger)
@@ -258,20 +281,22 @@ namespace Nalta
 				Graphics::RenderFrame& frame{ myRenderBuffer.GetWriteSlot() };
 				frame.Reset();
 				
+				auto* window{ myPlatformSystem->GetWindow(myMainWindowKey) };
+				
 				if (myGame)
 				{
 					SceneViewContext ctx;
 					ctx.view = &frame.scene;
-					ctx.width = myMainWindow->GetWidth();
-					ctx.height = myMainWindow->GetHeight();
+					ctx.width = window->GetWidth();
+					ctx.height = window->GetHeight();
 					myGame->BuildSceneView(ctx);
 				}
 				
 				// Assemble surface and camera from game data
 				Graphics::SurfaceView& surfaceView{ frame.surfaces.emplace_back() };
 				surfaceView.surface = myMainSurfaceKey;
-				surfaceView.width = myMainWindow->GetWidth();
-				surfaceView.height = myMainWindow->GetHeight();
+				surfaceView.width = window->GetWidth();
+				surfaceView.height = window->GetHeight();
 				
 				// Lift camera from SceneView into CameraView
 				Graphics::CameraView& cameraView{ surfaceView.cameras.emplace_back() };

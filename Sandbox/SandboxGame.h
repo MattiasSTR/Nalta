@@ -13,7 +13,6 @@ public:
 
 private:
     Nalta::MeshKey myMeshKey;
-    Nalta::PipelineKey myPipelineKey;
     Nalta::TextureKey myTextureKey;
     
     float3 myPosition{ 0.0f, 0.0f, -3.0f };

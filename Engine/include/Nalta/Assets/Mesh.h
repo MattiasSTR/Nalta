@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "Nalta/Assets/AssetState.h"
 #include "Nalta/Core/Math.h"
+#include "Nalta/Graphics/GPUResourceKeys.h"
 
 #include <vector>
 #include <string>
@@ -42,8 +43,10 @@ namespace Nalta
 
     struct Mesh
     {
-        //Graphics::VertexBufferHandle vb;
-        //Graphics::IndexBufferHandle ib;
+        // GPU resources - owned by GpuResourceSystem, keys stored here
+        Graphics::BufferKey vertexBuffer{};
+        Graphics::BufferKey indexBuffer{};
+        
         MeshBounds bounds;
         std::vector<MeshSubmesh> submeshes;
         AssetState state{ AssetState::Unloaded };

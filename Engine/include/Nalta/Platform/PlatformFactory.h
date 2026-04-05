@@ -4,7 +4,7 @@
 
 #include <memory>
 
-namespace Nalta
+namespace Nalta::PlatformFactory
 {
     std::unique_ptr<IPlatformSystem> CreatePlatformSystem();
     std::unique_ptr<IFileWatcher> CreateFileWatcher();

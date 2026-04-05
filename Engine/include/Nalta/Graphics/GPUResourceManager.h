@@ -4,6 +4,7 @@
 #include "Nalta/RHI/RHIResources.h"
 #include "Nalta/RHI/Types/RHIDescs.h"
 #include "Nalta/Graphics/GPUResourceKeys.h"
+#include "Nalta/Platform/IWindow.h"
 #include "Nalta/Util/SlotMap.h"
 
 namespace Nalta::Graphics
@@ -27,6 +28,7 @@ namespace Nalta::Graphics
         // Textures
         [[nodiscard]] TextureKey CreateTexture(const RHI::TextureCreationDesc& aDesc);
         [[nodiscard]] TextureKey UploadTexture(const RHI::TextureUploadDesc& aDesc);
+        [[nodiscard]] bool IsTextureReady(TextureKey aKey) const;
         void DestroyTexture(TextureKey aKey);
 
         [[nodiscard]] const RHI::Texture* GetTexture(TextureKey aKey) const;
@@ -34,13 +36,15 @@ namespace Nalta::Graphics
         // Buffers
         [[nodiscard]] BufferKey CreateBuffer(const RHI::BufferCreationDesc& aDesc);
         [[nodiscard]] BufferKey UploadBuffer(const RHI::BufferCreationDesc& aDesc, const RHI::BufferUploadDesc& aUploadDesc);
+        [[nodiscard]] bool IsBufferReady(BufferKey aKey) const;
         void DestroyBuffer(BufferKey aKey);
 
         [[nodiscard]] const RHI::Buffer* GetBuffer(BufferKey aKey) const;
         
         // Render Surfaces
-        [[nodiscard]] RenderSurfaceKey CreateRenderSurface(const RHI::RenderSurfaceDesc& aDesc);
+        [[nodiscard]] RenderSurfaceKey CreateRenderSurface(const RHI::RenderSurfaceDesc& aDesc, WindowKey aKey);
         void DestroyRenderSurface(RenderSurfaceKey aKey);
+        void DestroyRenderSurface(WindowKey aKey);
 
         [[nodiscard]] RHI::RenderSurface* GetRenderSurface(RenderSurfaceKey aKey);
         
@@ -51,6 +55,8 @@ namespace Nalta::Graphics
         // Store by value?
         SlotMap<TextureKey, std::unique_ptr<RHI::Texture>> myTextures;
         SlotMap<BufferKey, std::unique_ptr<RHI::Buffer>> myBuffers;
+        
         SlotMap<RenderSurfaceKey, std::unique_ptr<RHI::RenderSurface>> myRenderSurfaces;
+        std::unordered_map<WindowKey, RenderSurfaceKey> myWindowSurfaces;
     };
 }

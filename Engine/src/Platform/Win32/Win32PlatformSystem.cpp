@@ -100,6 +100,7 @@ namespace Nalta
         OnWindowDestroyedCallback onWindowDestroyed;
         std::vector<Win32Window*> pendingDestroy;
         std::vector<std::unique_ptr<Win32WindowContext>> windowContexts;
+        std::unordered_map<HWND, WindowKey> hwndToKey;
         
         InputSystem inputSystem;
         Win32KeyboardDevice* keyboard{ nullptr };
@@ -262,7 +263,7 @@ namespace Nalta
     {
         NL_SCOPE_CORE("Win32PlatformSystem");
         
-        myWindows.clear();
+        myWindows = {};
         UnregisterClassW(WINDOW_CLASS, GetModuleHandleW(nullptr));
         
         myImpl->inputSystem.Shutdown();
@@ -287,19 +288,25 @@ namespace Nalta
             DispatchMessageW(&msg);
         }
         
-        std::erase_if(myWindows, [&](const std::unique_ptr<Win32Window>& aWindow)
+        std::vector<WindowKey> toDestroy;
+        myWindows.ForEach([&](const std::unique_ptr<Win32Window>& aWindow)
         {
             if (aWindow->IsMarkedForDestroy())
             {
-                if (myImpl->onWindowDestroyed)
-                {
-                    myImpl->onWindowDestroyed(WindowHandle{ aWindow.get() });
-                    NL_TRACE(GCoreLogger, "window destroyed callback fired");
-                }
-                return true;
+                const WindowKey key{ myImpl->hwndToKey.at(static_cast<HWND>(aWindow->GetNativeHandle())) };
+                toDestroy.push_back(key);
             }
-            return false;
         });
+        
+        for (const WindowKey key : toDestroy)
+        {
+            if (myImpl->onWindowDestroyed)
+            {
+                myImpl->onWindowDestroyed(key);
+                NL_TRACE(GCoreLogger, "window destroyed callback fired");
+            }
+            DestroyWindow(key);
+        }
 
         return true;
     }
@@ -309,7 +316,7 @@ namespace Nalta
         myImpl->inputSystem.PrepareFrame();
     }
 
-    WindowHandle Win32PlatformSystem::CreatePlatformWindow(const WindowDesc& aDesc)
+    WindowKey Win32PlatformSystem::CreatePlatformWindow(const WindowDesc& aDesc)
     {
         NL_SCOPE_CORE("Win32PlatformSystem");
 
@@ -319,31 +326,39 @@ namespace Nalta
         auto window{ std::make_unique<Win32Window>(aDesc, ctx.get()) };
         ctx->window = window.get();
 
-        const WindowHandle handle{ window.get() };
+        const HWND hwnd{ static_cast<HWND>(window->GetNativeHandle()) };
+
         myImpl->windowContexts.push_back(std::move(ctx));
-        myWindows.push_back(std::move(window));
+
+        const WindowKey key{ myWindows.Insert(std::move(window)) };
+        myImpl->hwndToKey[hwnd] = key;
 
         NL_TRACE(GCoreLogger, "created window '{}'", aDesc.caption);
-        return handle;
+        return key;
     }
 
-    void Win32PlatformSystem::DestroyWindow(const WindowHandle aHandle)
+    IWindow* Win32PlatformSystem::GetWindow(const WindowKey aKey)
     {
-        std::erase_if(myWindows, [&](const std::unique_ptr<Win32Window>& w)
+        auto* slot{ myWindows.Get(aKey) };
+        if (slot == nullptr)
         {
-            return w.get() == aHandle.Get();
-        });
+            return nullptr;
+        }
+        return slot->get();
+    }
+
+    void Win32PlatformSystem::DestroyWindow(const WindowKey aKey)
+    {
+        auto* window{ GetWindow(aKey) };
+        if (window == nullptr)
+        {
+            return;
+        }
+
+        myImpl->hwndToKey.erase(static_cast<HWND>(window->GetNativeHandle()));
+        myWindows.Remove(aKey);
+
         NL_TRACE(GCoreLogger, "destroyed window");
-    }
-
-    WindowHandle Win32PlatformSystem::GetMainWindow() const
-    {
-        const auto it{ std::ranges::find_if(myWindows, [](const std::unique_ptr<Win32Window>& aWindow)
-        {
-            return aWindow->IsMainWindow();
-        }) };
-
-        return it != myWindows.end() ? WindowHandle{ it->get() } : WindowHandle{};
     }
 
     InputSystem& Win32PlatformSystem::GetInputSystem()

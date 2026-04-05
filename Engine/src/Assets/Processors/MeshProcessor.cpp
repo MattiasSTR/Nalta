@@ -3,11 +3,12 @@
 
 #include "Nalta/Assets/RawAssetData.h"
 #include "Nalta/Assets/Mesh.h"
-#include "Nalta/Graphics/GraphicsSystem.h"
+#include "Nalta/Graphics/GPUResourceManager.h"
+#include "Nalta/RHI/Types/RHIDescs.h"
 
 namespace Nalta
 {
-    bool MeshProcessor::Process(const RawMeshData& aRawData, Mesh& outMesh, GraphicsSystem&)
+    bool MeshProcessor::Process(const RawMeshData& aRawData, Mesh& outMesh, Graphics::GPUResourceManager& aGpuResources)
     {
         NL_SCOPE_CORE("MeshProcessor");
 
@@ -17,9 +18,9 @@ namespace Nalta
             return false;
         }
 
+        // Convert raw vertices to GPU vertex layout
         std::vector<MeshVertex> gpuVertices;
         gpuVertices.reserve(aRawData.vertices.size());
-
         for (const auto& v : aRawData.vertices)
         {
             gpuVertices.push_back(
@@ -31,43 +32,62 @@ namespace Nalta
             });
         }
 
-        // Graphics::VertexBufferDesc vbDesc;
-        // vbDesc.stride = sizeof(MeshVertex);
-        // vbDesc.count  = static_cast<uint32_t>(gpuVertices.size());
-        //
-        // outMesh.vb = aGraphicsSystem.CreateVertexBuffer(vbDesc, std::as_bytes(std::span(gpuVertices)));
-        //
-        // if (!outMesh.vb.IsValid())
-        // {
-        //     NL_ERROR(GCoreLogger, "failed to create vertex buffer");
-        //     return false;
-        // }
-        //
-        // Graphics::IndexBufferDesc ibDesc;
-        // ibDesc.count  = static_cast<uint32_t>(aRawData.indices.size());
-        // ibDesc.format = Graphics::IndexFormat::Uint32;
-        //
-        // outMesh.ib = aGraphicsSystem.CreateIndexBuffer(ibDesc, std::as_bytes(std::span(aRawData.indices)));
-        //
-        // if (!outMesh.ib.IsValid())
-        // {
-        //     NL_ERROR(GCoreLogger, "failed to create index buffer");
-        //     return false;
-        // }
+        // Vertex buffer
+        {
+            RHI::BufferCreationDesc desc{};
+            desc.size      = gpuVertices.size() * sizeof(MeshVertex);
+            desc.stride    = sizeof(MeshVertex);
+            desc.access    = RHI::BufferAccessFlags::GpuOnly;
+            desc.viewFlags = RHI::BufferViewFlags::ShaderResource;
+            desc.debugName = aRawData.sourcePath.IsEmpty() ? "cooked VB" : aRawData.sourcePath.GetPath() + " VB";
 
+            RHI::BufferUploadDesc upload{};
+            upload.data = std::as_bytes(std::span{ gpuVertices });
+
+            outMesh.vertexBuffer = aGpuResources.UploadBuffer(desc, upload);
+            if (!outMesh.vertexBuffer.IsValid())
+            {
+                NL_ERROR(GCoreLogger, "failed to upload vertex buffer for '{}'", desc.debugName);
+                return false;
+            }
+        }
+
+        // Index buffer
+        {
+            RHI::BufferCreationDesc desc{};
+            desc.size      = aRawData.indices.size() * sizeof(uint32_t);
+            desc.stride    = sizeof(uint32_t);
+            desc.access    = RHI::BufferAccessFlags::GpuOnly;
+            desc.viewFlags = RHI::BufferViewFlags::ShaderResource;
+            desc.debugName = aRawData.sourcePath.IsEmpty() ? "cooked IB" : aRawData.sourcePath.GetPath() + " IB"; // TODO: USE NAME
+
+            RHI::BufferUploadDesc upload{};
+            upload.data = std::as_bytes(std::span{ aRawData.indices });
+
+            outMesh.indexBuffer = aGpuResources.UploadBuffer(desc, upload);
+            if (!outMesh.indexBuffer.IsValid())
+            {
+                NL_ERROR(GCoreLogger, "failed to upload index buffer for '{}'", desc.debugName);
+                return false;
+            }
+        }
+        
+        // Submeshes
+        outMesh.submeshes.clear();
         outMesh.submeshes.reserve(aRawData.submeshes.size());
-        for (const auto& rawSubmesh : aRawData.submeshes)
+        for (const auto& raw : aRawData.submeshes)
         {
             outMesh.submeshes.push_back(
             {
-                .name          = rawSubmesh.name,
-                .indexOffset   = rawSubmesh.indexOffset,
-                .indexCount    = rawSubmesh.indexCount,
-                .vertexOffset  = rawSubmesh.vertexOffset,
-                .vertexCount   = rawSubmesh.vertexCount,
-                .materialIndex = rawSubmesh.materialIndex
+                .name          = raw.name,
+                .indexOffset   = raw.indexOffset,
+                .indexCount    = raw.indexCount,
+                .vertexOffset  = raw.vertexOffset,
+                .vertexCount   = raw.vertexCount,
+                .materialIndex = raw.materialIndex
             });
         }
+
 
         outMesh.bounds.min[0] = aRawData.boundsMin[0];
         outMesh.bounds.min[1] = aRawData.boundsMin[1];
