@@ -23,7 +23,7 @@ namespace Nalta
         desc.mipLevels = static_cast<uint16_t>(aRawData.mipLevels);
         desc.format    = aRawData.textureFormat;
         desc.viewFlags = RHI::TextureViewFlags::ShaderResource;
-        desc.debugName = aRawData.sourcePath.IsEmpty() ? "cooked texture" : aRawData.sourcePath.GetPath();
+        desc.debugName = aRawData.sourcePath.GetStem();
 
         RHI::TextureUploadDesc upload{};
         upload.desc = desc;

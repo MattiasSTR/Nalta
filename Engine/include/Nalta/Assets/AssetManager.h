@@ -1,22 +1,23 @@
 ﻿#pragma once
-#include "Nalta/Assets/AssetKeys.h"
-#include "Nalta/Assets/AssetPath.h"
-#include "Nalta/Assets/AssetRegistry.h"
-#include "Nalta/Assets/AssetState.h"
-#include "Nalta/Assets/Mesh.h"
-#include "Nalta/Assets/Texture.h"
-#include "Nalta/Assets/Importers/ImporterRegistry.h"
-#include "Nalta/Util/SlotMap.h"
+#include "AssetStore.h"
+#include "AssetKeys.h"
+#include "AssetPath.h"
+#include "AssetRegistry.h"
+#include "Mesh.h"
+#include "Texture.h"
+#include "Importers/ImporterRegistry.h"
 
 #include <atomic>
 #include <chrono>
 #include <mutex>
 #include <queue>
 #include <thread>
-#include <unordered_map>
 
 namespace Nalta
 {
+    class IAssetTypeHandler;
+    class MeshTypeHandler;
+
     namespace Graphics
     {
         class GPUResourceManager;
@@ -26,6 +27,12 @@ namespace Nalta
     class BinaryWriter;
     class IPlatformSystem;
     class IFileWatcher;
+    
+    enum class AssetType : uint8_t
+    {
+        Mesh, 
+        Texture
+    };
 
     class AssetManager
     {
@@ -46,20 +53,17 @@ namespace Nalta
         
         void OnFileChanged(const std::filesystem::path& aPath);
 
-    private:
-        enum class AssetType : uint8_t
-        {
-            Mesh, 
-            Texture
-        };
+        static std::filesystem::path GetCookedPath(const AssetPath& aPath);
+        static void WriteCookedHeader(BinaryWriter& aWriter, AssetType aType);
+        static bool ReadCookedHeader(BinaryReader& aReader, AssetType& aOutType);
 
+    private:
         struct LoadRequest
         {
-            uint64_t id;
+            uint64_t hash;
             AssetPath path;
             AssetType type;
             bool isReload{ false };
-            bool wasReady{ false };
         };
 
         struct DelayedReload
@@ -68,63 +72,31 @@ namespace Nalta
             std::chrono::steady_clock::time_point fireAt;
         };
 
-        // Internal request helpers
-        MeshKey RequestMeshInternal(const AssetPath& aPath, bool aIsReload);
-        TextureKey RequestTextureInternal(const AssetPath& aPath, bool aIsReload);
-        
-        MeshKey GetMeshKey(uint64_t aHash) const;
-        TextureKey GetTextureKey(uint64_t aHash) const;
+        template<class TKey, class TAsset>
+        TKey RequestInternal(const AssetPath& aPath, AssetType aType, AssetStore<TKey, TAsset>& aStore, bool aIsReload);
 
         // Asset thread
         void AssetThreadLoop();
-        void ProcessLoadRequest(const LoadRequest& aRequest);
+        void ProcessLoadRequest(const LoadRequest&);
         void PollPendingUploads();
 
-        // Per-type load paths
-        bool LoadMesh(const LoadRequest& aRequest);
-        bool LoadTexture(const LoadRequest& aRequest);
-
-        // Cook helpers
-        bool CookAndProcessMesh(const LoadRequest& aRequest, const AssetPath& aPath);
-        bool CookAndProcessTexture(const LoadRequest& aRequest, const AssetPath& aPath);
-
-        bool LoadMeshFromCooked(const LoadRequest& aRequest, const std::filesystem::path& aCookedPath);
-        bool LoadTextureFromCooked(const LoadRequest& aRequest, const std::filesystem::path& aCookedPath);
-
         // Hot reload
-        void DebounceReload(const std::string& aSourcePath);
-        void QueueReload(const std::string& aSourcePath);
-
-        // Utilities
-        [[nodiscard]] static std::filesystem::path GetCookedPath(const AssetPath& aPath);
-        void SetMeshState(MeshKey aKey, AssetState aState, bool aIsReload);
-        void SetTextureState(TextureKey aKey, AssetState aState, bool aIsReload);
-        static void WriteCookedHeader(BinaryWriter& aWriter, AssetType aType);
-        static bool ReadCookedHeader(BinaryReader& aReader, AssetType& aOutType);
-        void RegisterCookedEntry(const AssetPath& aPath, const std::filesystem::path& aCookedPath, AssetType aType, const std::vector<std::string>& aDependencies);
+        void DebounceReload(const std::string&);
+        void QueueReload(const std::string&);
         
-        // Fallbacks
-        void InitializeFallbacks();
-        void InitializeFallbackMesh();
-        void InitializeFallbackTexture();
-
-        // Storage - one map per type, one mutex per type
-        mutable std::mutex myMeshMutex;
-        mutable std::mutex myTextureMutex;
-
-        SlotMap<MeshKey, Mesh> myMeshes;
-        std::unordered_map<uint64_t, MeshKey> myMeshIndex;
+        IAssetTypeHandler& GetHandler(AssetType aType);
+        const IAssetTypeHandler& GetHandler(AssetType aType) const;
         
-        SlotMap<TextureKey, Texture> myTextures;
-        std::unordered_map<uint64_t, TextureKey> myTextureIndex;
-        
-        // Fallbacks
-        Mesh myFallbackMesh;
-        Texture myFallbackTexture;
+        // Per-type stores (owned here, handlers hold references)
+        AssetStore<MeshKey, Mesh> myMeshStore;
+        AssetStore<TextureKey, Texture> myTextureStore;
 
-        // Pipeline
-        ImporterRegistry myImporterRegistry;
-        AssetRegistry myRegistry;
+        std::vector<std::unique_ptr<IAssetTypeHandler>> myHandlers;
+
+        // Pending uploads: just (hash, type) - handler knows how to check
+        struct PendingUpload { uint64_t hash; AssetType type; bool isReload; };
+        std::vector<PendingUpload> myPendingUploads;
+        std::mutex myPendingUploadsMutex;
 
         // Async machinery
         std::mutex myQueueMutex;
@@ -136,24 +108,35 @@ namespace Nalta
         std::mutex myDelayedReloadsMutex;
         std::vector<DelayedReload> myDelayedReloads;
 
-        // Systems
+        ImporterRegistry myImporterRegistry;
+        AssetRegistry myRegistry;
         Graphics::GPUResourceManager* myGPUResourceManager{ nullptr };
         IFileWatcher* myFileWatcher{ nullptr };
-        
-        struct PendingMeshUpload
-        {
-            MeshKey key;
-            bool isReload{ false };
-        };
-        
-        struct PendingTextureUpload
-        {
-            TextureKey key;
-            bool isReload{ false };
-        };
-
-        std::vector<PendingMeshUpload> myPendingMeshUploads;
-        std::vector<PendingTextureUpload> myPendingTextureUploads;
-        std::mutex myPendingUploadsMutex;
     };
+
+    template<typename TKey, typename TAsset>
+    TKey AssetManager::RequestInternal(const AssetPath& aPath, const AssetType aType,AssetStore<TKey, TAsset>& aStore, const bool aIsReload)
+    {
+        N_CORE_ASSERT(!aPath.IsEmpty(), "empty asset path");
+
+        const uint64_t hash{ aPath.GetHash() };
+        const auto [key, inserted]{ aStore.GetOrInsert(hash) };
+
+        if (!inserted && !aIsReload)
+        {
+            return key;
+        }
+
+        // Both new insertions and reloads need state reset to Requested
+        aStore.SetState(key, AssetState::Requested);
+
+        {
+            std::lock_guard lock{ myQueueMutex };
+            myLoadQueue.push({ hash, aPath, aType, aIsReload });
+        }
+        myQueueCV.notify_one();
+
+        NL_TRACE(GCoreLogger, "requested {} '{}'", aType == AssetType::Mesh ? "mesh" : "texture", aPath.GetPath());
+        return key;
+    }
 }

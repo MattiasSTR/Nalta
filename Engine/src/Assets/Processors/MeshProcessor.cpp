@@ -39,7 +39,7 @@ namespace Nalta
             desc.stride    = sizeof(MeshVertex);
             desc.access    = RHI::BufferAccessFlags::GpuOnly;
             desc.viewFlags = RHI::BufferViewFlags::ShaderResource;
-            desc.debugName = aRawData.sourcePath.IsEmpty() ? "cooked VB" : aRawData.sourcePath.GetPath() + " VB";
+            desc.debugName = aRawData.sourcePath.GetStem() + " VB";
 
             RHI::BufferUploadDesc upload{};
             upload.data = std::as_bytes(std::span{ gpuVertices });
@@ -59,7 +59,7 @@ namespace Nalta
             desc.stride    = sizeof(uint32_t);
             desc.access    = RHI::BufferAccessFlags::GpuOnly;
             desc.viewFlags = RHI::BufferViewFlags::ShaderResource;
-            desc.debugName = aRawData.sourcePath.IsEmpty() ? "cooked IB" : aRawData.sourcePath.GetPath() + " IB"; // TODO: USE NAME
+            desc.debugName = aRawData.sourcePath.GetStem() + " IB";
 
             RHI::BufferUploadDesc upload{};
             upload.data = std::as_bytes(std::span{ aRawData.indices });
