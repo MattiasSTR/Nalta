@@ -5,6 +5,7 @@ namespace Nalta::RHI::D3D12
 {
     struct BufferResource;
     struct PipelineStateObject;
+    struct TextureResource;
 
     class GraphicsContext final : public Context
     {

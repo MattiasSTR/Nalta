@@ -1,28 +1,12 @@
 ﻿#pragma once
-#include "Nalta/RHI/RHITypes.h"
-#include "Nalta/RHI/D3D12/D3D12Common.h"
-#include "Nalta/RHI/D3D12/D3D12Texture.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Common.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Resource.h"
+#include "Nalta/RHI/Types/RHIConstants.h"
 
 namespace Nalta::RHI::D3D12
 {
     class Device;
 
-    constexpr uint32_t MAX_QUEUED_BARRIERS{ 16 };
-    
-    struct ContextSubmissionResult
-    {
-        uint32_t frameId{ 0 };
-        uint32_t submissionIndex{ 0 };
-    };
-    
-    enum class ContextWaitType : uint8_t
-    {
-        Host = 0,
-        Graphics,
-        Compute,
-        Copy
-    };
-    
     class Context
     {
     public:

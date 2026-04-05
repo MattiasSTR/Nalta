@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include "Nalta/RHI/RHITypes.h"
-#include "Nalta/RHI/D3D12/D3D12Common.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Common.h"
+#include "Nalta/RHI/Types/RHIEnums.h"
 
 #include <mutex>
 #include <span>

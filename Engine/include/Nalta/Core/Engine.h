@@ -15,7 +15,7 @@ namespace Nalta
 {
 	namespace Graphics
 	{
-		class GraphicsSystem;
+		class GPUResourceSystem;
 	}
 	
 	class AssetManager;
@@ -48,7 +48,7 @@ namespace Nalta
 		EngineConfig myConfig;
 		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
-		std::unique_ptr<Graphics::GraphicsSystem> myGraphicsSystem;
+		std::unique_ptr<Graphics::GPUResourceSystem> myGpuResourceSystem;
 		std::unique_ptr<AssetManager> myAssetManager;
 		
 		WindowHandle myMainWindow;

@@ -1,6 +1,7 @@
 ﻿#pragma once
-#include "Nalta/RHI/D3D12/D3D12Common.h"
-#include "Nalta/RHI/D3D12/D3D12Texture.h"
+#include "Nalta/RHI/Types/RHIDescs.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Common.h"
+#include "Nalta/RHI/D3D12/Resources/D3D12Texture.h"
 
 #include <array>
 

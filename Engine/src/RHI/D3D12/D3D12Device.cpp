@@ -1,6 +1,13 @@
 ﻿#include "npch.h"
 #include "Nalta/RHI/D3D12/D3D12Device.h"
 
+#include "Nalta/RHI/D3D12/D3D12RenderSurface.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Queue.h"
+#include "Nalta/RHI/D3D12/Contexts/D3D12ComputeContext.h"
+#include "Nalta/RHI/D3D12/Contexts/D3D12GraphicsContext.h"
+#include "Nalta/RHI/D3D12/Contexts/D3D12UploadContext.h"
+#include "Nalta/RHI/D3D12/Resources/D3D12PipelineStateObject.h"
+
 namespace Nalta::RHI::D3D12
 {
     namespace
@@ -737,7 +744,7 @@ namespace Nalta::RHI::D3D12
             myDevice->CreateShaderResourceView(buffer->resource, &srvDesc, buffer->SRVDescriptor.CPUHandle);
         }
         
-        // UAV — bindless heap
+        // UAV - bindless heap
         if (hasUAV)
         {
             buffer->UAVDescriptor = myBindlessHeap->Allocate();
@@ -765,6 +772,7 @@ namespace Nalta::RHI::D3D12
         }
         
         buffer->size = aDesc.size;
+        buffer->isReady = (isUpload || isReadback); // CpuToGpu/GpuToCpu are immediately usable
         
         if (!aDesc.debugName.empty())
         {

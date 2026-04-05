@@ -6,7 +6,7 @@
 #include "Nalta/Core/SceneViewContext.h"
 #include "Nalta/Core/Timer.h"
 #include "Nalta/Core/UpdateContext.h"
-#include "Nalta/Graphics/GraphicsSystem.h"
+#include "Nalta/Graphics/GPUResourceSystem.h"
 #include "Nalta/Input/InputSystem.h"
 #include "Nalta/Platform/IWindow.h"
 #include "Nalta/Platform/PlatformFactory.h"
@@ -66,8 +66,6 @@ namespace Nalta
 			NL_INFO(GCoreLogger, "CPU logical cores: {}", coreCount);
 			NL_INFO(GCoreLogger, "System memory: {} MB", memoryBytes / (1024u * 1024u));
 			
-			
-			
 			// myPlatformSystem->SetOnWindowDestroyedCallback([this](const WindowHandle aWindow)
 			// {
 			// 	if (myGraphicsSystem)
@@ -80,8 +78,8 @@ namespace Nalta
 			myMainWindow->Show();
 			NL_INFO(GCoreLogger, "Main window created");
 			
-			myGraphicsSystem = std::make_unique<Graphics::GraphicsSystem>();
-			myGraphicsSystem->Initialize(myMainWindow);
+			myGpuResourceSystem = std::make_unique<Graphics::GPUResourceSystem>();
+			myGpuResourceSystem->Initialize();
 			
 			auto& inputSystem{ myPlatformSystem->GetInputSystem() };
 			myPlayerInput.AssignKeyboard(inputSystem.GetKeyboard());
@@ -122,11 +120,11 @@ namespace Nalta
 			NL_INFO(GCoreLogger, "AssetManager shutdown");
 		}
 		
-		if (myGraphicsSystem)
+		if (myGpuResourceSystem)
 		{
-			myGraphicsSystem->Shutdown();
-			myGraphicsSystem.reset();
-			NL_INFO(GCoreLogger, "GraphicsSystem destroyed");
+			myGpuResourceSystem->Shutdown();
+			myGpuResourceSystem.reset();
+			NL_INFO(GCoreLogger, "GPUResourceSystem destroyed");
 		}
 		
 		if (myPlatformSystem)
@@ -270,15 +268,11 @@ namespace Nalta
 		NL_SCOPE_CORE("RenderLoop");
 		NL_INFO(GCoreLogger, "Render loop started");
 		
-		//constexpr float clearColor[]{ 0.01f, 0.01f, 0.01f, 1.0f };
-		
 		while (!myStop)
 		{
 			if (mySceneBuffer.Consume())
 			{
 				[[maybe_unused]] const SceneView& view{ mySceneBuffer.GetReadSlot() };
-				
-				myGraphicsSystem->Test();
 			}
 			else
 			{

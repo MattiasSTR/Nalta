@@ -1,6 +1,7 @@
 ﻿#include "npch.h"
-#include "Nalta/RHI/D3D12/D3D12ComputeContext.h"
+#include "Nalta/RHI/D3D12/Contexts/D3D12ComputeContext.h"
 #include "Nalta/RHI/D3D12/D3D12Device.h"
+#include "Nalta/RHI/D3D12/Resources/D3D12PipelineStateObject.h"
 
 namespace Nalta::RHI::D3D12
 {
@@ -39,7 +40,6 @@ namespace Nalta::RHI::D3D12
     
     void ComputeContext::Dispatch(const uint32_t aGroupX, const uint32_t aGroupY, const uint32_t aGroupZ)
     {
-        FlushBarriers();
         myCommandList->Dispatch(aGroupX, aGroupY, aGroupZ);
     }
 

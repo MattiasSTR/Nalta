@@ -1,10 +1,9 @@
 ﻿#pragma once
 #include "D3D12Context.h"
-#include "Nalta/RHI/RHI.h"
-#include "Nalta/RHI/RHITypes.h"
-#include "Nalta/RHI/D3D12/D3D12Common.h"
-#include "Nalta/RHI/D3D12/D3D12Texture.h"
-#include "Nalta/RHI/D3D12/D3D12Buffer.h"
+#include "Nalta/RHI/Types/RHIDescs.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Common.h"
+#include "Nalta/RHI/D3D12/Resources/D3D12Texture.h"
+#include "Nalta/RHI/D3D12/Resources/D3D12Buffer.h"
 
 namespace Nalta::RHI::D3D12
 {
@@ -19,6 +18,12 @@ namespace Nalta::RHI::D3D12
         uint64_t totalSize{ 0 };
         TextureUploadDesc uploadDesc{};
     };
+    
+    struct PendingBufferUpload
+    {
+        BufferResource* buffer{ nullptr };
+        std::vector<uint8_t> data{};
+    };
 
     class UploadContext final : public Context
     {
@@ -32,6 +37,7 @@ namespace Nalta::RHI::D3D12
         UploadContext& operator=(UploadContext&&)      = delete;
 
         void AddTextureUpload(TextureResource* aTexture, TextureUploadDesc aUploadDesc);
+        void AddBufferUpload(BufferResource* aBuffer, BufferUploadDesc aUploadDesc);
 
         // Called in PrePresent - copies data, records and closes command list
         void ProcessUploads();
@@ -39,14 +45,20 @@ namespace Nalta::RHI::D3D12
         // Called in BeginFrame after fence wait - marks textures ready
         void ResolveUploads();
 
-        [[nodiscard]] bool HasPendingWork() const { return !myUploadsInProgress.empty(); }
+        [[nodiscard]] bool HasPendingWork() const
+        {
+            return !myTextureUploadsInProgress.empty() || !myBufferUploadsInProgress.empty();
+        }
 
     private:
         std::unique_ptr<BufferResource> myUploadHeap;
         uint64_t myUploadHeapSize{ 0 };
         uint64_t myCurrentOffset{ 0 };
 
-        std::vector<PendingTextureUpload> myPendingUploads;
-        std::vector<TextureResource*> myUploadsInProgress;
+        std::vector<PendingTextureUpload> myPendingTextureUploads{};
+        std::vector<TextureResource*> myTextureUploadsInProgress{};
+
+        std::vector<PendingBufferUpload> myPendingBufferUploads{};
+        std::vector<BufferResource*> myBufferUploadsInProgress{};
     };
 }

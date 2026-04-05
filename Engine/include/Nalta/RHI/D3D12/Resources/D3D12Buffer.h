@@ -1,10 +1,8 @@
 ﻿#pragma once
-#include "D3D12Resource.h"
-#include "Nalta/RHI/RHITypes.h"
-#include "Nalta/RHI/D3D12/D3D12Common.h"
-#include "Nalta/RHI/D3D12/D3D12Descriptor.h"
-
-#include <D3D12MemAlloc.h>
+#include "Nalta/RHI/D3D12/Common/D3D12Common.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Descriptor.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Resource.h"
+#include "Nalta/RHI/Types/RHIEnums.h"
 
 namespace Nalta::RHI::D3D12
 {
@@ -25,6 +23,7 @@ namespace Nalta::RHI::D3D12
         Descriptor SRVDescriptor{};
         Descriptor UAVDescriptor{};
 
+        bool IsValid() const { return resource != nullptr; }
         [[nodiscard]] uint32_t GetBindlessIndex() const { return SRVDescriptor.heapIndex; }
     };
 }

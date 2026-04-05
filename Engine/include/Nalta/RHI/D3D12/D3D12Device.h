@@ -1,21 +1,23 @@
 ﻿#pragma once
-#include "D3D12Buffer.h"
-#include "D3D12ComputeContext.h"
-#include "D3D12GraphicsContext.h"
-#include "D3D12PipelineStateObject.h"
-#include "D3D12RenderSurface.h"
-#include "D3D12UploadContext.h"
-#include "Nalta/RHI/D3D12/D3D12Common.h"
-#include "Nalta/RHI/D3D12/D3D12Context.h"
-#include "Nalta/RHI/D3D12/D3D12Descriptor.h"
-#include "Nalta/RHI/D3D12/D3D12Queue.h"
-#include "Nalta/RHI/D3D12/D3D12Texture.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Common.h"
+#include "Nalta/RHI/D3D12/Contexts/D3D12Context.h"
+#include "Nalta/RHI/Types/RHIDescs.h" 
+#include "Nalta/RHI/Types/RHIShader.h" 
 
 #include <array>
-#include <D3D12MemAlloc.h>
 
 namespace Nalta::RHI::D3D12
 {
+    class GraphicsContext;
+    class ComputeContext;
+    class UploadContext;
+    class RenderSurface;
+    class Queue;
+    class FreeListDescriptorHeap;
+    struct BufferResource;
+    struct TextureResource;
+    struct PipelineStateObject;
+    
     namespace HeapCapacity
     {
         constexpr uint32_t BINDLESS{ 1'000'000 }; // CBV/SRV/UAV, shader-visible
@@ -66,7 +68,7 @@ namespace Nalta::RHI::D3D12
         [[nodiscard]] IDxcUtils* GetDxcUtils() const { return myDxcUtils; }
         [[nodiscard]] D3D12MA::Allocator* GetAllocator() const { return myAllocator; }
         [[nodiscard]] Queue& GetQueue(QueueType aType) { return *myQueues[static_cast<size_t>(aType)]; }
-        [[nodiscard]] uint32_t& GetFrameIndex() { return myFrameIndex; }
+        [[nodiscard]] uint32_t GetFrameIndex() const { return myFrameIndex; }
         [[nodiscard]] ID3D12RootSignature* GetRootSignature() const { return myRootSignature; }
         [[nodiscard]] FreeListDescriptorHeap& GetBindlessHeap() { return *myBindlessHeap; }
         [[nodiscard]] FreeListDescriptorHeap& GetSamplerHeap() { return *mySamplerHeap; }

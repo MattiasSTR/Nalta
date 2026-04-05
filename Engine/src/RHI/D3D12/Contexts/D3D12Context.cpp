@@ -1,6 +1,7 @@
 ﻿#include "npch.h"
-#include "Nalta/RHI/D3D12/D3D12Context.h"
+#include "Nalta/RHI/D3D12/Contexts/D3D12Context.h"
 #include "Nalta/RHI/D3D12/D3D12Device.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Descriptor.h"
 
 namespace Nalta::RHI::D3D12
 {

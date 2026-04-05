@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Nalta/RHI/Device.h"
+#include "Nalta/RHI/RHIDevice.h"
 
 #include <memory>
 

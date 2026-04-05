@@ -1,5 +1,5 @@
 ﻿#include "npch.h"
-#include "Nalta/RHI/D3D12/D3D12UploadContext.h"
+#include "Nalta/RHI/D3D12/Contexts/D3D12UploadContext.h"
 #include "Nalta/RHI/D3D12/D3D12Device.h"
 
 namespace Nalta::RHI::D3D12
@@ -23,8 +23,10 @@ namespace Nalta::RHI::D3D12
     
     UploadContext::~UploadContext()
     {
-        N_CORE_ASSERT(myPendingUploads.empty(), "UploadContext destroyed with pending uploads");
-        N_CORE_ASSERT(myUploadsInProgress.empty(), "UploadContext destroyed with uploads in progress");
+        N_CORE_ASSERT(myPendingTextureUploads.empty(), "UploadContext destroyed with pending texture uploads");
+        N_CORE_ASSERT(myTextureUploadsInProgress.empty(), "UploadContext destroyed with texture uploads in progress");
+        N_CORE_ASSERT(myPendingBufferUploads.empty(), "UploadContext destroyed with pending buffer uploads");
+        N_CORE_ASSERT(myBufferUploadsInProgress.empty(), "UploadContext destroyed with buffer uploads in progress");
 
         if (myUploadHeap && myUploadHeap->mappedData)
         {
@@ -77,25 +79,71 @@ namespace Nalta::RHI::D3D12
             pending.rowSizes.data(),
             &pending.totalSize);
 
-        myPendingUploads.push_back(std::move(pending));
+        myPendingTextureUploads.push_back(std::move(pending));
     }
-    
+
+    void UploadContext::AddBufferUpload(BufferResource* aBuffer, const BufferUploadDesc aUploadDesc)
+    {
+        N_CORE_ASSERT(aBuffer != nullptr, "Cannot upload to null buffer");
+        N_CORE_ASSERT(!aUploadDesc.data.empty(), "Buffer upload data is empty");
+        N_CORE_ASSERT(aUploadDesc.data.size_bytes() <= myUploadHeapSize, "Buffer upload exceeds heap size");
+
+        PendingBufferUpload pending{};
+        pending.buffer = aBuffer;
+        pending.data.resize(aUploadDesc.data.size_bytes());
+        memcpy(pending.data.data(), aUploadDesc.data.data(), aUploadDesc.data.size_bytes());
+
+        myPendingBufferUploads.push_back(std::move(pending));
+    }
+
     void UploadContext::ProcessUploads()
     {
-        if (myPendingUploads.empty())
+        if (myPendingTextureUploads.empty())
         {
             return;
         }
 
         Reset(); // opens the command list (closes previous if open)
         
-        uint32_t numProcessed{ 0 };
+        uint32_t numBuffersProcessed{ 0 };
+
+        for (auto& pending : myPendingBufferUploads)
+        {
+            const uint64_t dataSize{ static_cast<uint64_t>(pending.data.size()) };
+            const uint64_t alignedSize{ (dataSize + 255) & ~255ull };
+
+            if (myCurrentOffset + alignedSize > myUploadHeapSize)
+            {
+                NL_WARN(GCoreLogger, "Upload heap full - {} buffer upload(s) deferred to next frame", myPendingBufferUploads.size() - numBuffersProcessed);
+                break;
+            }
+
+            memcpy(myUploadHeap->mappedData + myCurrentOffset, pending.data.data(), dataSize);
+
+            myCommandList->CopyBufferRegion(
+                pending.buffer->resource,
+                0,
+                myUploadHeap->resource,
+                myCurrentOffset,
+                dataSize);
+
+            myCurrentOffset += alignedSize;
+            myBufferUploadsInProgress.push_back(pending.buffer);
+            numBuffersProcessed++;
+        }
+
+        if (numBuffersProcessed > 0)
+        {
+            myPendingBufferUploads.erase(myPendingBufferUploads.begin(), myPendingBufferUploads.begin() + numBuffersProcessed);
+        }
         
-        for (auto& pending : myPendingUploads)
+        uint32_t numTexturesProcessed{ 0 };
+        
+        for (auto& pending : myPendingTextureUploads)
         {
             if (myCurrentOffset + pending.totalSize > myUploadHeapSize)
             {
-                NL_WARN(GCoreLogger, "Upload heap full - {} upload(s) deferred to next frame", myPendingUploads.size() - numProcessed);
+                NL_WARN(GCoreLogger, "Upload heap full - {} upload(s) deferred to next frame", myPendingTextureUploads.size() - numTexturesProcessed);
                 break;
             }
         
@@ -138,31 +186,34 @@ namespace Nalta::RHI::D3D12
             myCurrentOffset += pending.totalSize;
             myCurrentOffset  = (myCurrentOffset + 511) & ~511ull;
         
-            myUploadsInProgress.push_back(pending.texture);
-            numProcessed++;
+            myTextureUploadsInProgress.push_back(pending.texture);
+            numTexturesProcessed++;
         }
         
-        if (numProcessed > 0)
+        if (numTexturesProcessed > 0)
         {
-            Close(); // close after all recording is done
-            myPendingUploads.erase(myPendingUploads.begin(), myPendingUploads.begin() + numProcessed);
+            myPendingTextureUploads.erase(myPendingTextureUploads.begin(), myPendingTextureUploads.begin() + numTexturesProcessed);
         }
-        else
-        {
-            // Nothing was processed — close the list we opened in Reset()
-            Close();
-        }
+
+        Close();
     }
     
     void UploadContext::ResolveUploads()
     {
-        for (auto* texture : myUploadsInProgress)
+        for (auto* texture : myTextureUploadsInProgress)
         {
             texture->state   = D3D12_RESOURCE_STATE_COMMON; // promoted during copy, back to common
             texture->isReady = true;
         }
+        
+        for (auto* buffer : myBufferUploadsInProgress)
+        {
+            buffer->state   = D3D12_RESOURCE_STATE_COMMON;
+            buffer->isReady = true;
+        }
 
-        myUploadsInProgress.clear();
+        myTextureUploadsInProgress.clear();
+        myBufferUploadsInProgress.clear();
         myCurrentOffset = 0;
     }
 }

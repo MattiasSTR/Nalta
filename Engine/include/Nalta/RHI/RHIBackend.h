@@ -1,14 +1,10 @@
 ﻿#pragma once
 #include "Nalta/Core/PlatformDetector.h"
 
-// Define N_RHI_D3D12 or N_RHI_VULKAN via premake/compiler flags.
-// This header just validates and documents the choice.
-
 #define N_RHI_D3D12
-//#define N_RHI_VULKAN
 
-#if defined (N_RHI_D3D12) && !defined(N_PLATFORM_WINDOWS)
-    #error "D3D12 only works on windows"
+#if defined(N_RHI_D3D12) && !defined(N_PLATFORM_WINDOWS)
+    #error "D3D12 only works on Windows"
 #endif
 
 #if !defined(N_RHI_D3D12) && !defined(N_RHI_VULKAN)

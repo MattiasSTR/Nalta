@@ -1,6 +1,10 @@
 ﻿#include "npch.h"
-#include "Nalta/RHI/D3D12/D3D12GraphicsContext.h"
+#include "Nalta/RHI/D3D12/Contexts/D3D12GraphicsContext.h"
+
 #include "Nalta/RHI/D3D12/D3D12Device.h"
+#include "Nalta/RHI/D3D12/Resources/D3D12Buffer.h"
+#include "Nalta/RHI/D3D12/Resources/D3D12PipelineStateObject.h"
+#include "Nalta/RHI/D3D12/Resources/D3D12Texture.h"
 
 namespace Nalta::RHI::D3D12
 {
@@ -154,25 +158,21 @@ namespace Nalta::RHI::D3D12
     
     void GraphicsContext::Draw(const uint32_t aVertexCount, const uint32_t aStartVertex)
     {
-        FlushBarriers();
         myCommandList->DrawInstanced(aVertexCount, 1, aStartVertex, 0);
     }
 
     void GraphicsContext::DrawIndexed(const uint32_t aIndexCount, const uint32_t aStartIndex, const uint32_t aBaseVertex)
     {
-        FlushBarriers();
         myCommandList->DrawIndexedInstanced(aIndexCount, 1, aStartIndex, aBaseVertex, 0);
     }
 
     void GraphicsContext::DrawInstanced(const uint32_t aVertexCountPerInstance, const uint32_t aInstanceCount, const uint32_t aStartVertex, const uint32_t aStartInstance)
     {
-        FlushBarriers();
         myCommandList->DrawInstanced(aVertexCountPerInstance, aInstanceCount, aStartVertex, aStartInstance);
     }
     
     void GraphicsContext::DrawIndexedInstanced(const uint32_t aIndexCountPerInstance, const uint32_t aInstanceCount, const uint32_t aStartIndex, const uint32_t aBaseVertex, const uint32_t aStartInstance)
     {
-        FlushBarriers();
         myCommandList->DrawIndexedInstanced(aIndexCountPerInstance, aInstanceCount, aStartIndex, aBaseVertex, aStartInstance);
     }
 
@@ -185,7 +185,6 @@ namespace Nalta::RHI::D3D12
     
     void GraphicsContext::Dispatch(const uint32_t aGroupX, const uint32_t aGroupY, const uint32_t aGroupZ)
     {
-        FlushBarriers();
         myCommandList->Dispatch(aGroupX, aGroupY, aGroupZ);
     }
 
