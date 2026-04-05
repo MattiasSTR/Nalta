@@ -6,7 +6,8 @@
 #include "Nalta/Core/SceneViewContext.h"
 #include "Nalta/Core/Timer.h"
 #include "Nalta/Core/UpdateContext.h"
-#include "Nalta/Graphics/GPUResourceSystem.h"
+#include "Nalta/Graphics/GPUResourceManager.h"
+#include "Nalta/Graphics/Renderer.h"
 #include "Nalta/Input/InputSystem.h"
 #include "Nalta/Platform/IWindow.h"
 #include "Nalta/Platform/PlatformFactory.h"
@@ -78,12 +79,21 @@ namespace Nalta
 			myMainWindow->Show();
 			NL_INFO(GCoreLogger, "Main window created");
 			
-			myGpuResourceSystem = std::make_unique<Graphics::GPUResourceSystem>();
-			myGpuResourceSystem->Initialize();
+			myGPUResourceManager = std::make_unique<Graphics::GPUResourceManager>();
+			myGPUResourceManager->Initialize();
+			
+			RHI::RenderSurfaceDesc desc;
+			desc.width = myConfig.mainWindowDesc->width;
+			desc.height = myConfig.mainWindowDesc->height;
+			desc.window = myMainWindow->GetNativeHandle();
+			myMainSurfaceKey = myGPUResourceManager->CreateRenderSurface(desc);
 			
 			auto& inputSystem{ myPlatformSystem->GetInputSystem() };
 			myPlayerInput.AssignKeyboard(inputSystem.GetKeyboard());
 			myPlayerInput.AssignMouse(inputSystem.GetMouse());
+			
+			myRenderer = std::make_unique<Graphics::Renderer>(myGPUResourceManager.get());
+			myRenderer->Initialize();
 		}
 		else
 		{
@@ -113,6 +123,12 @@ namespace Nalta
 			NL_INFO(GCoreLogger, "Game shutdown");
 		}
 		
+		if (myRenderer)
+		{
+			myRenderer->Shutdown();
+			myRenderer.reset();
+		}
+		
 		if (myAssetManager)
 		{
 			myAssetManager->Shutdown();
@@ -120,10 +136,10 @@ namespace Nalta
 			NL_INFO(GCoreLogger, "AssetManager shutdown");
 		}
 		
-		if (myGpuResourceSystem)
+		if (myGPUResourceManager)
 		{
-			myGpuResourceSystem->Shutdown();
-			myGpuResourceSystem.reset();
+			myGPUResourceManager->Shutdown();
+			myGPUResourceManager.reset();
 			NL_INFO(GCoreLogger, "GPUResourceSystem destroyed");
 		}
 		
@@ -239,19 +255,31 @@ namespace Nalta
 			
 			if (canRender)
 			{
-				SceneView& view{ mySceneBuffer.GetWriteSlot() };
-				view.Reset();
+				Graphics::RenderFrame& frame{ myRenderBuffer.GetWriteSlot() };
+				frame.Reset();
 				
 				if (myGame)
 				{
 					SceneViewContext ctx;
-					ctx.view = &view;
+					ctx.view = &frame.scene;
 					ctx.width = myMainWindow->GetWidth();
 					ctx.height = myMainWindow->GetHeight();
 					myGame->BuildSceneView(ctx);
 				}
 				
-				mySceneBuffer.Publish();
+				// Assemble surface and camera from game data
+				Graphics::SurfaceView& surfaceView{ frame.surfaces.emplace_back() };
+				surfaceView.surface = myMainSurfaceKey;
+				surfaceView.width = myMainWindow->GetWidth();
+				surfaceView.height = myMainWindow->GetHeight();
+				
+				// Lift camera from SceneView into CameraView
+				Graphics::CameraView& cameraView{ surfaceView.cameras.emplace_back() };
+				cameraView.view = frame.scene.camera.view;
+				cameraView.projection = frame.scene.camera.projection;
+				cameraView.position = frame.scene.camera.position;
+
+				myRenderBuffer.Publish();
 			}
 		}
 		
@@ -270,9 +298,9 @@ namespace Nalta
 		
 		while (!myStop)
 		{
-			if (mySceneBuffer.Consume())
+			if (myRenderBuffer.Consume())
 			{
-				[[maybe_unused]] const SceneView& view{ mySceneBuffer.GetReadSlot() };
+				myRenderer->RenderFrame(myRenderBuffer.GetReadSlot());
 			}
 			else
 			{

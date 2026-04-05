@@ -1,13 +1,13 @@
 ﻿#include "npch.h"
 
-#include "Nalta/Graphics/GPUResourceSystem.h"
+#include "Nalta/Graphics/GPUResourceManager.h"
 
 namespace Nalta::Graphics
 {
-    GPUResourceSystem::GPUResourceSystem() = default;
-    GPUResourceSystem::~GPUResourceSystem() = default;
+    GPUResourceManager::GPUResourceManager() = default;
+    GPUResourceManager::~GPUResourceManager() = default;
 
-    void GPUResourceSystem::Initialize()
+    void GPUResourceManager::Initialize()
     {
         N_CORE_ASSERT(!myIsInitialized, "GpuResourceSystem already initialized");
 
@@ -16,7 +16,7 @@ namespace Nalta::Graphics
         myIsInitialized = true;
     }
 
-    void GPUResourceSystem::Shutdown()
+    void GPUResourceManager::Shutdown()
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem was not initialized");
         
@@ -44,13 +44,13 @@ namespace Nalta::Graphics
         myIsInitialized = false;
     }
 
-    class RHI::Device& GPUResourceSystem::GetDevice() const
+    class RHI::Device& GPUResourceManager::GetDevice() const
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
         return *myDevice;
     }
 
-    TextureKey GPUResourceSystem::CreateTexture(const RHI::TextureCreationDesc& aDesc)
+    TextureKey GPUResourceManager::CreateTexture(const RHI::TextureCreationDesc& aDesc)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
 
@@ -60,7 +60,7 @@ namespace Nalta::Graphics
         return myTextures.Insert(std::move(texture));
     }
 
-    TextureKey GPUResourceSystem::UploadTexture(const RHI::TextureUploadDesc& aDesc)
+    TextureKey GPUResourceManager::UploadTexture(const RHI::TextureUploadDesc& aDesc)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
 
@@ -73,7 +73,7 @@ namespace Nalta::Graphics
         return myTextures.Insert(std::move(texture));
     }
 
-    void GPUResourceSystem::DestroyTexture(const TextureKey aKey)
+    void GPUResourceManager::DestroyTexture(const TextureKey aKey)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
         N_CORE_ASSERT(myTextures.Contains(aKey), "TextureKey is not valid");
@@ -82,13 +82,13 @@ namespace Nalta::Graphics
         myTextures.Remove(aKey);
     }
 
-    const RHI::Texture* GPUResourceSystem::GetTexture(const TextureKey aKey) const
+    const RHI::Texture* GPUResourceManager::GetTexture(const TextureKey aKey) const
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
         return myTextures.Get(aKey)->get();
     }
 
-    BufferKey GPUResourceSystem::CreateBuffer(const RHI::BufferCreationDesc& aDesc)
+    BufferKey GPUResourceManager::CreateBuffer(const RHI::BufferCreationDesc& aDesc)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
 
@@ -98,7 +98,7 @@ namespace Nalta::Graphics
         return myBuffers.Insert(std::move(buffer));
     }
 
-    BufferKey GPUResourceSystem::UploadBuffer(const RHI::BufferCreationDesc& aDesc, const RHI::BufferUploadDesc& aUploadDesc)
+    BufferKey GPUResourceManager::UploadBuffer(const RHI::BufferCreationDesc& aDesc, const RHI::BufferUploadDesc& aUploadDesc)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
         N_CORE_ASSERT(aDesc.access == RHI::BufferAccessFlags::GpuOnly, "UploadBuffer is only for GpuOnly buffers - use CreateBuffer and write mapped data directly for CpuToGpu buffers");
@@ -112,7 +112,7 @@ namespace Nalta::Graphics
         return myBuffers.Insert(std::move(buffer));
     }
 
-    void GPUResourceSystem::DestroyBuffer(const BufferKey aKey)
+    void GPUResourceManager::DestroyBuffer(const BufferKey aKey)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
         N_CORE_ASSERT(myBuffers.Contains(aKey), "BufferKey is not valid");
@@ -121,14 +121,14 @@ namespace Nalta::Graphics
         myBuffers.Remove(aKey);
     }
 
-    const RHI::Buffer* GPUResourceSystem::GetBuffer(const BufferKey aKey) const
+    const RHI::Buffer* GPUResourceManager::GetBuffer(const BufferKey aKey) const
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
 
         return myBuffers.Get(aKey)->get();
     }
 
-    RenderSurfaceKey GPUResourceSystem::CreateRenderSurface(const RHI::RenderSurfaceDesc& aDesc)
+    RenderSurfaceKey GPUResourceManager::CreateRenderSurface(const RHI::RenderSurfaceDesc& aDesc)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
 
@@ -138,7 +138,7 @@ namespace Nalta::Graphics
         return myRenderSurfaces.Insert(std::move(surface));
     }
 
-    void GPUResourceSystem::DestroyRenderSurface(const RenderSurfaceKey aKey)
+    void GPUResourceManager::DestroyRenderSurface(const RenderSurfaceKey aKey)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
         N_CORE_ASSERT(myRenderSurfaces.Contains(aKey), "RenderSurfaceKey is not valid");
@@ -147,7 +147,7 @@ namespace Nalta::Graphics
         myRenderSurfaces.Remove(aKey);
     }
 
-    RHI::RenderSurface* GPUResourceSystem::GetRenderSurface(const RenderSurfaceKey aKey)
+    RHI::RenderSurface* GPUResourceManager::GetRenderSurface(const RenderSurfaceKey aKey)
     {
         N_CORE_ASSERT(myIsInitialized, "GpuResourceSystem is not initialized");
         return myRenderSurfaces.Get(aKey)->get();

@@ -2,8 +2,8 @@
 
 #include "EngineConfig.h"
 #include "TripleBuffer.h"
-#include "SceneView.h"
 #include "Nalta/Core/IGame.h"
+#include "Nalta/Graphics/RenderFrame.h"
 #include "Nalta/Platform/WindowHandle.h"
 #include "Nalta/Input/PlayerInput.h"
 
@@ -15,7 +15,8 @@ namespace Nalta
 {
 	namespace Graphics
 	{
-		class GPUResourceSystem;
+		class Renderer;
+		class GPUResourceManager;
 	}
 	
 	class AssetManager;
@@ -48,10 +49,12 @@ namespace Nalta
 		EngineConfig myConfig;
 		
 		std::unique_ptr<IPlatformSystem> myPlatformSystem;
-		std::unique_ptr<Graphics::GPUResourceSystem> myGpuResourceSystem;
+		std::unique_ptr<Graphics::GPUResourceManager> myGPUResourceManager;
 		std::unique_ptr<AssetManager> myAssetManager;
+		std::unique_ptr<Graphics::Renderer> myRenderer;
 		
 		WindowHandle myMainWindow;
+		Graphics::RenderSurfaceKey myMainSurfaceKey;
 		
 		std::unique_ptr<IGame> myGame;
 		
@@ -63,7 +66,7 @@ namespace Nalta
 		
 		PlayerInput myPlayerInput;
 
-		TripleBuffer<SceneView> mySceneBuffer;
+		TripleBuffer<Graphics::RenderFrame> myRenderBuffer;
 		
 		std::unique_ptr<Logger> myCoreLogger;
 		std::unique_ptr<Logger> myGameLogger;

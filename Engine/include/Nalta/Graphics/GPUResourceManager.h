@@ -8,16 +8,16 @@
 
 namespace Nalta::Graphics
 {
-    class GPUResourceSystem
+    class GPUResourceManager
     {
     public:
-        GPUResourceSystem();
-        ~GPUResourceSystem();
+        GPUResourceManager();
+        ~GPUResourceManager();
 
-        GPUResourceSystem(const GPUResourceSystem&) = delete;
-        GPUResourceSystem& operator=(const GPUResourceSystem&) = delete;
-        GPUResourceSystem(GPUResourceSystem&&) = delete;
-        GPUResourceSystem& operator=(GPUResourceSystem&&) = delete;
+        GPUResourceManager(const GPUResourceManager&) = delete;
+        GPUResourceManager& operator=(const GPUResourceManager&) = delete;
+        GPUResourceManager(GPUResourceManager&&) = delete;
+        GPUResourceManager& operator=(GPUResourceManager&&) = delete;
         
         void Initialize();
         void Shutdown();
