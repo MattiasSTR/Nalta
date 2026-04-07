@@ -9,6 +9,8 @@ namespace Nalta
     struct Texture
     {
         Graphics::TextureKey gpuTexture{};
+        uint32_t textureIndex{ ~0u };
+        
         uint32_t width{ 0 };
         uint32_t height{ 0 };
         uint32_t mipLevels{ 0 };

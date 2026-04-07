@@ -17,6 +17,16 @@ namespace Nalta
             NL_ERROR(GCoreLogger, "invalid raw mesh data for '{}'", aRawData.sourcePath.IsEmpty() ? "cooked" : aRawData.sourcePath.GetPath());
             return false;
         }
+        
+        // Release old GPU resources before overwriting — deferred so in-flight frames finish
+        if (outMesh.vertexBuffer.IsValid())
+        {
+            aGpuResources.DestroyBuffer(outMesh.vertexBuffer);
+        }
+        if (outMesh.indexBuffer.IsValid())
+        {
+            aGpuResources.DestroyBuffer(outMesh.indexBuffer);
+        }
 
         // Convert raw vertices to GPU vertex layout
         std::vector<MeshVertex> gpuVertices;
@@ -45,6 +55,8 @@ namespace Nalta
             upload.data = std::as_bytes(std::span{ gpuVertices });
 
             outMesh.vertexBuffer = aGpuResources.UploadBuffer(desc, upload);
+            outMesh.vertexBufferIndex = aGpuResources.GetBuffer(outMesh.vertexBuffer)->GetBindlessIndex();
+            
             if (!outMesh.vertexBuffer.IsValid())
             {
                 NL_ERROR(GCoreLogger, "failed to upload vertex buffer for '{}'", desc.debugName);
@@ -65,6 +77,8 @@ namespace Nalta
             upload.data = std::as_bytes(std::span{ aRawData.indices });
 
             outMesh.indexBuffer = aGpuResources.UploadBuffer(desc, upload);
+            outMesh.indexBufferIndex = aGpuResources.GetBuffer(outMesh.indexBuffer)->GetBindlessIndex();
+            
             if (!outMesh.indexBuffer.IsValid())
             {
                 NL_ERROR(GCoreLogger, "failed to upload index buffer for '{}'", desc.debugName);
@@ -97,7 +111,7 @@ namespace Nalta
         outMesh.bounds.max[2] = aRawData.boundsMax[2];
 
         NL_INFO(GCoreLogger, "processed mesh '{}' ({} vertices, {} indices, {} submeshes)",
-            aRawData.sourcePath.IsEmpty() ? "cooked" : aRawData.sourcePath.GetPath(),
+            aRawData.sourcePath.GetPath(),
             aRawData.vertices.size(),
             aRawData.indices.size(),
             aRawData.submeshes.size());

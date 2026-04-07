@@ -20,6 +20,27 @@ namespace Nalta::Graphics
 
         myGraphicsContext = myGpuResourceSystem->GetDevice().CreateGraphicsContext();
         N_CORE_ASSERT(myGraphicsContext != nullptr, "Failed to create graphics context");
+        
+        {
+            RHI::ShaderDesc shaderDesc{};
+            shaderDesc.filePath  = Paths::EngineAssetDir() / "Shaders" / "Triangle.hlsl";
+            shaderDesc.debugName = "Triangle";
+            shaderDesc.stages    =
+            {
+                { .stage = RHI::ShaderStage::Vertex, .entryPoint = "VSMain" },
+                { .stage = RHI::ShaderStage::Pixel,  .entryPoint = "PSMain" }
+            };
+
+            RHI::GraphicsPipelineDesc pipelineDesc{};
+            pipelineDesc.debugName            = "Triangle";
+            pipelineDesc.renderTargetFormats  = { RHI::TextureFormat::RGBA8_UNORM };
+            pipelineDesc.depth.depthEnabled   = false;
+
+            auto key = myGpuResourceSystem->CreateGraphicsPipeline(shaderDesc, pipelineDesc);
+            N_CORE_ASSERT(key.IsValid(), "Failed to create test pipeline");
+
+            NL_INFO(GCoreLogger, "test pipeline created");
+        }
 
         myIsInitialized = true;
     }
@@ -115,7 +136,7 @@ namespace Nalta::Graphics
             RHI::RenderSurface* surface{ myGpuResourceSystem->GetRenderSurface(surfaceView.surface) };
             N_CORE_ASSERT(surface != nullptr, "RenderSurface is null");
 
-            surface->Present();
+            surface->Present(true);
         }
 
         myGpuResourceSystem->GetDevice().EndFrame();

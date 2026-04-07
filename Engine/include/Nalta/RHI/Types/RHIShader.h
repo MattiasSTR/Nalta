@@ -23,6 +23,7 @@ namespace Nalta::RHI
     struct Shader
     {
         std::vector<CompiledStage> stages{};
+        std::vector<std::filesystem::path> includes{};
         std::string debugName{};
 
         [[nodiscard]] const CompiledStage* GetStage(const ShaderStage aStage) const
@@ -43,7 +44,7 @@ namespace Nalta::RHI
     
     struct ShaderDesc
     {
-        std::filesystem::path filePath{};  // filesystem include was missing from RHITypes.h
+        std::filesystem::path filePath{};
         std::vector<ShaderStageDesc> stages{};
         std::unordered_map<std::string, std::string> defines{};
         std::string debugName{};

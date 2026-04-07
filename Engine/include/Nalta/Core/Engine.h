@@ -1,11 +1,10 @@
 #pragma once
-
 #include "EngineConfig.h"
 #include "TripleBuffer.h"
 #include "Nalta/Core/IGame.h"
 #include "Nalta/Graphics/RenderFrame.h"
-#include "Nalta/Platform/IWindow.h"
 #include "Nalta/Input/PlayerInput.h"
+#include "Nalta/Platform/IWindow.h"
 
 #include <atomic>
 #include <memory>

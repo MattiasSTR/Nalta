@@ -46,6 +46,8 @@ namespace Nalta
         // GPU resources - owned by GpuResourceSystem, keys stored here
         Graphics::BufferKey vertexBuffer{};
         Graphics::BufferKey indexBuffer{};
+        uint32_t vertexBufferIndex{ ~0u };
+        uint32_t indexBufferIndex{ ~0u };
         
         MeshBounds bounds;
         std::vector<MeshSubmesh> submeshes;

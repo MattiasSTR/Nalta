@@ -860,6 +860,10 @@ namespace Nalta::RHI::D3D12
             const std::wstring includeDir{ aDesc.filePath.parent_path().wstring() };
             args.push_back(includeDir.c_str());
             
+            // // Enable dependency file output for include tracking
+            // args.push_back(L"-MF");
+            // args.push_back(L"deps.d");
+            
 #ifndef N_SHIPPING
             args.push_back(L"-Zi");
             args.push_back(L"-Qembed_debug");
@@ -926,10 +930,66 @@ namespace Nalta::RHI::D3D12
             const auto* data{ static_cast<const uint8_t*>(bytecodeBlob->GetBufferPointer()) };
             compiled.bytecode.assign(data, data + bytecodeBlob->GetBufferSize());
             shader->stages.push_back(std::move(compiled));
-            
+
             SafeRelease(bytecodeBlob);
-            SafeRelease(result);
             SafeRelease(sourceBlob);
+            
+            if (shader->includes.empty())
+            {
+                IDxcExtraOutputs* extraOutputs{ nullptr };
+                result->GetOutput(DXC_OUT_EXTRA_OUTPUTS, IID_PPV_ARGS(&extraOutputs), nullptr);
+                if (extraOutputs)
+                {
+                    const uint32_t outputCount{ extraOutputs->GetOutputCount() };
+                    for (uint32_t i{ 0 }; i < outputCount; ++i)
+                    {
+                        IDxcBlob* outputBlob{ nullptr };
+                        IDxcBlobWide* outputType{ nullptr };
+                        IDxcBlobWide* outputName{ nullptr };
+
+                        extraOutputs->GetOutput(i, IID_PPV_ARGS(&outputBlob), &outputType, &outputName);
+
+                        if (outputBlob && outputName)
+                        {
+                            const std::wstring name{ outputName->GetStringPointer() };
+                            if (name.ends_with(L".d"))
+                            {
+                                const std::string deps{
+                                    static_cast<const char*>(outputBlob->GetBufferPointer()),
+                                    outputBlob->GetBufferSize()
+                                };
+
+                                std::istringstream stream{ deps };
+                                std::string line;
+                                while (std::getline(stream, line))
+                                {
+                                    if (line.empty())
+                                    {
+                                        continue;
+                                    }
+
+                                    const auto normalized{ std::filesystem::path{ line }.lexically_normal() };
+                                    if (normalized == aDesc.filePath.lexically_normal())
+                                    {
+                                        continue;
+                                    }
+                                    if (std::ranges::find(shader->includes, normalized) == shader->includes.end())
+                                    {
+                                        shader->includes.push_back(normalized);
+                                    }
+                                }
+                            }
+                        }
+
+                        SafeRelease(outputName);
+                        SafeRelease(outputType);
+                        SafeRelease(outputBlob);
+                    }
+                    SafeRelease(extraOutputs);
+                }
+            }
+
+            SafeRelease(result);
             
             NL_TRACE(GCoreLogger, "compiled '{}' ({})", aDesc.filePath.string(), stageDesc.entryPoint);
         }

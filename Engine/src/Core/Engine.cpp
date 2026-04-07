@@ -89,9 +89,14 @@ namespace Nalta
 #ifndef N_SHIPPING
 			myFileWatcher->SetOnChangedCallback([this](const std::filesystem::path& aPath)
 			{
-				if (myAssetManager)
+				if (myAssetManager && aPath.extension() != ".hlsl")
 				{
 					myAssetManager->OnFileChanged(aPath);
+				}
+
+				if (myGPUResourceManager && aPath.extension() == ".hlsl")
+				{
+					myGPUResourceManager->OnShaderChanged(aPath);
 				}
 			});
 #endif

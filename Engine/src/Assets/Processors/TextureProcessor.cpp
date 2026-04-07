@@ -16,6 +16,11 @@ namespace Nalta
             NL_ERROR(GCoreLogger, "invalid raw texture data");
             return false;
         }
+        
+        if (outTexture.gpuTexture.IsValid())
+        {
+            aGpuResources.DestroyTexture(outTexture.gpuTexture);
+        }
 
         RHI::TextureCreationDesc desc{};
         desc.width     = aRawData.width;
@@ -42,6 +47,8 @@ namespace Nalta
         }
 
         outTexture.gpuTexture = aGpuResources.UploadTexture(upload);
+        outTexture.textureIndex = aGpuResources.GetTexture(outTexture.gpuTexture)->GetBindlessIndex();
+
         if (!outTexture.gpuTexture.IsValid())
         {
             NL_ERROR(GCoreLogger, "failed to upload texture");
