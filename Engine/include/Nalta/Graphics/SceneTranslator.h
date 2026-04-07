@@ -11,7 +11,7 @@ namespace Nalta::Graphics
     public:
         explicit SceneTranslator(GPUResourceManager* aGpuResourceSystem);
 
-        void Translate(const SceneView& aSceneView, const CameraView& aCamera, RenderView& aOutRenderView);
+        void Translate(const SceneView& aSceneView, const CameraDesc& aCamera, RenderView& aOutRenderView);
 
     private:
         GPUResourceManager* myGpuResourceSystem{ nullptr };

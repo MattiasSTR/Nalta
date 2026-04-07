@@ -8,6 +8,7 @@
 
 namespace Nalta::RHI::D3D12
 {
+    struct Descriptor;
     class GraphicsContext;
     class ComputeContext;
     class UploadContext;
@@ -84,6 +85,7 @@ namespace Nalta::RHI::D3D12
         void SelectAdapter();
         void InitAllocator();
         void InitDescriptorHeaps();
+        void InitDefaultSamplers();
         void InitRootSignature();
         void CheckFeatureSupport() const;
         
@@ -111,6 +113,8 @@ namespace Nalta::RHI::D3D12
         std::unique_ptr<FreeListDescriptorHeap> mySamplerHeap;
         std::unique_ptr<FreeListDescriptorHeap> myRTVHeap;
         std::unique_ptr<FreeListDescriptorHeap> myDSVHeap;
+        
+        std::vector<Descriptor> myDefaultSamplers;
         
         std::array<std::unique_ptr<UploadContext>, FRAMES_IN_FLIGHT> myUploadContexts;
         

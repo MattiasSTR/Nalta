@@ -13,22 +13,26 @@ namespace Nalta
         float4x4 transform;
     };
 
-    struct SceneCamera
+    struct CameraDesc
     {
         float4x4 view;
-        float4x4 projection;
-        float4x4 viewProjection;
         float3 position;
+        
+        float fovY{ 75.0f };
+        float nearPlane{ 0.1f };
+        float farPlane{ 1000.0f };
+
+        float viewportX{ 0.0f };
+        float viewportY{ 0.0f };
+        float viewportWidth{ 1.0f };
+        float viewportHeight{ 1.0f };
     };
 
     struct SceneView
     {
-        SceneCamera camera;
+        std::vector<CameraDesc> cameras;
         std::vector<MeshDrawEntry> meshes;
 
-        void Reset()
-        {
-            meshes.clear();
-        }
+        void Reset() { cameras.clear(); meshes.clear(); }
     };
 }

@@ -126,25 +126,23 @@ namespace Nalta::RHI::D3D12
         NL_DX_VERIFY(mySwapChain->Present(syncInterval, flags));
     }
 
-    void RenderSurface::SetAsRenderTarget(GraphicsContext& aContext)
+    void RenderSurface::SetAsRenderTarget(GraphicsContext& aContext, const TextureResource* aDepth)
     {
-        TextureResource& backBuffer{ GetCurrentBackBuffer() };
+        myCurrentBackBufferIndex = mySwapChain->GetCurrentBackBufferIndex();
+        TextureResource& backBuffer{ *myBackBuffers[myCurrentBackBufferIndex] };
 
-        // Transition from present to render target
         aContext.AddBarrier(backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
         aContext.FlushBarriers();
 
         const TextureResource* targets[]{ &backBuffer };
-        aContext.SetRenderTargets(targets, nullptr);
+        aContext.SetRenderTargets(targets, aDepth);
         aContext.SetViewport(myWidth, myHeight);
         aContext.SetScissor(myWidth, myHeight);
     }
 
-    void RenderSurface::EndRenderTarget(GraphicsContext& aContext)
+    void RenderSurface::EndRenderTarget(GraphicsContext& aContext) const
     {
-        TextureResource& backBuffer{ GetCurrentBackBuffer() };
-
-        // Transition back to present
+        TextureResource& backBuffer{ *myBackBuffers[myCurrentBackBufferIndex] };
         aContext.AddBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
         aContext.FlushBarriers();
     }
@@ -172,14 +170,13 @@ namespace Nalta::RHI::D3D12
         NL_TRACE(GCoreLogger, "render surface resized [{}x{}]", aWidth, aHeight);
     }
 
-    void RenderSurface::Clear(GraphicsContext& aContext, const float aClearColor[4])
+    void RenderSurface::Clear(GraphicsContext& aContext, const float aClearColor[4]) const
     {
         static constexpr float defaultColor[4]{ 0.0f, 0.0f, 0.0f, 1.0f };
-
-        aContext.ClearRenderTarget(GetCurrentBackBuffer(), aClearColor ? aClearColor : defaultColor);
+        aContext.ClearRenderTarget(*myBackBuffers[myCurrentBackBufferIndex], aClearColor ? aClearColor : defaultColor);
     }
 
-    TextureResource& RenderSurface::GetCurrentBackBuffer()
+    TextureResource& RenderSurface::GetCurrentBackBuffer() const
     {
         return *myBackBuffers[mySwapChain->GetCurrentBackBufferIndex()];
     }

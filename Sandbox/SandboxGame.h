@@ -9,7 +9,7 @@ public:
     void Initialize(const Nalta::InitContext& aContext) override;
     void Shutdown()                                     override;
     void Update(const Nalta::UpdateContext& aContext)   override;
-    void BuildSceneView(Nalta::SceneViewContext& aContext) override;
+    void BuildSceneView(Nalta::SceneView& aView) override;
 
 private:
     Nalta::MeshKey myMeshKey;

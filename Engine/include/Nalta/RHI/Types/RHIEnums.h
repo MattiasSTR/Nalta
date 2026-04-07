@@ -16,6 +16,14 @@ namespace Nalta::RHI
         Texture,
         Buffer,
     };
+    
+    enum class SamplerIndex : uint32_t
+    {
+        LinearWrap  = 0,
+        LinearClamp = 1,
+        PointWrap   = 2,
+        PointClamp  = 3,
+    };
 
     enum class TextureFormat : uint8_t
     {

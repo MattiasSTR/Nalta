@@ -13,6 +13,9 @@ namespace Nalta::RHI::D3D12
             type = ResourceType::Texture;
         }
         
+        uint32_t width{ 0 };
+        uint32_t height{ 0 };
+        
         Descriptor SRVDescriptor{};
         Descriptor RTVDescriptor{};
         Descriptor DSVDescriptor{};

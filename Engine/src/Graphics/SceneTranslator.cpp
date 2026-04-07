@@ -9,7 +9,7 @@ namespace Nalta::Graphics
         : myGpuResourceSystem(aGpuResourceSystem)
     {}
 
-    void SceneTranslator::Translate(const SceneView&, const CameraView&, RenderView&)
+    void SceneTranslator::Translate(const SceneView&, const CameraDesc&, RenderView&)
     {
         // Straight passthrough for now
     }

@@ -22,12 +22,12 @@ namespace Nalta::RHI::D3D12
         RenderSurface& operator=(RenderSurface&&) = delete;
 
         void Present(bool aVSync = false);
-        void SetAsRenderTarget(GraphicsContext& aContext);
-        void EndRenderTarget(GraphicsContext& aContext);
+        void SetAsRenderTarget(GraphicsContext& aContext, const TextureResource* aDepth = nullptr);
+        void EndRenderTarget(GraphicsContext& aContext) const;
         void Resize(uint32_t aWidth, uint32_t aHeight);
-        void Clear(GraphicsContext& aContext, const float aClearColor[4] = nullptr);
+        void Clear(GraphicsContext& aContext, const float aClearColor[4] = nullptr) const;
 
-        [[nodiscard]] TextureResource& GetCurrentBackBuffer();
+        [[nodiscard]] TextureResource& GetCurrentBackBuffer() const;
         [[nodiscard]] uint32_t GetWidth() const { return myWidth; }
         [[nodiscard]] uint32_t GetHeight() const { return myHeight; }
         [[nodiscard]] uint32_t GetBufferCount() const { return myBufferCount; }
@@ -42,6 +42,7 @@ namespace Nalta::RHI::D3D12
         uint32_t myWidth{ 0 };
         uint32_t myHeight{ 0 };
         uint32_t myBufferCount{ 0 };
+        uint32_t myCurrentBackBufferIndex{ 0 };
 
         // Backbuffers are TextureResource but allocation is null - swap chain owns the memory
         std::array<std::unique_ptr<TextureResource>, BACK_BUFFER_COUNT> myBackBuffers;

@@ -2,6 +2,7 @@
 #include "Nalta/RHI/D3D12/D3D12Device.h"
 
 #include "Nalta/RHI/D3D12/D3D12RenderSurface.h"
+#include "Nalta/RHI/D3D12/Common/D3D12Descriptor.h"
 #include "Nalta/RHI/D3D12/Common/D3D12Queue.h"
 #include "Nalta/RHI/D3D12/Contexts/D3D12ComputeContext.h"
 #include "Nalta/RHI/D3D12/Contexts/D3D12GraphicsContext.h"
@@ -252,6 +253,7 @@ namespace Nalta::RHI::D3D12
         
         InitAllocator();
         InitDescriptorHeaps();
+        InitDefaultSamplers();
         InitRootSignature();
         for (uint32_t i{ 0 }; i < FRAMES_IN_FLIGHT; ++i)
         {
@@ -314,6 +316,12 @@ namespace Nalta::RHI::D3D12
         {
             queue.reset();
         }
+        
+        for (const Descriptor& sampler : myDefaultSamplers)
+        {
+            mySamplerHeap->Free(sampler);
+        }
+        myDefaultSamplers.clear();
         
         SafeRelease(myRootSignature);
         
@@ -557,6 +565,8 @@ namespace Nalta::RHI::D3D12
         texture->state = initialState;
         texture->type = ResourceType::Texture;
         texture->isReady = hasRTV || hasDSV;
+        texture->width = aDesc.width;
+        texture->height = aDesc.height;
         
         NL_DX_VERIFY(myAllocator->CreateResource(
             &allocationDesc,
@@ -1290,6 +1300,35 @@ namespace Nalta::RHI::D3D12
         N_D3D12_SET_NAME(myDSVHeap->GetHeap(), "DSV Staging Heap");
 
         NL_TRACE(GCoreLogger, "descriptor heaps initialized");
+    }
+
+    void Device::InitDefaultSamplers()
+    {
+        auto AllocateSampler = [this](D3D12_FILTER aFilter, D3D12_TEXTURE_ADDRESS_MODE aAddressMode)
+        {
+            D3D12_SAMPLER_DESC desc{};
+            desc.Filter         = aFilter;
+            desc.AddressU       = aAddressMode;
+            desc.AddressV       = aAddressMode;
+            desc.AddressW       = aAddressMode;
+            desc.MipLODBias     = 0.0f;
+            desc.MaxAnisotropy  = aFilter == D3D12_FILTER_ANISOTROPIC ? 16 : 1;
+            desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+            desc.MinLOD         = 0.0f;
+            desc.MaxLOD         = D3D12_FLOAT32_MAX;
+
+            const Descriptor slot{ mySamplerHeap->Allocate() };
+            myDevice->CreateSampler(&desc, slot.CPUHandle);
+            myDefaultSamplers.push_back(slot);
+        };
+
+        AllocateSampler(D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP);  // 0 - LinearWrap
+        AllocateSampler(D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // 1 - LinearClamp
+        AllocateSampler(D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_WRAP);  // 2 - PointWrap
+        AllocateSampler(D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // 3 - PointClamp
+        AllocateSampler(D3D12_FILTER_ANISOTROPIC, D3D12_TEXTURE_ADDRESS_MODE_WRAP);  // 4 - AnisotropicWrap
+
+        NL_TRACE(GCoreLogger, "default samplers initialized");
     }
 
     void Device::InitRootSignature()

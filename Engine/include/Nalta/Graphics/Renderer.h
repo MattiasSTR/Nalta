@@ -6,6 +6,11 @@
 
 #include <memory>
 
+namespace Nalta
+{
+    class AssetManager;
+}
+
 namespace Nalta::Graphics
 {
     class GPUResourceManager;
@@ -13,7 +18,7 @@ namespace Nalta::Graphics
     class Renderer
     {
     public:
-        explicit Renderer(GPUResourceManager* aGpuResourceSystem);
+        explicit Renderer(GPUResourceManager* aGpuResourceSystem, AssetManager* aAssetManager);
         ~Renderer();
 
         Renderer(const Renderer&) = delete;
@@ -27,17 +32,22 @@ namespace Nalta::Graphics
         void RenderFrame(const Graphics::RenderFrame& aFrame);
 
     private:
-        void BeginFrame();
-        void EndFrame();
+        void BeginFrame() const;
+        void EndFrame() const;
         void RenderSurface(const SceneView& aScene, const SurfaceView& aSurfaceView);
-        void RenderCamera(const SceneView& aScene, const SurfaceView& aSurfaceView, const CameraView& aCamera);
+        void RenderCamera(const SceneView& aScene, const SurfaceView& aSurfaceView, const CameraDesc& aCamera);
 
         GPUResourceManager* myGpuResourceSystem{ nullptr };
+        AssetManager* myAssetManager{ nullptr };
         SceneTranslator mySceneTranslator;
         std::unique_ptr<RHI::GraphicsContext> myGraphicsContext;
 
         RenderView myRenderView;
         const Graphics::RenderFrame* myCurrentFrame{ nullptr };
+        
+        std::unordered_map<RenderSurfaceKey, TextureKey> myDepthTextures;
+        BufferKey myCameraConstantBuffer{};
+        PipelineKey myMeshPipelineKey{};
 
         bool myIsInitialized{ false };
     };

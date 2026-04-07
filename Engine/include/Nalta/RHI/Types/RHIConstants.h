@@ -5,7 +5,7 @@ namespace Nalta::RHI
 {
     constexpr uint32_t FRAMES_IN_FLIGHT{ 2 };
     constexpr uint32_t BACK_BUFFER_COUNT{ 3 };
-    constexpr uint32_t ROOT_CONSTANT_COUNT{ 16 };
+    constexpr uint32_t ROOT_CONSTANT_COUNT{ 20 };
     constexpr uint32_t MAX_QUEUED_BARRIERS{ 16 };
 
     enum class RootParameter : uint32_t

@@ -3,7 +3,6 @@
 
 #include "Nalta/Assets/AssetManager.h"
 #include "Nalta/Core/InitContext.h"
-#include "Nalta/Core/SceneViewContext.h"
 #include "Nalta/Core/Timer.h"
 #include "Nalta/Core/UpdateContext.h"
 #include "Nalta/Graphics/GPUResourceManager.h"
@@ -115,7 +114,7 @@ namespace Nalta
 			myPlayerInput.AssignKeyboard(inputSystem.GetKeyboard());
 			myPlayerInput.AssignMouse(inputSystem.GetMouse());
 			
-			myRenderer = std::make_unique<Graphics::Renderer>(myGPUResourceManager.get());
+			myRenderer = std::make_unique<Graphics::Renderer>(myGPUResourceManager.get(), myAssetManager.get());
 			myRenderer->Initialize();
 		}
 		else
@@ -289,28 +288,17 @@ namespace Nalta
 				Graphics::RenderFrame& frame{ myRenderBuffer.GetWriteSlot() };
 				frame.Reset();
 				
-				auto* window{ myPlatformSystem->GetWindow(myMainWindowKey) };
-				
 				if (myGame)
 				{
-					SceneViewContext ctx;
-					ctx.view = &frame.scene;
-					ctx.width = window->GetWidth();
-					ctx.height = window->GetHeight();
-					myGame->BuildSceneView(ctx);
+					myGame->BuildSceneView(frame.scene);
 				}
 				
-				// Assemble surface and camera from game data
-				Graphics::SurfaceView& surfaceView{ frame.surfaces.emplace_back() };
-				surfaceView.surface = myMainSurfaceKey;
-				surfaceView.width = window->GetWidth();
-				surfaceView.height = window->GetHeight();
-				
-				// Lift camera from SceneView into CameraView
-				Graphics::CameraView& cameraView{ surfaceView.cameras.emplace_back() };
-				cameraView.view = frame.scene.camera.view;
-				cameraView.projection = frame.scene.camera.projection;
-				cameraView.position = frame.scene.camera.position;
+				auto* window{ myPlatformSystem->GetWindow(myMainWindowKey) };
+				Graphics::SurfaceView& sv{ frame.surfaces.emplace_back() };
+				sv.surface = myMainSurfaceKey;
+				sv.scene = &frame.scene;
+				sv.width = window->GetWidth();
+				sv.height = window->GetHeight();
 
 				myRenderBuffer.Publish();
 			}

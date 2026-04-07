@@ -6,7 +6,6 @@
 #include <Nalta/Core/Math.h>
 #include <Nalta/Core/Paths.h>
 #include <Nalta/Core/SceneView.h>
-#include <Nalta/Core/SceneViewContext.h>
 #include <Nalta/Core/UpdateContext.h>
 #include <Nalta/Input/PlayerInput.h>
 
@@ -66,32 +65,22 @@ void SandboxGame::Update(const UpdateContext& aContext)
     if (input->IsKeyDown(Key::Q)) myPosition.y -= speed;
 }
 
-void SandboxGame::BuildSceneView([[maybe_unused]] SceneViewContext& aContext)
+void SandboxGame::BuildSceneView([[maybe_unused]] SceneView& aView)
 {
-    // const float aspectRatio{ static_cast<float>(aContext.width) / static_cast<float>(aContext.height) };
-    // const float3 forward
-    // {
-    //     sin(myYaw) * cos(myPitch),
-    //    -sin(myPitch),
-    //     cos(myYaw) * cos(myPitch)
-    // };
-    // const float3 target{ myPosition + forward };
-    //
-    // const float4x4 view{ float4x4::look_at(myPosition, target, float3(0, 1, 0)) };
-    // const frustum f{ frustum::field_of_view_y(Deg2Rad(75.f), aspectRatio, 0.1f, 1000.f) };
-    // const projection proj{ f, zclip::zero, zdirection::reverse, zplane::finite };
-    // const float4x4 viewProj{ mul(view, float4x4::perspective(proj)) };
-    //
-    // aContext.view->camera.view = view;
-    // aContext.view->camera.projection = float4x4::perspective(proj);
-    // aContext.view->camera.viewProjection = viewProj;
-    // aContext.view->camera.position = myPosition;
-    //
-    // MeshDrawEntry entry;
-    // entry.mesh = myMeshKey;
-    // entry.pipeline = myPipelineKey;
-    // entry.albedo = myTextureKey;
-    // entry.transform = float4x4::rotation_y(myTime);
-    //
-    // aContext.view->meshes.push_back(entry);
+    const float3 forward
+    {
+        sin(myYaw) * cos(myPitch),
+       -sin(myPitch),
+        cos(myYaw) * cos(myPitch)
+    };
+    const float3 target{ myPosition + forward };
+    
+    CameraDesc& camera{ aView.cameras.emplace_back() };
+    camera.view = float4x4::look_at(myPosition, target, float3(0, 1, 0));
+    camera.position = myPosition;
+    
+    MeshDrawEntry& entry{ aView.meshes.emplace_back() };
+    entry.mesh = myMeshKey;
+    entry.albedo = myTextureKey;
+    entry.transform = float4x4::rotation_y(myTime);
 }
