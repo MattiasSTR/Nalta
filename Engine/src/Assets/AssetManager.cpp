@@ -8,6 +8,7 @@
 #include "Nalta/Assets/TypeHandlers/MeshTypeHandler.h"
 #include "Nalta/Assets/TypeHandlers/TextureTypeHandler.h"
 #include "Nalta/Core/BinaryIO.h"
+#include "Nalta/Platform/IFileWatcher.h"
 #include "Nalta/Platform/IPlatformSystem.h"
 
 namespace Nalta
@@ -22,7 +23,13 @@ namespace Nalta
         N_CORE_ASSERT(aFileWatcher, "AssetManager: null file watcher");
 
         myGPUResourceManager = aGraphicsSystem;
-        myFileWatcher = aFileWatcher;
+        
+#ifndef N_SHIPPING
+        aFileWatcher->AddOnChangedCallback([this](const std::filesystem::path& aPath)
+        {
+            OnFileChanged(aPath);
+        });
+#endif
 
         myImporterRegistry.Register(std::make_unique<ObjImporter>());
         myImporterRegistry.Register(std::make_unique<TextureDescriptorImporter>());
@@ -112,6 +119,12 @@ namespace Nalta
     void AssetManager::OnFileChanged(const std::filesystem::path& aPath)
     {
         const AssetPath assetPath{ aPath };
+        
+        if (!myImporterRegistry.CanImport(assetPath))
+        {
+            return;
+        }
+        
         NL_INFO(GCoreLogger, "file changed: '{}'", assetPath.GetPath());
 
         DebounceReload(assetPath.GetPath());

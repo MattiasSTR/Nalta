@@ -33,6 +33,8 @@ namespace Nalta
     {
         NL_SCOPE_CORE("Win32FileWatcher");
         myStop = true;
+        
+        myCallbacks.clear();
 
         if (myWakeEvent != nullptr)
         {
@@ -99,10 +101,10 @@ namespace Nalta
         NL_INFO(GCoreLogger, "watching '{}'", aDirectory.string());
     }
     
-    void Win32FileWatcher::SetOnChangedCallback(OnFileChangedCallback aCallback)
+    void Win32FileWatcher::AddOnChangedCallback(OnFileChangedCallback aCallback)
     {
         std::lock_guard lock{ myMutex };
-        myCallback = std::move(aCallback);
+        myCallbacks.push_back(std::move(aCallback));
     }
     
     void Win32FileWatcher::WatchThread()
@@ -288,12 +290,12 @@ namespace Nalta
     void Win32FileWatcher::FlushDebounced()
     {
         const auto now{ std::chrono::steady_clock::now() };
-        OnFileChangedCallback callback;
+        std::vector<OnFileChangedCallback> callbacks;
         std::vector<std::filesystem::path> toFire;
 
         {
             std::lock_guard lock{ myMutex };
-            callback = myCallback;
+            callbacks = myCallbacks;
 
             for (auto it{ myPendingChanges.begin() }; it != myPendingChanges.end();)
             {
@@ -302,19 +304,16 @@ namespace Nalta
                     toFire.push_back(it->second.path);
                     it = myPendingChanges.erase(it);
                 }
-                else
-                {
-                    ++it;
-                }
+                else { ++it; }
             }
         }
-        
-        if (callback)
+
+        for (const auto& path : toFire)
         {
-            for (const auto& path : toFire)
+            NL_TRACE(GCoreLogger, "changed '{}'", path.string());
+            for (const auto& cb : callbacks)
             {
-                NL_TRACE(GCoreLogger, "changed '{}'", path.string());
-                callback(path);
+                cb(path);
             }
         }
     }

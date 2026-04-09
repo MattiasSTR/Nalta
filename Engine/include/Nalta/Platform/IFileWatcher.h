@@ -16,6 +16,6 @@ namespace Nalta
         virtual void Shutdown() = 0;
 
         virtual void Watch(const std::filesystem::path& aDirectory) = 0;
-        virtual void SetOnChangedCallback(OnFileChangedCallback aCallback) = 0;
+        virtual void AddOnChangedCallback(OnFileChangedCallback aCallback) = 0;
     };
 }

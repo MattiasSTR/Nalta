@@ -72,7 +72,7 @@ namespace Nalta
 			myFileWatcher->Watch(Paths::EngineAssetDir());
 #endif
 			myGPUResourceManager = std::make_unique<Graphics::GPUResourceManager>();
-			myGPUResourceManager->Initialize();
+			myGPUResourceManager->Initialize(myFileWatcher.get());
 			
 			myAssetManager = std::make_unique<AssetManager>();
 			myAssetManager->Initialize(myGPUResourceManager.get(), myFileWatcher.get(), myPlatformSystem.get());
@@ -84,21 +84,6 @@ namespace Nalta
 					myGPUResourceManager->DestroyRenderSurface(aKey);
 				}
 			});
-			
-#ifndef N_SHIPPING
-			myFileWatcher->SetOnChangedCallback([this](const std::filesystem::path& aPath)
-			{
-				if (myAssetManager && aPath.extension() != ".hlsl")
-				{
-					myAssetManager->OnFileChanged(aPath);
-				}
-
-				if (myGPUResourceManager && aPath.extension() == ".hlsl")
-				{
-					myGPUResourceManager->OnShaderChanged(aPath);
-				}
-			});
-#endif
 
 			myMainWindowKey = myPlatformSystem->CreatePlatformWindow(*myConfig.mainWindowDesc);
 			auto* window{ myPlatformSystem->GetWindow(myMainWindowKey) };

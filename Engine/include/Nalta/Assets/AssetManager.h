@@ -50,8 +50,6 @@ namespace Nalta
         // Get loaded asset data - returns fallback if not ready yet
         [[nodiscard]] const Mesh* GetMesh(MeshKey aKey) const;
         [[nodiscard]] const Texture* GetTexture(TextureKey aKey) const;
-        
-        void OnFileChanged(const std::filesystem::path& aPath);
 
         static std::filesystem::path GetCookedPath(const AssetPath& aPath);
         static void WriteCookedHeader(BinaryWriter& aWriter, AssetType aType);
@@ -71,6 +69,8 @@ namespace Nalta
             std::string sourcePath;
             std::chrono::steady_clock::time_point fireAt;
         };
+        
+        void OnFileChanged(const std::filesystem::path& aPath);
 
         template<class TKey, class TAsset>
         TKey RequestInternal(const AssetPath& aPath, AssetType aType, AssetStore<TKey, TAsset>& aStore, bool aIsReload);
@@ -111,7 +111,6 @@ namespace Nalta
         ImporterRegistry myImporterRegistry;
         AssetRegistry myRegistry;
         Graphics::GPUResourceManager* myGPUResourceManager{ nullptr };
-        IFileWatcher* myFileWatcher{ nullptr };
     };
 
     template<typename TKey, typename TAsset>

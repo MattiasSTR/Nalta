@@ -27,12 +27,10 @@ namespace Nalta::Graphics
         GPUResourceManager(GPUResourceManager&&) = delete;
         GPUResourceManager& operator=(GPUResourceManager&&) = delete;
         
-        void Initialize(IFileWatcher* aFileWatcher = nullptr);
+        void Initialize(IFileWatcher* aFileWatcher);
         void Shutdown();
         
         [[nodiscard]] RHI::Device& GetDevice() const;
-        
-        void OnShaderChanged(const std::filesystem::path& aPath);
         
         // Textures
         [[nodiscard]] TextureKey CreateTexture(const RHI::TextureCreationDesc& aDesc);
@@ -72,10 +70,10 @@ namespace Nalta::Graphics
         [[nodiscard]] const RHI::Pipeline* GetPipeline(PipelineKey aKey) const;
         
     private:
+        void OnShaderChanged(const std::filesystem::path& aPath);
+        
         std::unique_ptr<RHI::Device> myDevice;
         bool myIsInitialized{ false };
-        
-        IFileWatcher* myFileWatcher{ nullptr };
         
         SlotMap<TextureKey, std::unique_ptr<RHI::Texture>> myTextures;
         SlotMap<BufferKey, std::unique_ptr<RHI::Buffer>> myBuffers;

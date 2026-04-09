@@ -3,6 +3,7 @@
 #include "Nalta/Graphics/GPUResourceManager.h"
 
 #include "Nalta/Graphics/ShaderBlobStore.h"
+#include "Nalta/Platform/IFileWatcher.h"
 
 namespace Nalta::Graphics
 {
@@ -75,7 +76,13 @@ namespace Nalta::Graphics
         N_CORE_ASSERT(!myIsInitialized, "GpuResourceSystem already initialized");
 
         myDevice = std::make_unique<RHI::Device>();
-        myFileWatcher = aFileWatcher;
+        
+#ifndef N_SHIPPING
+        aFileWatcher->AddOnChangedCallback([this](const std::filesystem::path& aPath)
+        {
+            OnShaderChanged(aPath);
+        });
+#endif
 
         myIsInitialized = true;
     }
@@ -135,6 +142,11 @@ namespace Nalta::Graphics
 
     void GPUResourceManager::OnShaderChanged(const std::filesystem::path& aPath)
     {
+        if (aPath.extension() != ".hlsl")
+        {
+            return;
+        }
+        
         const auto it{ myPathToShaders.find(aPath.lexically_normal().string()) };
         if (it == myPathToShaders.end())
         {

@@ -19,7 +19,7 @@ namespace Nalta
         void Initialize() override;
         void Shutdown() override;
         void Watch(const std::filesystem::path& aDirectory) override;
-        void SetOnChangedCallback(OnFileChangedCallback aCallback) override;
+        void AddOnChangedCallback(OnFileChangedCallback aCallback) override;
 
     private:
         void WatchThread();
@@ -38,7 +38,7 @@ namespace Nalta
             std::chrono::steady_clock::time_point lastSeen;
         };
 
-        OnFileChangedCallback myCallback;
+        std::vector<OnFileChangedCallback> myCallbacks;
         std::vector<WatchedDirectory>  myDirectories;
         std::unordered_map<std::string, PendingChange> myPendingChanges;
 
