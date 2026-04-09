@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include "RenderFrame.h"
 #include "RenderView.h"
-#include "Nalta/Graphics/SceneTranslator.h"
 #include "Nalta/RHI/RHIContexts.h"
 
 #include <memory>
@@ -32,20 +31,19 @@ namespace Nalta::Graphics
         void RenderFrame(const Graphics::RenderFrame& aFrame);
 
     private:
-        void BeginFrame() const;
-        void EndFrame() const;
-        void RenderSurface(const SceneView& aScene, const SurfaceView& aSurfaceView);
-        void RenderCamera(const SceneView& aScene, const SurfaceView& aSurfaceView, const CameraDesc& aCamera);
+        void BeginFrame(const Graphics::RenderFrame& aFrame) const;
+        void EndFrame(const Graphics::RenderFrame& aFrame) const;
+        void RenderSurface(const SceneSnapshot& aScene, const SurfaceView& aSurfaceView);
+        void RenderCamera(const SceneSnapshot& aScene, const SurfaceView& aSurfaceView, const CameraDesc& aCamera);
+        TextureKey EnsureDepthStencil(const SurfaceView& aSurfaceView);
 
         GPUResourceManager* myGpuResourceSystem{ nullptr };
         AssetManager* myAssetManager{ nullptr };
-        SceneTranslator mySceneTranslator;
         std::unique_ptr<RHI::GraphicsContext> myGraphicsContext;
 
         RenderView myRenderView;
-        const Graphics::RenderFrame* myCurrentFrame{ nullptr };
         
-        std::unordered_map<RenderSurfaceKey, TextureKey> myDepthTextures;
+        std::unordered_map<RenderSurfaceKey, TextureKey> myDepthStencils;
         BufferKey myCameraConstantBuffer{};
         PipelineKey myMeshPipelineKey{};
 

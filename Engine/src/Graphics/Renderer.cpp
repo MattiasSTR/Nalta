@@ -32,7 +32,6 @@ namespace Nalta::Graphics
     Renderer::Renderer(GPUResourceManager* aGpuResourceSystem, AssetManager* aAssetManager)
         : myGpuResourceSystem(aGpuResourceSystem)
         , myAssetManager(aAssetManager)
-        , mySceneTranslator(aGpuResourceSystem)
     {}
 
     Renderer::~Renderer() = default;
@@ -82,14 +81,14 @@ namespace Nalta::Graphics
 
         myGpuResourceSystem->GetDevice().WaitForIdle();
 
-        for (auto& depthKey : myDepthTextures | std::views::values)
+        for (auto& depthKey : myDepthStencils | std::views::values)
         {
             if (depthKey.IsValid())
             {
                 myGpuResourceSystem->DestroyTexture(depthKey);
             }
         }
-        myDepthTextures.clear();
+        myDepthStencils.clear();
 
         myGraphicsContext.reset();
         myIsInitialized = false;
@@ -99,44 +98,22 @@ namespace Nalta::Graphics
     {
         N_CORE_ASSERT(myIsInitialized, "Renderer is not initialized");
         
-        myCurrentFrame = &aFrame;
-
-        BeginFrame();
+        BeginFrame(aFrame);
 
         for (const SurfaceView& surfaceView : aFrame.surfaces)
         {
-            RenderSurface(aFrame.scene, surfaceView);
+            RenderSurface(surfaceView.scene, surfaceView);
         }
 
-        EndFrame();
-        
-        myCurrentFrame = nullptr;
+        EndFrame(aFrame);
     }
 
-    void Renderer::RenderSurface(const SceneView& aScene, const SurfaceView& aSurfaceView)
+    void Renderer::RenderSurface(const SceneSnapshot& aScene, const SurfaceView& aSurfaceView)
     {
         RHI::RenderSurface* surface{ myGpuResourceSystem->GetRenderSurface(aSurfaceView.surface) };
         N_CORE_ASSERT(surface != nullptr, "RenderSurface is null");
-        
-        auto& depthKey{ myDepthTextures[aSurfaceView.surface] };
-        if (!depthKey.IsValid() || myGpuResourceSystem->GetTexture(depthKey)->width  != aSurfaceView.width ||
-            myGpuResourceSystem->GetTexture(depthKey)->height != aSurfaceView.height)
-        {
-            if (depthKey.IsValid())
-            {
-                myGpuResourceSystem->DestroyTexture(depthKey);
-            }
 
-            RHI::TextureCreationDesc depthDesc{};
-            depthDesc.width     = aSurfaceView.width;
-            depthDesc.height    = aSurfaceView.height;
-            depthDesc.format    = RHI::TextureFormat::D32_Float;
-            depthDesc.viewFlags = RHI::TextureViewFlags::DepthStencil;
-            depthDesc.debugName = "SceneDepth";
-
-            depthKey = myGpuResourceSystem->CreateTexture(depthDesc);
-        }
-
+        const auto depthKey{ EnsureDepthStencil(aSurfaceView) };
         const RHI::Texture* depthTexture{ myGpuResourceSystem->GetTexture(depthKey) };
 
         constexpr float clearColor[]{ 0.01f, 0.01f, 0.01f, 1.0f };
@@ -153,7 +130,7 @@ namespace Nalta::Graphics
         surface->EndRenderTarget(*myGraphicsContext);
     }
 
-    void Renderer::RenderCamera(const SceneView& aScene, const SurfaceView& aSurfaceView, const CameraDesc& aCamera)
+    void Renderer::RenderCamera(const SceneSnapshot& aScene, const SurfaceView& aSurfaceView, const CameraDesc& aCamera)
     {
         //const uint32_t vpX{ static_cast<uint32_t>(aCamera.viewportX * aSurfaceView.width) };
         //const uint32_t vpY{ static_cast<uint32_t>(aCamera.viewportY * aSurfaceView.height) };
@@ -175,7 +152,7 @@ namespace Nalta::Graphics
         myGraphicsContext->SetPipeline(*myGpuResourceSystem->GetPipeline(myMeshPipelineKey));
         myGraphicsContext->SetPrimitiveTopology(RHI::PrimitiveTopology::TriangleList);
 
-        for (const MeshDrawEntry& entry : aScene.meshes)
+        for (const StaticMeshDrawEntry& entry : aScene.meshes)
         {
             const Mesh* mesh{ myAssetManager->GetMesh(entry.mesh) };
             const Texture* albedo{ myAssetManager->GetTexture(entry.albedo) };
@@ -196,12 +173,36 @@ namespace Nalta::Graphics
             }
         }
     }
-    
-    void Renderer::BeginFrame() const
+
+    TextureKey Renderer::EnsureDepthStencil(const SurfaceView& aSurfaceView)
+    {
+        auto& depthKey{ myDepthStencils[aSurfaceView.surface] };
+        if (!depthKey.IsValid() || myGpuResourceSystem->GetTexture(depthKey)->width  != aSurfaceView.width ||
+            myGpuResourceSystem->GetTexture(depthKey)->height != aSurfaceView.height)
+        {
+            if (depthKey.IsValid())
+            {
+                myGpuResourceSystem->DestroyTexture(depthKey);
+            }
+
+            RHI::TextureCreationDesc depthDesc{};
+            depthDesc.width     = aSurfaceView.width;
+            depthDesc.height    = aSurfaceView.height;
+            depthDesc.format    = RHI::TextureFormat::D32_Float;
+            depthDesc.viewFlags = RHI::TextureViewFlags::DepthStencil;
+            depthDesc.debugName = "SceneDepth";
+
+            depthKey = myGpuResourceSystem->CreateTexture(depthDesc);
+        }
+        
+        return depthKey;
+    }
+
+    void Renderer::BeginFrame(const Graphics::RenderFrame& aFrame) const
     {
         myGpuResourceSystem->GetDevice().BeginFrame();
 
-        for (const SurfaceView& surfaceView : myCurrentFrame->surfaces)
+        for (const SurfaceView& surfaceView : aFrame.surfaces)
         {
             RHI::RenderSurface* surface{ myGpuResourceSystem->GetRenderSurface(surfaceView.surface) };
             N_CORE_ASSERT(surface != nullptr, "RenderSurface is null");
@@ -215,13 +216,13 @@ namespace Nalta::Graphics
         myGraphicsContext->Reset();
     }
 
-    void Renderer::EndFrame() const
+    void Renderer::EndFrame(const Graphics::RenderFrame& aFrame) const
     {
         myGraphicsContext->Close();
         myGpuResourceSystem->GetDevice().SubmitContextWork(*myGraphicsContext);
         myGpuResourceSystem->GetDevice().PrePresent();
 
-        for (const SurfaceView& surfaceView : myCurrentFrame->surfaces)
+        for (const SurfaceView& surfaceView : aFrame.surfaces)
         {
             RHI::RenderSurface* surface{ myGpuResourceSystem->GetRenderSurface(surfaceView.surface) };
             N_CORE_ASSERT(surface != nullptr, "RenderSurface is null");

@@ -4,7 +4,7 @@ namespace Nalta
 {
     struct InitContext;
     struct UpdateContext;
-    struct SceneView;
+    struct SceneSnapshot;
 
     class IGame
     {
@@ -14,6 +14,6 @@ namespace Nalta
         virtual void Initialize(const InitContext& aContext) = 0;
         virtual void Shutdown() = 0;
         virtual void Update(const UpdateContext& aContext) = 0;
-        virtual void BuildSceneView(SceneView& aView) = 0;
+        virtual void BuildSceneView(SceneSnapshot& aSnapshot) = 0;
     };
 }

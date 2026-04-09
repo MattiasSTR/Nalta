@@ -52,6 +52,20 @@ namespace Nalta
             return &myValues[aKey.GetIndex()];
         }
         
+        // Returns a reference — asserts in debug if key is invalid or stale
+        // Use when you are certain the key is valid and want to avoid pointer indirection at call sites
+        [[nodiscard]] TValue& GetRef(TKey aKey)
+        {
+            N_CORE_ASSERT(IsKeyValid(aKey), "SlotMap::GetRef called with invalid or stale key");
+            return myValues[aKey.GetIndex()];
+        }
+ 
+        [[nodiscard]] const TValue& GetRef(TKey aKey) const
+        {
+            N_CORE_ASSERT(IsKeyValid(aKey), "SlotMap::GetRef called with invalid or stale key");
+            return myValues[aKey.GetIndex()];
+        }
+        
         void Remove(TKey aKey)
         {
             if (!IsKeyValid(aKey))
@@ -95,6 +109,34 @@ namespace Nalta
                 if (myOccupied.Get(i))
                 {
                     std::forward<TFunc>(aFunc)(myValues[i]);
+                }
+            }
+        }
+        
+        // Iterates all live values and passes the reconstructed key alongside the value.
+        // Use when you need to identify which slot you're in
+        template<typename TFunc>
+        void ForEachWithKey(TFunc&& aFunc)
+        {
+            for (uint32_t i{ 0 }; i < static_cast<uint32_t>(myValues.size()); ++i)
+            {
+                if (myOccupied.Get(i))
+                {
+                    TKey key{ SlotKey::Make(i, myGenerations[i]).myRaw };
+                    std::forward<TFunc>(aFunc)(key, myValues[i]);
+                }
+            }
+        }
+ 
+        template<typename TFunc>
+        void ForEachWithKey(TFunc&& aFunc) const
+        {
+            for (uint32_t i{ 0 }; i < static_cast<uint32_t>(myValues.size()); ++i)
+            {
+                if (myOccupied.Get(i))
+                {
+                    TKey key{ SlotKey::Make(i, myGenerations[i]).myRaw };
+                    std::forward<TFunc>(aFunc)(key, myValues[i]);
                 }
             }
         }

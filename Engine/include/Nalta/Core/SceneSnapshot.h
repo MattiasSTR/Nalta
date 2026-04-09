@@ -6,7 +6,7 @@
 
 namespace Nalta
 {
-    struct MeshDrawEntry
+    struct StaticMeshDrawEntry
     {
         MeshKey mesh;
         TextureKey albedo;
@@ -28,10 +28,10 @@ namespace Nalta
         float viewportHeight{ 1.0f };
     };
 
-    struct SceneView
+    struct SceneSnapshot
     {
         std::vector<CameraDesc> cameras;
-        std::vector<MeshDrawEntry> meshes;
+        std::vector<StaticMeshDrawEntry> meshes;
 
         void Reset() { cameras.clear(); meshes.clear(); }
     };

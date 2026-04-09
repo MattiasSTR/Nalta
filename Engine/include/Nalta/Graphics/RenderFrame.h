@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "Nalta/Core/Math.h"
-#include "Nalta/Core/SceneView.h"
+#include "Nalta/Core/SceneSnapshot.h"
 #include "Nalta/Graphics/GPUResourceKeys.h"
 
 #include <vector>
@@ -10,7 +10,7 @@ namespace Nalta::Graphics
     struct SurfaceView
     {
         RenderSurfaceKey surface;
-        const SceneView* scene{ nullptr };
+        SceneSnapshot scene;
         uint32_t width{ 0 };
         uint32_t height{ 0 };
     };
@@ -18,9 +18,8 @@ namespace Nalta::Graphics
 
     struct RenderFrame
     {
-        SceneView scene;
         std::vector<SurfaceView> surfaces;
 
-        void Reset() { scene.Reset(); surfaces.clear(); }
+        void Reset() { surfaces.clear(); }
     };
 }

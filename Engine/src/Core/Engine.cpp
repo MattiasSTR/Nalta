@@ -273,17 +273,16 @@ namespace Nalta
 				Graphics::RenderFrame& frame{ myRenderBuffer.GetWriteSlot() };
 				frame.Reset();
 				
-				if (myGame)
-				{
-					myGame->BuildSceneView(frame.scene);
-				}
-				
 				auto* window{ myPlatformSystem->GetWindow(myMainWindowKey) };
 				Graphics::SurfaceView& sv{ frame.surfaces.emplace_back() };
 				sv.surface = myMainSurfaceKey;
-				sv.scene = &frame.scene;
 				sv.width = window->GetWidth();
 				sv.height = window->GetHeight();
+				
+				if (myGame)
+				{
+					myGame->BuildSceneView(sv.scene);
+				}
 
 				myRenderBuffer.Publish();
 			}

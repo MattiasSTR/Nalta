@@ -5,22 +5,27 @@
 #include <Nalta/Core/InitContext.h>
 #include <Nalta/Core/Math.h>
 #include <Nalta/Core/Paths.h>
-#include <Nalta/Core/SceneView.h>
+#include <Nalta/Core/SceneSnapshot.h>
 #include <Nalta/Core/UpdateContext.h>
 #include <Nalta/Input/PlayerInput.h>
+#include <Nalta/Scene/SceneTranslator.h>
 
 using namespace Nalta;
 
-struct TransformData
-{
-    interop::float4x4 model;
-    interop::float4x4 viewProjection;
-};
-
 void SandboxGame::Initialize([[maybe_unused]] const InitContext& aContext)
 {
-    myMeshKey = aContext.assetManager->RequestMesh(AssetPath(Paths::EngineAssetDir() / "Meshes" / "mesh.obj"));
-    myTextureKey = aContext.assetManager->RequestTexture(AssetPath(Paths::EngineAssetDir() / "Textures" / "test.texture"));
+    const auto meshKey{ aContext.assetManager->RequestMesh(AssetPath(Paths::EngineAssetDir() / "Meshes" / "mesh.obj")) };
+    const auto textureKey{ aContext.assetManager->RequestTexture(AssetPath(Paths::EngineAssetDir() / "Textures" / "test.texture")) };
+
+    myMeshObjectKey = myScene.CreateObject(StringID{ "Mesh" });
+    myScene.GetObject(myMeshObjectKey)->AddStaticMesh(meshKey, textureKey);
+    
+    TransformData transform;
+    transform.scale = { 0.25f, 0.25f, 0.25f };
+    transform.position = { 2.0f, 0.0f, 0.0f };
+    myChildMeshObjectKey = myScene.CreateObject(StringID{ "ChildMesh" }, transform);
+    myScene.GetObject(myChildMeshObjectKey)->AddStaticMesh({}, textureKey);
+    myScene.GetObject(myChildMeshObjectKey)->SetParent(*myScene.GetObject(myMeshObjectKey));
 }
 
 void SandboxGame::Shutdown()
@@ -30,11 +35,17 @@ void SandboxGame::Shutdown()
 
 void SandboxGame::Update(const UpdateContext& aContext)
 {
+    myScene.Update();
+    
     myTime += aContext.deltaTime;
     if (myTime > TWO_PI)
     {
         myTime -= TWO_PI;
     } 
+    
+    myScene.GetObject(myMeshObjectKey)->SetRotation(quaternion::rotation_y(myTime));
+    myScene.GetObject(myChildMeshObjectKey)->SetPosition({ 2.f, sin(myTime), 0.f });
+
 
     const auto* input{ aContext.playerInput };
     const float speed{ 5.0f * aContext.deltaTime };
@@ -65,7 +76,7 @@ void SandboxGame::Update(const UpdateContext& aContext)
     if (input->IsKeyDown(Key::Q)) myPosition.y -= speed;
 }
 
-void SandboxGame::BuildSceneView([[maybe_unused]] SceneView& aView)
+void SandboxGame::BuildSceneView([[maybe_unused]] SceneSnapshot& aSnapshot)
 {
     const float3 forward
     {
@@ -75,12 +86,9 @@ void SandboxGame::BuildSceneView([[maybe_unused]] SceneView& aView)
     };
     const float3 target{ myPosition + forward };
     
-    CameraDesc& camera{ aView.cameras.emplace_back() };
+    CameraDesc& camera{ aSnapshot.cameras.emplace_back() };
     camera.view = float4x4::look_at(myPosition, target, float3(0, 1, 0));
     camera.position = myPosition;
     
-    MeshDrawEntry& entry{ aView.meshes.emplace_back() };
-    entry.mesh = myMeshKey;
-    entry.albedo = myTextureKey;
-    entry.transform = float4x4::rotation_y(myTime);
+    SceneTranslator::Build(myScene, aSnapshot);
 }
